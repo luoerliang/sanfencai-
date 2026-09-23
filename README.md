@@ -1,99 +1,38 @@
-# 三分六合彩 AI多任务持久版 v28
+# 三分六合彩 AI免费外部备份版 v28F
 
-## 这次解决两个问题
+用途：不买Render持久盘、不绑卡，也尽量避免AI学习记录和实盘验证在重部署后丢失。
 
-### 1. 不再只有特码一个任务在AI里学习
-现在是“共享权重多任务AI”。
+方案：
+- Render Free继续跑程序
+- Supabase Free Storage保存学习检查点
+- 每次下一期预测锁定后自动上传
+- Render重部署/重启后启动时自动下载并恢复
 
-最近100期滚动训练时，所有这些结果都会参与同一套01-49号码权重更新：
+Supabase Free当前提供：
+- $0/月
+- 1GB Storage
+- 500MB数据库
+- 5GB egress
 
-- 特码
-- 特码生肖 / 4肖
-- 平特一肖（7个号码出现的生肖）
-- 波色
-- 大小
-- 单双
-- 头数
-- 冷热状态
+需要在Supabase建立一个Private bucket：
+sanfen-backup
 
-训练权重大致为：
-- 特码 58%
-- 特码生肖 10%
-- 平特一肖 7%
-- 波色 6%
-- 大小 4%
-- 单双 4%
-- 头数 5%
-- 冷热 6%
+Render环境变量：
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_BUCKET=sanfen-backup
+SUPABASE_OBJECT=sanfen_ai_checkpoint.json.gz
 
-重点仍然是抓特码，但其它走势不是“只显示”，而是会真正改变AI权重。
+service_role key只能放Render环境变量，不要发到聊天，不要写进GitHub。
 
-这些任务共享同一套AI号码权重，所以学习成果会同步进入24码排序。
-4肖和平特一肖也会读取AI学习出的生肖概率，不再完全独立于24码AI。
-
-### 2. 防止辛苦积累的实盘验证又消失
-
-v28增加自动学习检查点：
-
+备份内容：
 - prediction_log
 - AI权重
-- AI训练状态
 - learner_scores
 - 最近1400期开奖
+- 60期验证相关记录
 
-都会自动写入：
-`sanfen_ai_checkpoint.json.gz`
+页面成功后会显示：
+学习数据：Supabase免费外部备份
 
-每次下一期预测锁定后自动备份。
-
-启动时：
-- 如果持久检查点里的学习记录比数据库多
-- 自动恢复学习记录和AI权重
-- 再继续训练
-
-新增：
-- `/api/backup-status`
-- `/api/full-backup`
-
-## 真正“不丢”的关键
-
-如果 Render 使用临时文件系统，任何SQLite和本地备份文件在重部署/实例重建时仍可能一起消失。
-这是存储层问题，程序无法靠算法绕过去。
-
-要真正保证学习记录跨部署保存，给 Render 服务挂一个 Persistent Disk 到：
-
-`/var/data`
-
-v28会自动检测 `/var/data`，然后自动使用：
-
-`/var/data/history.db`
-`/var/data/sanfen_ai_checkpoint.json.gz`
-
-也可以手动设置：
-
-PERSIST_DIR=/var/data
-DB_PATH=/var/data/history.db
-CHECKPOINT_PATH=/var/data/sanfen_ai_checkpoint.json.gz
-
-页面会显示：
-
-`学习数据：持久盘自动备份`
-
-如果没检测到持久盘，会明确显示：
-
-`⚠ 学习数据：临时盘，重部署仍有丢失风险`
-
-不会再假装“已经永久保存”。
-
-## 升级当前有实盘验证的版本时
-
-不要直接覆盖掉唯一的旧服务再指望程序从已经消失的旧SQLite恢复。
-
-最安全的方式：
-1. 旧服务继续运行
-2. v28先部署到新服务/有持久盘的服务
-3. v28从旧服务 `/api/learning-export` 继承现有 prediction_log 和AI权重
-4. 确认学习样本数一致
-5. 再让v28接管Telegram
-
-这样旧版已经攒下来的验证不会因为升级动作本身丢失。
+/api/backup-status 可看到远程备份时间和错误状态。

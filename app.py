@@ -23,6 +23,12 @@ PERSISTENT_MODE = bool(
     os.path.abspath(DB).startswith(os.path.abspath(PERSIST_DIR)) and
     os.path.abspath(CHECKPOINT_PATH).startswith(os.path.abspath(PERSIST_DIR))
 )
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "sanfen-backup").strip() or "sanfen-backup"
+SUPABASE_OBJECT = os.getenv("SUPABASE_OBJECT", "sanfen_ai_checkpoint.json.gz").strip() or "sanfen_ai_checkpoint.json.gz"
+REMOTE_BACKUP_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and SUPABASE_BUCKET and SUPABASE_OBJECT)
+
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 ALLOWED_CHAT_ID = os.getenv("ALLOWED_CHAT_ID", "").strip()
 PORT = int(os.getenv("PORT", "10000"))
@@ -120,7 +126,10 @@ auto_state = {
     "last_error": "",
     "updating": False,
     "checkpoint_at": "",
-    "checkpoint_error": ""
+    "checkpoint_error": "",
+    "remote_backup_at": "",
+    "remote_restore_at": "",
+    "remote_backup_error": ""
 }
 
 fusion_lock = threading.RLock()
@@ -466,7 +475,7 @@ async function loadAutoStatus(){
     const n=a.ai_live||{};
     const f=a.fusion||{};
     learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${a.ai_mix_pct??0}%<br>AI实盘 ${f.ai_rate60??n.hit24??0}% · 对比${f.benchmark_profile||'统计'} ${f.stat_rate60??0}%`;
-    learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：临时盘，重部署仍有丢失风险'}`;
+    learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
 async function loadHistory(){
@@ -2448,6 +2457,68 @@ def export_learning_payload(limit=1000):
             c.close()
 
 
+
+def _supabase_headers(content_type=None):
+    h={
+      "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "Cache-Control": "no-cache"
+    }
+    if content_type:
+        h["Content-Type"]=content_type
+    return h
+
+def upload_checkpoint_to_supabase():
+    if not REMOTE_BACKUP_ENABLED or not os.path.exists(CHECKPOINT_PATH):
+        return False
+    try:
+        with open(CHECKPOINT_PATH,"rb") as f:
+            data=f.read()
+        url=f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}"
+        h=_supabase_headers("application/gzip")
+        h["x-upsert"]="true"
+        r=requests.post(url,headers=h,data=data,timeout=25)
+        if r.status_code not in (200,201):
+            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:220]}")
+        auto_state["remote_backup_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
+        auto_state["remote_backup_error"]=""
+        print(f"[REMOTE] Supabase backup OK bytes={len(data)}",flush=True)
+        return True
+    except Exception as e:
+        auto_state["remote_backup_error"]=f"{type(e).__name__}: {e}"
+        print(f"[REMOTE] backup failed: {auto_state['remote_backup_error']}",flush=True)
+        return False
+
+def download_checkpoint_from_supabase():
+    if not REMOTE_BACKUP_ENABLED:
+        return False
+    try:
+        url=f"{SUPABASE_URL}/storage/v1/object/authenticated/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}"
+        r=requests.get(url,headers=_supabase_headers(),timeout=25)
+        if r.status_code==404:
+            print("[REMOTE] no checkpoint yet",flush=True)
+            return False
+        if r.status_code!=200:
+            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:220]}")
+        parent=os.path.dirname(os.path.abspath(CHECKPOINT_PATH))
+        os.makedirs(parent,exist_ok=True)
+        tmp=CHECKPOINT_PATH+".remote.tmp"
+        with open(tmp,"wb") as f:
+            f.write(r.content)
+        with gzip.open(tmp,"rt",encoding="utf-8") as f:
+            payload=json.load(f)
+        if not isinstance(payload,dict) or "learning" not in payload:
+            raise RuntimeError("invalid remote checkpoint")
+        os.replace(tmp,CHECKPOINT_PATH)
+        auto_state["remote_restore_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
+        auto_state["remote_backup_error"]=""
+        print(f"[REMOTE] Supabase restore OK bytes={len(r.content)}",flush=True)
+        return True
+    except Exception as e:
+        auto_state["remote_backup_error"]=f"restore {type(e).__name__}: {e}"
+        print(f"[REMOTE] restore failed: {auto_state['remote_backup_error']}",flush=True)
+        return False
+
 def _checkpoint_payload():
     learning=export_learning_payload(1500)
     with db_lock:
@@ -2480,6 +2551,8 @@ def write_checkpoint_atomic():
         os.replace(tmp,CHECKPOINT_PATH)
         auto_state["checkpoint_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
         auto_state["checkpoint_error"]=""
+        if REMOTE_BACKUP_ENABLED:
+            upload_checkpoint_to_supabase()
         return True
     except Exception as e:
         auto_state["checkpoint_error"]=f"{type(e).__name__}: {e}"
@@ -3017,6 +3090,10 @@ def auto_status():
       "model_best":best,
       "model_rate24":(profiles.get(best,{}) or {}).get("rate24",0.0),
       "persistent":PERSISTENT_MODE,
+      "remote_backup_enabled":REMOTE_BACKUP_ENABLED,
+      "remote_backup_at":auto_state.get("remote_backup_at",""),
+      "remote_restore_at":auto_state.get("remote_restore_at",""),
+      "remote_backup_error":auto_state.get("remote_backup_error",""),
       "checkpoint_at":auto_state.get("checkpoint_at",""),
       "checkpoint_error":auto_state.get("checkpoint_error","")
     })
@@ -3036,7 +3113,14 @@ def backup_status():
       "checkpoint_exists":exists,
       "checkpoint_bytes":size,
       "checkpoint_at":auto_state.get("checkpoint_at",""),
-      "checkpoint_error":auto_state.get("checkpoint_error","")
+      "checkpoint_error":auto_state.get("checkpoint_error",""),
+      "remote_backup_enabled":REMOTE_BACKUP_ENABLED,
+      "remote_provider":"Supabase Storage" if REMOTE_BACKUP_ENABLED else "",
+      "remote_bucket":SUPABASE_BUCKET if REMOTE_BACKUP_ENABLED else "",
+      "remote_object":SUPABASE_OBJECT if REMOTE_BACKUP_ENABLED else "",
+      "remote_backup_at":auto_state.get("remote_backup_at",""),
+      "remote_restore_at":auto_state.get("remote_restore_at",""),
+      "remote_backup_error":auto_state.get("remote_backup_error","")
     })
 
 @app.get("/api/full-backup")
@@ -3224,6 +3308,8 @@ def webhook_status():
 
 def boot():
     init_db()
+    if REMOTE_BACKUP_ENABLED:
+        download_checkpoint_from_supabase()
     restore_checkpoint_if_better()
     import_history_once()
 
