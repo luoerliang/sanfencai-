@@ -24,7 +24,7 @@ PERSISTENT_MODE = bool(
     os.path.abspath(CHECKPOINT_PATH).startswith(os.path.abspath(PERSIST_DIR))
 )
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SUPABASE_SERVICE_ROLE_KEY = "".join(os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").split())
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "sanfen-backup").strip() or "sanfen-backup"
 SUPABASE_OBJECT = os.getenv("SUPABASE_OBJECT", "sanfen_ai_checkpoint.json.gz").strip() or "sanfen_ai_checkpoint.json.gz"
 REMOTE_BACKUP_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and SUPABASE_BUCKET and SUPABASE_OBJECT)
@@ -2459,11 +2459,13 @@ def export_learning_payload(limit=1000):
 
 
 def _supabase_headers(content_type=None):
+    key=SUPABASE_SERVICE_ROLE_KEY
     h={
-      "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "apikey": key,
       "Cache-Control": "no-cache"
     }
+    if key and not key.startswith("sb_secret_"):
+        h["Authorization"]=f"Bearer {key}"
     if content_type:
         h["Content-Type"]=content_type
     return h
@@ -2493,7 +2495,7 @@ def download_checkpoint_from_supabase():
     if not REMOTE_BACKUP_ENABLED:
         return False
     try:
-        url=f"{SUPABASE_URL}/storage/v1/object/authenticated/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}"
+        url=f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}"
         r=requests.get(url,headers=_supabase_headers(),timeout=25)
         if r.status_code==404:
             print("[REMOTE] no checkpoint yet",flush=True)
