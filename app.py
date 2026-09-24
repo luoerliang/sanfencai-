@@ -148,6 +148,9 @@ POOL_MODEL_PROFILES = {
     "A":"池A纠错",
 }
 POOL_FINAL_PROFILE="池F最终"
+TEN27_PROFILE="27码十期覆盖"
+ten27_perf_lock=threading.RLock()
+ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
     "双波":"稳双波",
     "7肖":"稳7肖",
@@ -439,8 +442,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">20码 · 每期精选</div>
-        <div class="sectionHint">最冷3肖不取 · 前3热肖最多3码 · 每期重算</div>
+        <div class="sectionTitle">F动态 · 19–23码</div>
+        <div class="sectionHint">默认20码 · 多模型共识优先 · 19–23动态伸缩</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -454,8 +457,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">27码 · 10期一轮</div>
-        <div id="code27Hint" class="sectionHint">轮内每期重算 · 多策略弱头才杀 · 强外码可补第28码</div>
+        <div class="sectionTitle">27码 · 未来10期覆盖</div>
+        <div id="code27Hint" class="sectionHint">基础27码打一轮10期 · 轮内不换 · 强外码才补28</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -546,7 +549,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead"><div class="sectionTitle">滚动验证（后台更新）</div><div id="statsHint" class="sectionHint">等待样本</div></div>
     <div class="stats">
-      <div class="stat"><div class="statName">20码精选</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
+      <div class="stat"><div class="statName">F动态19–23</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
       <div class="stat"><div class="statName">4肖1码</div><div id="hit4" class="rate">--</div><div id="err4" class="err"></div></div>
       <div class="stat"><div class="statName">4肖</div><div id="hitZ" class="rate">--</div><div id="errZ" class="err"></div></div>
       <div class="stat"><div class="statName">平特一肖</div><div id="hitPingte" class="rate">--</div><div id="errPingte" class="err"></div></div>
@@ -565,12 +568,12 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="rescueBox">
       <div class="rescueTitle">⚠️ 28码补位提醒</div>
       <div id="rescueModalCode" class="rescueCode">--</div>
-      <div id="rescueModalText" class="rescueText">多策略发现27码之外的强共识号码。</div>
+      <div id="rescueModalText" class="rescueText">未来10期模型发现基础27码之外的强覆盖号码。</div>
       <button class="rescueClose" onclick="closeRescueModal()">知道了</button>
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v35进一步压缩20码、27码和模型池，并固定“下一期预测状态”高度避免刷新跳动。T/Z/C/W/A、旧AI和趋势的错期会持续分析；最近错期会轻微调整模型权重，并生成盲点修正分，最终只以小比例融合进F=20码，避免一次短期失误把模型带偏。所有成绩只来自开奖前锁单，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v37把27码与F彻底分开：F动态19–23只优化下一期；27码专门优化未来一整轮10期的累计覆盖。27码在每轮开始时锁定基础27码，连续使用10期，轮内不会因为单期开奖随意换码；系统仍持续分析，只有出现27码外的强10期覆盖信号时才弹窗并临时补为第28码。27码新逻辑使用独立实盘profile统计，不与旧27码成绩混算。</div>
 </div>
 
 <script>
@@ -661,15 +664,16 @@ async function loadMain(){
     const recent=mp.recent10||[];
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
-    code20Brief.textContent=`冷3肖 ${(m20.coldest3||[]).join('、')||'--'} · 边缘救援 ${(m20.edge_rescue_swaps||[]).length}码`;
-    code20Fusion.textContent=`模型池 ${m20.pool_mix_pct??0}% · 错题修正 ${m20.error_rescue_pct??0}%`;
-    fErrorRescueInfo.textContent=`F错题自修 ${m20.error_rescue_pct??0}%`;
-    code27Block.textContent=`第${m27.round_position??0}/10期 · ${m27.code_count??27}码`;
+    const cs=m20.consensus||{};
+    code20Brief.textContent=`当前${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码`;
+    code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
+    fErrorRescueInfo.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 23档非连续`;
+    code27Block.textContent=`第${m27.round_position??0}/10期 · 基础27固定`;
     const hd=m27.head_decision||{};
-    code27Kill.textContent=m27.killed_head?`排${m27.killed_head} ${hd.vote_support_pct??0}%`:`不杀 · ${m27.weak_head||'--'}弱`;
+    code27Kill.textContent=m27.killed_head?`10期弱头排${m27.killed_head}`:`10期不杀头`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
-    const r28=m27.rescue28||{};
-    code27Stats.textContent=`本轮${cur27.hits??0}/${cur27.n??0}${r28.active?' · +28':''}`;
+    const r28=m27.rescue28||{}, th=m27.ten_horizon||{};
+    code27Stats.textContent=`本轮 ${cur27.hits??0}/${cur27.n??0} · 模型窗${th.model_windows??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -693,7 +697,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`T/Z/C/W/A并行<br>错题自动修正→F20`;
+    learningState.innerHTML=`模型池主导F<br>动态19–23码`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -721,7 +725,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · 20码每期变 · 27码十期一换`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · F每期变 · 27码打未来10期`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -753,7 +757,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`T/Z/C/W/A并行<br>错题自动修正→F20`;
+    learningState.innerHTML=`模型池主导F<br>动态19–23码`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -3679,142 +3683,654 @@ def _trend_diagnostics(r,profile,strategy="20"):
     }
 
 
-def _predict20_hot(r, profile):
-    """20码：每期一换。
 
-    - 最终最冷3肖彻底不取，但先做冷肖反转救回判断
-    - 剩余9肖默认各2码
-    - 前3热肖最多3码
-    - 弱0/4头仍可直接杀
-    - 21~27名进入纠错复审，最多替换2个同生肖弱码
+def _recent_f_code_counts(limit=6):
+    """Recent pre-draw F list sizes, newest first."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT special24 FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(POOL_FINAL_PROFILE,int(limit))).fetchall()
+        finally:
+            c.close()
+    out=[]
+    for row in rows:
+        nums=_csv_nums(row["special24"])
+        if nums:
+            out.append(len(nums))
+    return out
+
+def _f_consensus_map(r,profile):
+    """Per-number support from T/Z/C/W/A.
+
+    support = number of specialist top-20 lists containing the number.
+    weighted_support = current real-performance weight supporting the number.
     """
-    score,zmap,zheat,ctx=_selection_number_scores(r,profile,"20")
+    models=_specialist_model_scores(r,profile,"20")
+    perf=_pool_performance()
+    weights=perf.get("weights") or {k:.20 for k in models}
+    ranks={}
+    for key,sm in models.items():
+        order=sorted(range(1,50),key=lambda n:(-sm.get(n,-1e9),n))
+        ranks[key]={n:i+1 for i,n in enumerate(order)}
+
+    support={}
+    weighted={}
+    top15={}
+    for n in range(1,50):
+        support[n]=sum(1 for k in models if ranks[k].get(n,99)<=20)
+        top15[n]=sum(1 for k in models if ranks[k].get(n,99)<=15)
+        weighted[n]=sum(float(weights.get(k,.20)) for k in models if ranks[k].get(n,99)<=20)
+    return models,perf,ranks,support,weighted,top15
+
+def _choose_f_dynamic_count(ranked,final_score,pool_score,support,weighted,protected3):
+    """Choose 19-23 codes. 20 is the default.
+
+    23 is deliberately a rare insurance state:
+    - all 21/22/23 edge candidates must be strong,
+    - at least two of them need 3+ model support,
+    - the score band must be tight,
+    - and 23 cannot be used repeatedly.
+    """
+    target=20
+    reasons=["默认20码"]
+
+    if len(ranked)<23:
+        return min(20,len(ranked)),reasons,[]
+
+    s19=final_score.get(ranked[18],0.0)
+    s20=final_score.get(ranked[19],0.0)
+    edge=[]
+    for idx in (20,21,22):
+        n=ranked[idx]
+        gap=max(0.0,s20-final_score.get(n,0.0))
+        qualifies=(
+          support.get(n,0)>=3
+          or (
+            support.get(n,0)>=2
+            and weighted.get(n,0)>=.38
+            and gap<=.075
+          )
+          or (
+            support.get(n,0)>=2
+            and pool_score.get(n,0)>=.80
+            and gap<=.055
+          )
+        )
+        edge.append({
+          "code":n,"rank":idx+1,
+          "support":support.get(n,0),
+          "weighted_support":round(weighted.get(n,0)*100,1),
+          "gap":round(gap,3),
+          "qualifies":bool(qualifies)
+        })
+
+    if edge[0]["qualifies"]:
+        target=21
+        reasons.append("21名仍有强共识")
+    if target>=21 and edge[1]["qualifies"]:
+        target=22
+        reasons.append("22名仍有强共识")
+
+    # 23: much stricter than 21/22.
+    band=max(0.0,s19-final_score.get(ranked[22],0.0))
+    strong_edge=sum(1 for x in edge if x["support"]>=3)
+    all_three=all(x["qualifies"] for x in edge)
+    recent_counts=_recent_f_code_counts(6)
+    recent23=sum(1 for x in recent_counts[:5] if x==23)
+    last_was23=bool(recent_counts and recent_counts[0]==23)
+    allow23=(not last_was23 and recent23<2)
+
+    if target>=22 and all_three and strong_edge>=2 and band<=.15 and allow23:
+        target=23
+        reasons.append("高分歧保险档23码")
+    elif target>=22 and all_three and not allow23:
+        reasons.append("23码触发频率限制，保持22码")
+
+    # Shrink to 19 only when there is a real score cliff and no protected
+    # 3/5 consensus would be lost.
+    gap19_20=max(0.0,s19-s20)
+    n20=ranked[19]
+    if (
+        target==20
+        and gap19_20>=.115
+        and support.get(n20,0)<=1
+        and len(protected3)<=19
+        and not edge[0]["qualifies"]
+    ):
+        target=19
+        reasons=["19/20出现明显断层，收缩19码"]
+
+    target=max(19,min(23,target))
+    return target,reasons,edge
+
+def _predict20_hot(r, profile):
+    """F动态19~23码：模型池主导，旧AI/趋势只做辅助。
+
+    Rules:
+    - Default 20 codes, dynamically 19~23.
+    - 3/5 specialist consensus is protected.
+    - Strong 2/5 consensus is prioritized.
+    - Cold-zodiac / zodiac quotas become SOFT structure signals and cannot
+      delete a protected consensus number.
+    - 23-code mode is intentionally frequency-limited.
+    """
+    # Existing trend/AI/correction stack is retained as an AUXILIARY signal.
+    aux_score,zmap,zheat,ctx=_selection_number_scores(r,profile,"20")
+    aux_n=_norm_values(aux_score,range(1,50))
+
+    # Specialist pool is now the primary framework.
+    pool_score,models,perf=_pool_ensemble_score(r,profile,"20")
+    models,perf,ranks,support,weighted,top15=_f_consensus_map(r,profile)
+
+    # Blind-spot correction is only a small final rescue layer.
+    blind,blind_meta=_pool_error_rescue_score(r,profile)
+    blind_ready=bool(blind_meta.get("ready"))
+    blind_w=min(.10,max(.05,float(ctx.get("error_rescue_pct",0))/100.0)) if blind_ready else 0.0
+    aux_w=.18
+    pool_w=1.0-aux_w-blind_w
 
     coldest3,cold_meta=_final_coldest3(r,profile,"20",zheat)
-    allowed=[z for z in sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
-             if z not in set(coldest3)]
-    top3=allowed[:3]
+    coldset=set(coldest3)
 
-    # v34: 20码不再硬杀0/4头。头数强弱已经包含在趋势评分里，
-    # 但不会因为单一头数判断直接把整头号码踢掉。
-    head=_pool_04_weakness_decision(r,profile,"20")
-    killed=""
-
-    pools={}
-    for z in allowed:
-        pools[z]=sorted(
-            [n for n in range(1,50) if zmap.get(n)==z],
-            key=lambda n:(-score.get(n,-1e9),n)
+    raw={}
+    for n in range(1,50):
+        # Consensus has direct value, independent of the average pool score.
+        consensus_bonus=.055*(support.get(n,0)/5.0)+.065*weighted.get(n,0)
+        v=(
+          pool_w*pool_score.get(n,.5)
+          +aux_w*aux_n.get(n,.5)
+          +blind_w*blind.get(n,.5)
+          +consensus_bonus
         )
 
-    quotas={z:2 for z in allowed}
-    thirds=[]
-    for z in top3:
-        if len(pools.get(z,[]))>=3:
-            n=pools[z][2]
-            thirds.append((score.get(n,-1e9),z))
-    for _v,z in sorted(thirds,reverse=True)[:2]:
-        quotas[z]=3
+        # Coldest3 is now a SOFT penalty only for low-consensus numbers.
+        # 2/5 and 3/5 consensus numbers are never hard-deleted by zodiac.
+        if zmap.get(n) in coldset and support.get(n,0)<=1:
+            v-=.075
+        elif zmap.get(n) in coldset and support.get(n,0)==2:
+            v-=.015
+        raw[n]=v
 
-    selected=[]; groups=[]
-    for z in allowed:
-        take=pools.get(z,[])[:quotas[z]]
-        selected.extend(take)
-        groups.append({"zodiac":z,"codes":take,"quota":quotas[z]})
+    final_score=_norm_values(raw,range(1,50))
+    ranked49=sorted(range(1,50),key=lambda n:(-final_score.get(n,-1e9),n))
 
-    # Defensive fill while honoring final coldest3 + killed head.
-    used=set(selected)
-    if len(selected)<20:
-        for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
-            if n in used or zmap.get(n) not in allowed:
-                continue
-            z=zmap.get(n)
-            cap=3 if z in top3 else 2
-            if sum(1 for x in selected if zmap.get(x)==z)>=cap:
-                continue
-            selected.append(n); used.add(n)
-            if len(selected)>=20:
+    protected3=[n for n in ranked49 if support.get(n,0)>=3]
+    protected2=[
+      n for n in ranked49
+      if support.get(n,0)==2
+      and (
+        weighted.get(n,0)>=.42
+        or top15.get(n,0)>=2
+        or pool_score.get(n,0)>=.78
+      )
+    ]
+
+    target_count,count_reasons,edge_candidates=_choose_f_dynamic_count(
+      ranked49,final_score,pool_score,support,weighted,protected3
+    )
+
+    # Never choose fewer codes than the number of true 3/5 consensus codes.
+    target_count=max(target_count,min(23,len(protected3)))
+
+    # Priority order:
+    #   1) protected 3/5 consensus
+    #   2) strong 2/5 consensus near the final cut
+    #   3) remaining final ranking
+    priority=[]
+    for n in protected3:
+        if n not in priority:
+            priority.append(n)
+    for n in protected2:
+        rank=ranked49.index(n)+1
+        if rank<=target_count+4 and n not in priority:
+            priority.append(n)
+    for n in ranked49:
+        if n not in priority:
+            priority.append(n)
+
+    selected=priority[:target_count]
+
+    # Safety: if priority protection pushed an extremely low-ranked number in,
+    # replace only non-protected tail numbers, never a 3/5 consensus code.
+    selected_set=set(selected)
+    for n in protected3:
+        if n not in selected_set:
+            replaceables=[x for x in selected if x not in protected3]
+            if not replaceables:
                 break
+            out=min(replaceables,key=lambda x:final_score.get(x,0))
+            selected[selected.index(out)]=n
+            selected_set.discard(out); selected_set.add(n)
 
-    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    # Keep display/copy deterministic; ranking metadata retains priority.
+    selected=sorted(set(selected))
+    if len(selected)>target_count:
+        selected=selected[:target_count]
 
-    # -------- 21~27边缘救援 --------
-    # We keep the user's zodiac quotas intact by swapping only within the SAME zodiac.
-    corr=_correction_probs(r,"20")
-    corr_n=_norm_values(corr,range(1,50))
+    # Metadata for explainability.
+    consensus_summary={
+      "protected3_count":len(protected3),
+      "protected3":[f"{n:02d}" for n in protected3[:12]],
+      "protected2_count":len(protected2),
+      "pool_primary_pct":round(pool_w*100,1),
+      "aux_ai_trend_pct":round(aux_w*100,1),
+      "blind_rescue_pct":round(blind_w*100,1),
+    }
+
+    # Keep old diagnostic keys for UI/API compatibility.
     ztrans,ztrans_meta=_zodiac_transition_model(r)
-    trend=_trend_profiles(r)
-    combo_n=_norm_values(trend.get("wave_parity",{}),WAVE_PARITY_KEYS)
-
-    def rescue_metric(n):
-        z=zmap.get(n)
-        return (
-          .52*corr_n.get(n,.5)
-          +.28*ztrans.get(z,.5)
-          +.20*combo_n.get(wave_parity_of(n),.5)
-        )
-
-    rescue_swaps=[]
-    edge=[n for n in ranked49[20:27]
-          if n not in selected
-          and zmap.get(n) in allowed
-]
-    for cand in sorted(edge,key=lambda n:(-rescue_metric(n),ranked49.index(n))):
-        if len(rescue_swaps)>=2:
-            break
-        z=zmap.get(cand)
-        same=[n for n in selected if zmap.get(n)==z]
-        if not same:
-            continue
-        weakest=min(same,key=lambda n:(rescue_metric(n),score.get(n,0)))
-        gain=rescue_metric(cand)-rescue_metric(weakest)
-        # Strong independent correction signal is required.
-        if rescue_metric(cand)>=.62 and gain>=.10:
-            selected[selected.index(weakest)]=cand
-            rescue_swaps.append({
-              "in":cand,"out":weakest,"zodiac":z,
-              "gain":round(gain,3)
-            })
-
-    # preserve exact 20 unique codes
-    dedup=[]
-    seen=set()
-    for n in selected:
-        if n not in seen:
-            dedup.append(n); seen.add(n)
-    if len(dedup)<20:
-        for n in ranked49:
-            if n in seen or zmap.get(n) not in allowed:
-                continue
-            z=zmap.get(n)
-            cap=3 if z in top3 else 2
-            if sum(1 for x in dedup if zmap.get(x)==z)>=cap:
-                continue
-            dedup.append(n); seen.add(n)
-            if len(dedup)>=20:
-                break
-    selected=dedup[:20]
-
     return selected,{
-      "hot_zodiacs":allowed,
-      "top3_hot":top3,
+      "hot_zodiacs":[z for z in ALL_ZODIACS if z not in coldset],
+      "top3_hot":sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))[:3],
       "coldest3":coldest3,
       "cold_meta":cold_meta,
       "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
       "killed_head":"",
-      "weak_head":head.get("weak_head",""),
-      "head_decision":head,
-      "groups":groups,
+      "weak_head":"",
+      "head_decision":_pool_04_weakness_decision(r,profile,"20"),
+      "groups":[],
       "ranked49":ranked49,
-      "edge_rescue_swaps":rescue_swaps,
+      "edge_rescue_swaps":[],
+      "dynamic_count":target_count,
+      "count_reasons":count_reasons,
+      "edge_candidates":edge_candidates,
+      "consensus":consensus_summary,
       "regime":(ctx.get("regime") or {}).get("name","平衡"),
       "correction_trained":ctx.get("correction_trained",0),
       "correction_weight_pct":ctx.get("correction_weight_pct",0),
       "trend_weight_pct":ctx.get("trend_weight_pct",0),
       "base_ai_weight_pct":ctx.get("base_ai_weight_pct",0),
+      "pool_mix_pct":round(pool_w*100,1),
+      "pool_weights_pct":{k:round(100*v,1) for k,v in (perf.get("weights") or {}).items()},
+      "error_rescue_pct":round(blind_w*100,1),
+      "error_rescue_meta":blind_meta,
       "zodiac_transition_top":sorted(ALL_ZODIACS,key=lambda z:(-ztrans.get(z,0),z))[:4],
       "zodiac_transition_samples":ztrans_meta.get("samples",0)
     }
+
+
+def _ten27_distribution(block,mapper,keys):
+    c=Counter()
+    for x in block:
+        try:
+            k=mapper(x)
+        except Exception:
+            k=None
+        if k in keys:
+            c[k]+=1
+    n=max(1,sum(c.values()))
+    return {k:c[k]/n for k in keys}
+
+def _ten27_l1(a,b,keys):
+    return sum(abs(float(a.get(k,0.0))-float(b.get(k,0.0))) for k in keys)
+
+def _ten_horizon_analog_score(r):
+    """Historical state -> following 10 specials.
+
+    For each historical state, compare its preceding 10-draw structure with
+    today's preceding 10 draws. Similar states vote for the numbers that
+    appeared in their NEXT ten specials.
+    """
+    nums=range(1,50)
+    if len(r)<90:
+        return {n:.5 for n in nums},{"samples":0,"weight":0.0}
+
+    cur=r[:10]
+    zkeys=ALL_ZODIACS
+    hkeys=list(HEAD_BASE)
+    wpkeys=WAVE_PARITY_KEYS
+
+    cur_z=_ten27_distribution(cur,lambda x: normalize_z(x["z7"] or ""),zkeys)
+    cur_h=_ten27_distribution(cur,lambda x: head_of(x["special"]),hkeys)
+    cur_wp=_ten27_distribution(cur,lambda x: wave_parity_of(x["special"]),wpkeys)
+
+    cur_latest_z=normalize_z(r[0]["z7"] or "")
+    cur_latest_h=head_of(r[0]["special"])
+    cur_latest_wp=wave_parity_of(r[0]["special"])
+
+    score=defaultdict(float)
+    total=0.0
+    samples=0
+
+    # j is the historical state issue; j-1 ... j-10 are its "future 10".
+    for j in range(18,min(len(r)-1,620)):
+        if j<10 or j+9>=len(r):
+            continue
+        state_block=r[j:j+10]
+        hz=_ten27_distribution(state_block,lambda x: normalize_z(x["z7"] or ""),zkeys)
+        hh=_ten27_distribution(state_block,lambda x: head_of(x["special"]),hkeys)
+        hw=_ten27_distribution(state_block,lambda x: wave_parity_of(x["special"]),wpkeys)
+
+        dz=_ten27_l1(cur_z,hz,zkeys)
+        dh=_ten27_l1(cur_h,hh,hkeys)
+        dw=_ten27_l1(cur_wp,hw,wpkeys)
+
+        sim=math.exp(-1.55*(.48*dz+.24*dh+.28*dw))
+        if normalize_z(r[j]["z7"] or "")==cur_latest_z:
+            sim*=1.18
+        if head_of(r[j]["special"])==cur_latest_h:
+            sim*=1.10
+        if wave_parity_of(r[j]["special"])==cur_latest_wp:
+            sim*=1.12
+        sim*=exp_weight(j,420)
+
+        if sim<.025:
+            continue
+
+        # All ten positions count because the user's target is "10期中几".
+        for d in range(1,11):
+            x=r[j-d]
+            n=int(x["special"])
+            # Very mild distance discount; period 10 still matters.
+            dwgt=1.0-.012*(d-1)
+            score[n]+=sim*dwgt
+        total+=sim
+        samples+=1
+
+    if samples<8:
+        return {n:.5 for n in nums},{"samples":samples,"weight":round(total,3)}
+
+    norm=_norm_values(score,nums)
+    return norm,{"samples":samples,"weight":round(total,3)}
+
+def _ten27_model_performance(force=False):
+    """How well each T/Z/C/W/A locked list covered the NEXT ten specials.
+
+    Each historical model list is frozen at its target issue and tested against
+    that issue plus the following 9 actual specials. This directly matches the
+    27-code use case better than one-step hit rate.
+    """
+    now=time.time()
+    with ten27_perf_lock:
+        cached=ten27_perf_cache.get("data")
+        if cached is not None and not force and now-float(ten27_perf_cache.get("ts",0))<20:
+            return cached
+
+    profiles=list(POOL_MODEL_PROFILES.values())
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,special24,actual_special
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           tuple(profiles)).fetchall()
+        finally:
+            c.close()
+
+    actual={}
+    by_profile={p:[] for p in profiles}
+    for x in rows:
+        issue=str(x["target_issue"])
+        if x["actual_special"] is not None:
+            actual[issue]=int(x["actual_special"])
+        by_profile[str(x["profile"])].append(x)
+
+    key_by_profile={v:k for k,v in POOL_MODEL_PROFILES.items()}
+    stats={}
+    raw={}
+    baseline=10*(20/49)
+
+    for prof,plist in by_profile.items():
+        windows=[]
+        for x in plist:
+            try:
+                start=int(x["target_issue"])
+            except Exception:
+                continue
+            outcomes=[]
+            ok=True
+            for d in range(10):
+                a=actual.get(str(start+d))
+                if a is None:
+                    ok=False
+                    break
+                outcomes.append(a)
+            if not ok:
+                continue
+            codes=set(_csv_nums(x["special24"]))
+            if not codes:
+                continue
+            hits=sum(1 for a in outcomes if a in codes)
+            windows.append((start,hits))
+
+        windows=sorted(windows,key=lambda y:y[0],reverse=True)[:30]
+        n=len(windows)
+        total_hits=sum(h for _,h in windows)
+        avg=(total_hits/n) if n else baseline
+        # shrink to random-coverage baseline until enough real 10-window samples.
+        smooth=(total_hits+4*baseline)/(n+4)
+        key=key_by_profile.get(prof,prof)
+        stats[key]={
+          "windows":n,
+          "avg_hits10":round(avg,2) if n else 0.0,
+          "smoothed_hits10":round(smooth,2),
+          "best10":max((h for _,h in windows),default=0),
+          "worst10":min((h for _,h in windows),default=0)
+        }
+        raw[key]=math.exp(.72*(smooth-baseline))
+
+    # Missing models stay equal rather than being punished for missing samples.
+    for k in POOL_MODEL_PROFILES:
+        if k not in raw:
+            raw[k]=1.0
+            stats[k]={"windows":0,"avg_hits10":0.0,"smoothed_hits10":round(baseline,2),"best10":0,"worst10":0}
+
+    weights=_normalize_capped_weights(raw,.10,.35)
+    for k in stats:
+        stats[k]["weight_pct"]=round(100*weights.get(k,.20),1)
+
+    mature=max((v["windows"] for v in stats.values()),default=0)
+    data={"stats":stats,"weights":weights,"mature_windows":mature}
+    with ten27_perf_lock:
+        ten27_perf_cache["ts"]=now
+        ten27_perf_cache["data"]=data
+    return data
+
+def _ten27_recent_frequency(r):
+    """Longer-horizon stability prior: recent 80 special-number frequency."""
+    c=Counter()
+    for i,x in enumerate(r[:80]):
+        c[int(x["special"])]+=exp_weight(i,28)
+    return _norm_values(c,range(1,50))
+
+def _ten27_horizon_score(r,profile):
+    analog,analog_meta=_ten_horizon_analog_score(r)
+    specialists=_specialist_model_scores(r,profile,"27")
+    perf=_ten27_model_performance()
+    weights=perf.get("weights") or {k:.20 for k in specialists}
+
+    spec={}
+    for n in range(1,50):
+        spec[n]=sum(float(weights.get(k,.20))*float(specialists[k].get(n,.5)) for k in specialists)
+    spec=_norm_values(spec,range(1,50))
+    freq=_ten27_recent_frequency(r)
+
+    # The historical next-10 analog is the largest component.
+    score={
+      n:.52*analog.get(n,.5)+.40*spec.get(n,.5)+.08*freq.get(n,.5)
+      for n in range(1,50)
+    }
+    score=_norm_values(score,range(1,50))
+    return score,specialists,perf,{
+      "analog_samples":analog_meta.get("samples",0),
+      "analog_weight":analog_meta.get("weight",0.0)
+    }
+
+def _ten27_head_decision(score,specialists,perf):
+    """0/4 judgment for the whole upcoming 10-period round, not one issue."""
+    def avg(sm,h):
+        ns=[n for n in range(1,50) if head_of(n)==h]
+        return sum(float(sm.get(n,.5)) for n in ns)/max(1,len(ns))
+
+    weights=perf.get("weights") or {k:.20 for k in specialists}
+    horizon={"0头":avg(score,"0头"),"4头":avg(score,"4头")}
+    votes={"0头":0,"4头":0}
+    for k,sm in specialists.items():
+        weak="0头" if avg(sm,"0头")<=avg(sm,"4头") else "4头"
+        votes[weak]+=1
+
+    weak="0头" if horizon["0头"]<=horizon["4头"] else "4头"
+    strong="4头" if weak=="0头" else "0头"
+    gap=horizon[strong]-horizon[weak]
+    support=votes[weak]/5.0
+
+    # Because a wrong hard kill hurts ten consecutive bets, threshold is strict.
+    active=(gap>=.115 and support>=.60)
+    return {
+      "active":bool(active),
+      "killed_head":weak if active else "",
+      "weak_head":weak,
+      "gap":round(gap,3),
+      "vote_support_pct":round(100*support,1),
+      "votes":votes,
+      "horizon":{"0头":round(horizon["0头"],3),"4头":round(horizon["4头"],3)},
+      "reason":f"未来10期{weak}明显偏弱" if active else f"未来10期{weak}略弱，不硬杀"
+    }
+
+def _build_27_ten_horizon_base(r,profile):
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    head=_ten27_head_decision(score,specialists,perf)
+    killed=head.get("killed_head","")
+    zmap=_number_zodiac_map(r)
+
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    selected=[]
+    zcount=Counter()
+
+    # Ten-period coverage uses broad zodiac diversification. Max4 per zodiac,
+    # but there is no "coldest3 hard kill" in this horizon model.
+    for n in ranked:
+        if killed and head_of(n)==killed:
+            continue
+        z=zmap.get(n)
+        if z and zcount[z]>=4:
+            continue
+        selected.append(n)
+        if z: zcount[z]+=1
+        if len(selected)>=27:
+            break
+
+    if len(selected)<27:
+        for n in ranked:
+            if n in selected:
+                continue
+            if killed and head_of(n)==killed:
+                continue
+            selected.append(n)
+            if len(selected)>=27:
+                break
+
+    meta=dict(meta)
+    meta.update({
+      "head_decision":head,
+      "killed_head":killed,
+      "ranked49":ranked,
+      "model10":perf,
+      "base_score_top":[{"code":n,"score":round(score.get(n,0),3)} for n in ranked[:10]]
+    })
+    return selected[:27],score,specialists,meta
+
+def _ten27_round_context(target_issue):
+    """Determine current 10-prediction round from the new honest profile.
+
+    The first locked row of each group of 10 is the base 27 list. This means a
+    deployment can start a fresh 10-round at any issue; it is not tied to issue
+    numbers ending in 0.
+    """
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,special24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (TEN27_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    issues=[str(x["target_issue"]) for x in rows]
+    target=str(target_issue)
+    if target in issues:
+        idx=issues.index(target)
+        gstart=(idx//10)*10
+        pos=idx-gstart+1
+        base=_csv_nums(rows[gstart]["special24"])[:27]
+        start_issue=issues[gstart]
+        return {
+          "existing":True,"new_round":False,"position":pos,
+          "start_issue":start_issue,
+          "end_issue":str(int(start_issue)+9) if start_issue.isdigit() else "",
+          "base_codes":base
+        }
+
+    n=len(rows)
+    rem=n%10
+    if rem:
+        gstart=n-rem
+        base=_csv_nums(rows[gstart]["special24"])[:27]
+        start_issue=issues[gstart]
+        return {
+          "existing":False,"new_round":False,"position":rem+1,
+          "start_issue":start_issue,
+          "end_issue":str(int(start_issue)+9) if start_issue.isdigit() else "",
+          "base_codes":base
+        }
+
+    return {
+      "existing":False,"new_round":True,"position":1,
+      "start_issue":target,
+      "end_issue":str(int(target)+9) if target.isdigit() else "",
+      "base_codes":[]
+    }
+
+def _ten27_outside_rescue(r,profile,base27):
+    """During the round, only ADD one 28th code; never replace the base 27."""
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    base=set(base27)
+
+    model_ranks={}
+    for k,sm in specialists.items():
+        order=sorted(range(1,50),key=lambda n:(-sm.get(n,-1e9),n))
+        model_ranks[k]={n:i+1 for i,n in enumerate(order)}
+
+    candidates=[]
+    for n in ranked:
+        if n in base:
+            continue
+        support=sum(1 for k in specialists if model_ranks[k].get(n,99)<=20)
+        top12=sum(1 for k in specialists if model_ranks[k].get(n,99)<=12)
+        hrank=ranked.index(n)+1
+        sc=float(score.get(n,0.0))
+
+        # Stronger than the old one-step 28 rule because this add-on will be
+        # used in a 10-period plan.
+        active=(
+          (hrank<=18 and support>=4 and sc>=.72)
+          or (hrank<=14 and support>=3 and top12>=2 and sc>=.77)
+        )
+        if active:
+            quality=.55*sc+.30*(support/5.0)+.15*(top12/5.0)
+            candidates.append((quality,n,hrank,support,top12,sc))
+
+    if not candidates:
+        return {"active":False,"code":None,"message":""},meta
+
+    quality,n,hrank,support,top12,sc=max(candidates,key=lambda x:(x[0],-x[2],-x[1]))
+    return {
+      "active":True,
+      "code":n,
+      "rank":hrank,
+      "support_models":support,
+      "top12_models":top12,
+      "ensemble_score":round(sc,3),
+      "message":f"未来10期模型发现基础27码外强覆盖码 {n:02d}，本期补为第28码"
+    },meta
 
 def _issue_block10(issue):
     try:
@@ -3854,123 +4370,67 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """27码：10期一轮，但轮内每期都重算。
+    """27码 now optimizes one full future-10 round.
 
-    - 不再十期固定同一组号码
-    - 0/4头不再强制必杀
-    - 只有T/Z/C/W/A多策略共同确认一头明显偏弱时才硬排除
-    - 若27码外出现强共识号码，则自动作为第28码补位，并给前端弹窗提醒
+    Base 27 is fixed at the start of a 10-prediction round.
+    During the round the software keeps analyzing, but it NEVER replaces the
+    base 27. A strong outsider may be appended as a temporary 28th code.
     """
-    round_info=_round10_info(target_issue)
-    score,zmap,zheat,ctx=_selection_number_scores(r,profile,"27")
+    rc=_ten27_round_context(target_issue)
 
-    coldest3,cold_meta=_final_coldest3(r,profile,"27",zheat)
-    allowed=[z for z in sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
-             if z not in set(coldest3)]
-
-    head=_pool_04_weakness_decision(r,profile,"27")
-    killed=head.get("killed_head","") if head.get("active") else ""
-    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
-
-    # Base 27: every issue re-evaluated.
-    selected=[]; groups=[]
-    for z in allowed:
-        pool=sorted(
-            [n for n in range(1,50)
-             if zmap.get(n)==z and (not killed or head_of(n)!=killed)],
-            key=lambda n:(-score.get(n,-1e9),n)
-        )
-        take=pool[:3]
-        selected.extend(take)
-        groups.append({"zodiac":z,"codes":take})
-
-    used=set(selected)
-    if len(selected)<27:
-        for n in ranked49:
-            if n in used:
-                continue
-            if zmap.get(n) not in allowed:
-                continue
-            if killed and head_of(n)==killed:
-                continue
-            selected.append(n); used.add(n)
-            if len(selected)>=27:
-                break
-
-    selected=selected[:27]
-    used=set(selected)
-
-    # ---------- 28码强外码补位 ----------
-    # A number outside the 27 must have broad support across the specialist pool.
-    specialists=_specialist_model_scores(r,profile,"27")
-    ensemble,_models,perf=_pool_ensemble_score(r,profile,"27")
-    model_ranks={}
-    for key,sm in specialists.items():
-        order=sorted(range(1,50),key=lambda n:(-sm.get(n,-1e9),n))
-        model_ranks[key]={n:i+1 for i,n in enumerate(order)}
-
-    candidates=[]
-    for n in range(1,50):
-        if n in used:
-            continue
-        support=sum(1 for key in specialists if model_ranks[key].get(n,99)<=27)
-        top20=sum(1 for key in specialists if model_ranks[key].get(n,99)<=20)
-        ens=float(ensemble.get(n,0.0))
-        overall_rank=ranked49.index(n)+1 if n in ranked49 else 99
-
-        # A killed-head number can still be rescued only with overwhelming
-        # specialist support, otherwise the head decision remains meaningful.
-        conflicts_head=bool(killed and head_of(n)==killed)
-        if conflicts_head:
-            active=(support>=5 and top20>=3 and ens>=.78)
-        else:
-            active=(support>=4 and ens>=.68) or (support>=3 and top20>=3 and ens>=.74)
-
-        if active:
-            quality=.55*ens+.25*(support/5.0)+.20*(top20/5.0)
-            candidates.append((quality,n,support,top20,ens,overall_rank,conflicts_head))
-
-    rescue28=None
-    if candidates:
-        quality,n,support,top20,ens,overall_rank,conflicts_head=max(candidates,key=lambda x:(x[0],-x[5],-x[1]))
-        selected.append(n)
-        rescue28={
-          "active":True,
-          "code":n,
-          "support_models":support,
-          "top20_models":top20,
-          "ensemble_score":round(ens,3),
-          "rank":overall_rank,
-          "head_conflict":bool(conflicts_head),
-          "message":f"多策略发现27码外强共识号码 {n:02d}，已补为第28码"
-        }
+    if rc.get("new_round") or not rc.get("base_codes"):
+        base27,base_score,specialists,base_meta=_build_27_ten_horizon_base(r,profile)
     else:
-        rescue28={"active":False,"code":None,"message":""}
+        base27=list(rc.get("base_codes") or [])[:27]
+        _score,_specialists,_perf,base_meta=_ten27_horizon_score(r,profile)
+        # Current analysis is only diagnostic; the round base remains unchanged.
+        current_head=_ten27_head_decision(_score,_specialists,_perf)
+        base_meta={
+          "analog_samples":base_meta.get("analog_samples",0),
+          "model10":_perf,
+          "head_decision":current_head,
+          "killed_head":"",
+          "ranked49":sorted(range(1,50),key=lambda n:(-_score.get(n,-1e9),n))
+        }
+
+    rescue28,rescue_meta=_ten27_outside_rescue(r,profile,base27)
+    selected=list(base27)
+    if rescue28.get("active") and rescue28.get("code") not in selected:
+        selected.append(int(rescue28["code"]))
+
+    model10=(base_meta.get("model10") or rescue_meta.get("model10") or {})
+    model_stats=model10.get("stats",{}) if isinstance(model10,dict) else {}
 
     return selected,{
-      "block_start":round_info["start"],
-      "block_end":round_info["end"],
-      "round_position":round_info["position"],
-      "round_mode":"10期一轮·轮内每期重算",
-      "hot_mid_zodiacs":allowed,
-      "coldest3":coldest3,
-      "cold_meta":cold_meta,
-      "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
-      "killed_head":killed,
-      "weak_head":head.get("weak_head",""),
-      "head_decision":head,
-      "groups":groups,
-      "reused":False,
-      "ranked49":ranked49,
-      "rescue28":rescue28,
+      "block_start":rc.get("start_issue") or str(target_issue),
+      "block_end":rc.get("end_issue") or "",
+      "round_position":int(rc.get("position") or 1),
+      "round_mode":"未来10期覆盖·基础27固定",
+      "base_locked":not bool(rc.get("new_round")),
+      "base_codes":base27,
       "code_count":len(selected),
-      "regime":(ctx.get("regime") or {}).get("name","平衡"),
-      "correction_trained":ctx.get("correction_trained",0),
-      "correction_weight_pct":ctx.get("correction_weight_pct",0),
-      "trend_weight_pct":ctx.get("trend_weight_pct",0),
-      "pool_weights_pct":ctx.get("pool_weights_pct",{}),
-      "error_rescue_pct":ctx.get("error_rescue_pct",0),
-      "error_rescue_meta":ctx.get("error_rescue_meta",{})
+      "killed_head":(base_meta.get("head_decision") or {}).get("killed_head",""),
+      "weak_head":(base_meta.get("head_decision") or {}).get("weak_head",""),
+      "head_decision":base_meta.get("head_decision") or {},
+      "ranked49":base_meta.get("ranked49") or [],
+      "rescue28":rescue28,
+      "ten_horizon":{
+        "analog_samples":base_meta.get("analog_samples",0),
+        "model_windows":model10.get("mature_windows",0) if isinstance(model10,dict) else 0,
+        "model_weights":{
+          k:(model_stats.get(k,{}).get("weight_pct",20.0)) for k in POOL_MODEL_PROFILES
+        },
+        "model_avg10":{
+          k:(model_stats.get(k,{}).get("avg_hits10",0.0)) for k in POOL_MODEL_PROFILES
+        }
+      },
+      "regime":"10期覆盖",
+      "correction_trained":0,
+      "correction_weight_pct":0,
+      "trend_weight_pct":0,
+      "pool_weights_pct":{
+          k:(model_stats.get(k,{}).get("weight_pct",20.0)) for k in POOL_MODEL_PROFILES
+      }
     }
 
 def _record_strategy_audit(target_issue,profile,selected,meta):
@@ -4097,27 +4557,37 @@ def _stats27_blocks():
     with db_lock:
         c=connect()
         try:
-            rows=c.execute("""SELECT target_issue,hit24 FROM prediction_log
-                              WHERE profile='27码十期' AND settled=1
-                              ORDER BY CAST(target_issue AS INTEGER) DESC
-                              LIMIT 40""").fetchall()
+            rows=c.execute("""SELECT target_issue,hit24,settled,special24
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (TEN27_PROFILE,)).fetchall()
         finally:
             c.close()
 
-    grouped={}
-    for x in rows:
-        start,end=_issue_block10(x["target_issue"])
-        g=grouped.setdefault(start,{"start":start,"end":end,"n":0,"hits":0})
-        g["n"]+=1
-        g["hits"]+=int(x["hit24"] or 0)
+    groups=[]
+    for i in range(0,len(rows),10):
+        chunk=rows[i:i+10]
+        if not chunk:
+            continue
+        settled=[x for x in chunk if int(x["settled"] or 0)==1]
+        hits=sum(int(x["hit24"] or 0) for x in settled)
+        start=str(chunk[0]["target_issue"])
+        groups.append({
+          "start":start,
+          "end":str(int(start)+9) if start.isdigit() else "",
+          "n":len(settled),
+          "hits":hits,
+          "base_count":len(_csv_nums(chunk[0]["special24"])) if chunk else 0
+        })
 
-    blocks=sorted(grouped.values(),key=lambda g:g["start"],reverse=True)
-    current=blocks[0] if blocks else {"start":0,"end":0,"n":0,"hits":0}
-    complete=next((g for g in blocks if g["n"]>=10),None)
+    current=groups[-1] if groups else {"start":0,"end":0,"n":0,"hits":0,"base_count":0}
+    complete=next((g for g in reversed(groups) if g["n"]>=10),None)
     return {
       "current":current,
       "last_complete":complete,
-      "overall":_profile_hit_stats("27码十期",60)
+      "overall":_profile_hit_stats(TEN27_PROFILE,60),
+      "rounds_completed":sum(1 for g in groups if g["n"]>=10)
     }
 
 def _candidate24_complement_by_zodiac(r, profile):
@@ -4544,6 +5014,9 @@ def settle_predictions(issue, nums, zs):
         with pool_perf_lock:
             pool_perf_cache["ts"]=0.0
             pool_perf_cache["data"]=None
+        with ten27_perf_lock:
+            ten27_perf_cache["ts"]=0.0
+            ten27_perf_cache["data"]=None
         best,_=refresh_learner_cache(60)
         try:
             refresh_dynamic_ai_mix()
@@ -4622,11 +5095,11 @@ def record_shadow_predictions(r):
         best_profile,_=_select_profile(r)
         c27,_m27=_predict27_tenblock(r,best_profile,target)
         records.append((
-            target,"27码十期",
+            target,TEN27_PROFILE,
             ",".join(str(n) for n in c27),
             "","",py
         ))
-        _record_strategy_audit(target,"27码十期",c27,_m27)
+        _record_strategy_audit(target,TEN27_PROFILE,c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -4789,7 +5262,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v35",
+      "version":"v37",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -5221,7 +5694,7 @@ def build_model():
     stats20=_profile_hit_stats("20码精选",60)
     stats27=_stats27_blocks()
     diag20=_strategy_diagnostics("20码精选",60)
-    diag27=_strategy_diagnostics("27码十期",60)
+    diag27=_strategy_diagnostics(TEN27_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
@@ -5284,7 +5757,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"多策略动态27码 · 10期一轮 · 弱头条件排除 · 强外码28补位"
+        "mode":"F动态19-23单期 + 27码未来10期覆盖模型"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -5400,7 +5873,7 @@ def stats_api():
     base["code20"]=_profile_hit_stats("20码精选",60)
     base["code27"]=_stats27_blocks()
     base["diag20"]=_strategy_diagnostics("20码精选",60)
-    base["diag27"]=_strategy_diagnostics("27码十期",60)
+    base["diag27"]=_strategy_diagnostics(TEN27_PROFILE,60)
     base["correction"]=_correction_status()
     return jsonify(base)
 
@@ -5473,7 +5946,7 @@ def complement_status():
 def strategy_diagnostics_api():
     return jsonify({
       "code20":_strategy_diagnostics("20码精选",60),
-      "code27":_strategy_diagnostics("27码十期",60),
+      "code27":_strategy_diagnostics(TEN27_PROFILE,60),
       "correction":_correction_status()
     })
 
