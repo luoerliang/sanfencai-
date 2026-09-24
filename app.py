@@ -140,6 +140,25 @@ auto_state = {
 }
 
 fusion_lock = threading.RLock()
+POOL_MODEL_PROFILES = {
+    "T":"池T趋势",
+    "Z":"池Z生肖",
+    "C":"池C冷热",
+    "W":"池W波色单双",
+    "A":"池A纠错",
+}
+POOL_FINAL_PROFILE="池F最终"
+STABLE_SIGNAL_PROFILES={
+    "双波":"稳双波",
+    "7肖":"稳7肖",
+    "大小":"稳大小",
+    "单双":"稳单双",
+    "波色单双3类":"稳波单双3",
+    "0/4杀头":"稳0/4杀头",
+}
+pool_perf_lock=threading.RLock()
+pool_perf_cache={"ts":0.0,"data":None}
+
 fusion_cache = {
     "mix_pct": 35.0,
     "ai_rate60": 0.0,
@@ -198,6 +217,14 @@ padding:7px 10px;border-radius:11px;font-size:11px;font-weight:800;cursor:pointe
 background:#111a2a;border:1px solid #2c3a53;color:#fff;padding:10px 14px;border-radius:999px;font-size:12px;
 box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-index:99}
 .toast.show{opacity:1}
+.streakAlert{display:none;margin-bottom:12px;padding:11px 13px;border-radius:14px;
+background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-size:12px;line-height:1.5}
+.modelRow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #1f2b40}
+.modelRow:last-child{border-bottom:0}.modelKey{font-weight:900;font-size:16px}.modelMeta{font-size:11px;color:var(--muted)}
+.modelWeight{font-weight:850;font-size:13px}.tableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.lockTable{width:100%;border-collapse:collapse;min-width:560px;font-size:11px}
+.lockTable th,.lockTable td{padding:8px 7px;border-bottom:1px solid #223149;text-align:center;white-space:nowrap}
+.lockTable th{color:var(--muted);font-weight:750}.hit{color:#43dda6;font-weight:900}.miss{color:#8d98aa;font-weight:850}
 .balls{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .ball,.smallball{display:flex;align-items:center;justify-content:center;font-weight:850;color:#fff}
 .ball{aspect-ratio:1/1;border-radius:12px;font-size:14px;box-shadow:inset 0 1px 0 #ffffff20,0 4px 10px #00000018}
@@ -307,6 +334,37 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
     <div class="pillrow">
       <span id="compSlots" class="pill"></span>
       <span id="compFinal" class="pill"></span>
+    </div>
+  </section>
+
+  <div id="streakAlert" class="streakAlert"></div>
+
+  <section class="card">
+    <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">多策略模型池</div>
+        <div class="sectionHint">T趋势 / Z生肖 / C冷热 / W波色单双 / A纠错 · 全部开奖前锁单</div>
+      </div>
+    </div>
+    <div id="modelPoolRows"></div>
+    <div class="pillrow" style="margin-top:10px">
+      <span id="stableSummary" class="pill"></span>
+      <span id="poolMaturity" class="pill"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">最近10期正式锁单结算</div>
+        <div class="sectionHint">✓ 命中 · × 未中 · F为最终20码</div>
+      </div>
+    </div>
+    <div class="tableWrap">
+      <table class="lockTable">
+        <thead><tr><th>期号</th><th>特码</th><th>T</th><th>Z</th><th>C</th><th>W</th><th>A</th><th>F</th></tr></thead>
+        <tbody id="lockRows"><tr><td colspan="8">等待真实前瞻样本</td></tr></tbody>
+      </table>
     </div>
   </section>
 
@@ -439,7 +497,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   </section>
 
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v31改成趋势主攻、AI专门纠错：生肖转移/7码结构先决定热中冷层，基础AI负责非线性结构，纠错AI只训练趋势漏掉、冷三肖误杀、杀头误杀和排名截断案例。20码与27码使用独立纠错权重；所有诊断只统计开奖前已锁定记录，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v33新增T趋势、Z生肖、C冷热、W波色单双、A纠错五套独立模型，全部开奖前锁定并分别结算；最近10/30/60期真实表现决定动态权重，再参与20码与27码排序。稳定趋势层同时锁定双波、7肖、大小、单双、波色单双3类和0/4杀头，并统计真实连中。所有成绩只来自开奖前锁单，不代表未来概率。</div>
 </div>
 
 <script>
@@ -477,6 +535,11 @@ async function copy27(){
 function balls(nums,small=false){
   return (nums||[]).map((n,i)=>`<span class="${small?'smallball':'ball'} ${cls(n)} ${small&&i===6?'special':''}">${fmt(n)}</span>`).join('')
 }
+function hm(v){
+  if(v===1) return '<span class="hit">✓</span>';
+  if(v===0) return '<span class="miss">×</span>';
+  return '--';
+}
 async function loadMain(){
   try{
     const r=await fetch('/api/prediction?_='+Date.now(),{cache:'no-store'});
@@ -487,6 +550,26 @@ async function loadMain(){
     if(latestNums.lastElementChild) latestNums.lastElementChild.classList.add('special');
     SPECIAL20=d.special20||d.special24||[]; sp.innerHTML=balls(SPECIAL20);
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
+    const mp=d.model_pool||{}, ms=mp.stats||{}, stable=d.stable_signals||{};
+    const labels={T:'趋势',Z:'生肖',C:'冷热',W:'波色单双',A:'AI纠错'};
+    modelPoolRows.innerHTML=['T','Z','C','W','A'].map(k=>{
+      const x=ms[k]||{};
+      return `<div class="modelRow"><div class="modelKey">${k}</div>
+        <div><div>${labels[k]}</div><div class="modelMeta">10期 ${x.h10??0}/${x.n10??0} · 30期 ${x.h30??0}/${x.n30??0} · 60期 ${x.h60??0}/${x.n60??0} · 独中 ${x.unique_hits60??0}</div></div>
+        <div class="modelWeight">${x.weight_pct??20}%</div></div>`;
+    }).join('');
+    poolMaturity.textContent=`动态权重样本 ${mp.mature_n??0}/30`;
+    const si=(stable.items||{});
+    stableSummary.textContent=`双波连中 ${(si['双波']||{}).current_streak??0} · 7肖连中 ${(si['7肖']||{}).current_streak??0}`;
+    const warns=stable.warnings||[];
+    if(warns.length){
+      streakAlert.style.display='block';
+      streakAlert.textContent='🔔 连中预警：'+warns.slice(0,4).map(x=>`${x.name} 已连续命中${x.streak}期`).join(' · ')+(warns.length>4?` · 另有${warns.length-4}项`:'');
+    }else{
+      streakAlert.style.display='none';
+    }
+    const recent=mp.recent10||[];
+    lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
     code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} 十期固定`;
     const hv=(m27.head_decision||{}).votes||{};
@@ -527,7 +610,7 @@ async function loadMain(){
     const dg20=d.diagnostics20||{}, dg27=d.diagnostics27||{}, cr=d.correction||{};
     const rb=dg20.rank_buckets||{}, fr=dg20.failure_reasons||{};
     regimeState.innerHTML=`20码：${m20.regime||'平衡'}<br>27码：${m27.regime||'平衡'}`;
-    corr20State.innerHTML=`已学错题 ${(cr['20']||{}).trained??0} 次<br>当前纠错权重 ${m20.correction_weight_pct??0}%`;
+    corr20State.innerHTML=`已学错题 ${(cr['20']||{}).trained??0} 次<br>纠错 ${m20.correction_weight_pct??0}% · 模型池 ${m20.pool_mix_pct??0}%`;
     rank20State.innerHTML=`1-10 ${rb['1-10']??0} · 11-20 ${rb['11-20']??0}<br>21-27 ${rb['21-27']??0} · 28+ ${rb['28+']??0}`;
     const kh=dg27.head_kill_by_head||{}, k0=kh['0头']||{}, k4=kh['4头']||{};
     head27State.innerHTML=`总 ${dg27.head_kill_success??0}/${dg27.head_kill_n??0} = ${dg27.head_kill_rate??0}%<br>杀0 ${k0.hits??0}/${k0.n??0} · 杀4 ${k4.hits??0}/${k4.n??0}`;
@@ -2874,6 +2957,310 @@ def _trend_only_number_scores(r, profile, strategy="20"):
         )
     return score,zmap,zheat,ctx,regime
 
+
+def _specialist_model_scores(r,profile,strategy="20"):
+    """Five deliberately different model personalities.
+
+    T = structural trend
+    Z = zodiac transition / 7-position structure
+    C = cold-rebound specialist
+    W = wave x parity specialist
+    A = correction AI
+
+    They all output a 01-49 ranking so they can be compared on the same target.
+    """
+    nums=list(range(1,50))
+    zmap=_number_zodiac_map(r)
+
+    # T: pure-ish trend structure.
+    t_raw,_zm,_zh,_ctx,_reg=_trend_only_number_scores(r,profile,strategy)
+    T=_norm_values(t_raw,nums)
+
+    # Z: zodiac transition is dominant; number-within-zodiac structure is secondary.
+    zheat=_hot_zodiac_scores(r,profile)
+    zheat_n=_norm_values(zheat,ALL_ZODIACS)
+    ztrans,_ztm=_zodiac_transition_model(r)
+    pair=_within_zodiac_pair_bonus(r,zmap)
+    pair_n={}
+    for z in ALL_ZODIACS:
+        pool=[n for n in nums if zmap.get(n)==z]
+        pair_n.update(_norm_pool(pair,pool))
+    Z={
+      n:.46*ztrans.get(zmap.get(n),.5)
+        +.34*zheat_n.get(zmap.get(n),.5)
+        +.20*pair_n.get(n,.5)
+      for n in nums
+    }
+    Z=_norm_values(Z,nums)
+
+    # C: intentionally different from T/Z. During cold-rebound states it prefers
+    # overdue numbers; otherwise it prefers medium-cold rather than the extremes.
+    num_cold,z_cold,num_gap,_zg=_cold_metrics(r)
+    rebound=_nmy_cold_rebound_lift(r)
+    gaps=_norm_values(num_gap,nums)
+    C={}
+    for n in nums:
+        cold=float(num_cold.get(n,.5))
+        zc=float(z_cold.get(zmap.get(n),.5))
+        if rebound.get("active"):
+            C[n]=.52*cold+.25*zc+.23*gaps.get(n,.5)
+        else:
+            mid=max(0.0,1.0-abs(cold-.58)*1.9)
+            C[n]=.50*mid+.25*(1.0-abs(zc-.55))+.25*gaps.get(n,.5)
+    C=_norm_values(C,nums)
+
+    # W: red/blue/green x odd/even is the main signal, with wave/size/parity support.
+    tr=_trend_profiles(r)
+    wp=_norm_values(tr.get("wave_parity",{}),WAVE_PARITY_KEYS)
+    wv=_norm_values(tr.get("wave",{}),["红","蓝","绿"])
+    sz=_norm_values(tr.get("size",{}),["大","小"])
+    pa=_norm_values(tr.get("parity",{}),["单","双"])
+    W={
+      n:.56*wp.get(wave_parity_of(n),.5)
+        +.18*wv.get(wave_of(n),.5)
+        +.13*sz.get(size_of(n),.5)
+        +.13*pa.get(parity_of(n),.5)
+      for n in nums
+    }
+    W=_norm_values(W,nums)
+
+    # A: correction AI is dominant; base AI prevents tiny correction samples
+    # from becoming too erratic.
+    corr=_norm_values(_correction_probs(r,strategy),nums)
+    with ai_lock:
+        ai_ready=bool(ai_state.get("ready",False))
+    if ai_ready:
+        _X,_lg,p=_ai_logits_and_probs(r)
+        base=_normalize_ai_probs(p)
+    else:
+        base={n:.5 for n in nums}
+    A={n:.72*corr.get(n,.5)+.28*base.get(n,.5) for n in nums}
+    A=_norm_values(A,nums)
+
+    return {"T":T,"Z":Z,"C":C,"W":W,"A":A}
+
+def _rows_rate(rows,k):
+    part=rows[:int(k)]
+    n=len(part)
+    h=sum(int(x["hit24"] or 0) for x in part)
+    return n,h,(h/n if n else 0.0)
+
+def _streak_from_rows(rows):
+    """Rows must be newest first."""
+    current=0
+    for x in rows:
+        if int(x["hit24"] or 0)==1:
+            current+=1
+        else:
+            break
+    asc=list(reversed(rows))
+    best=run=0
+    for x in asc:
+        if int(x["hit24"] or 0)==1:
+            run+=1
+            best=max(best,run)
+        else:
+            run=0
+    return current,best
+
+def _normalize_capped_weights(raw,lo=.10,hi=.35):
+    keys=list(raw)
+    if not keys:
+        return {}
+    total=sum(max(0.0,float(raw[k])) for k in keys) or 1.0
+    w={k:max(0.0,float(raw[k]))/total for k in keys}
+    # repeated clamp / redistribute
+    for _ in range(8):
+        low=[k for k in keys if w[k]<lo]
+        high=[k for k in keys if w[k]>hi]
+        if not low and not high:
+            break
+        fixed={}
+        for k in low: fixed[k]=lo
+        for k in high: fixed[k]=hi
+        free=[k for k in keys if k not in fixed]
+        remain=max(0.0,1.0-sum(fixed.values()))
+        free_total=sum(w[k] for k in free) or 1.0
+        nw=dict(fixed)
+        for k in free:
+            nw[k]=remain*w[k]/free_total
+        w=nw
+    total=sum(w.values()) or 1.0
+    return {k:w[k]/total for k in keys}
+
+def _pool_performance(force=False):
+    """Real pre-draw results determine model weights.
+
+    10/30/60 windows = 30% / 35% / 35%, with Bayesian shrinkage.
+    """
+    now=time.time()
+    with pool_perf_lock:
+        cached=pool_perf_cache.get("data")
+        if cached is not None and not force and now-float(pool_perf_cache.get("ts",0))<8:
+            return cached
+
+    baseline=20/49
+    stats={}
+    for key,prof in POOL_MODEL_PROFILES.items():
+        with db_lock:
+            c=connect()
+            try:
+                rows=c.execute("""SELECT target_issue,hit24
+                                  FROM prediction_log
+                                  WHERE profile=? AND settled=1
+                                  ORDER BY CAST(target_issue AS INTEGER) DESC
+                                  LIMIT 60""",(prof,)).fetchall()
+            finally:
+                c.close()
+        n10,h10,r10=_rows_rate(rows,10)
+        n30,h30,r30=_rows_rate(rows,30)
+        n60,h60,r60=_rows_rate(rows,60)
+        def smooth(h,n):
+            return (h+6*baseline)/(n+6)
+        composite=.30*smooth(h10,n10)+.35*smooth(h30,n30)+.35*smooth(h60,n60)
+        cur,best=_streak_from_rows(rows)
+        stats[key]={
+          "profile":prof,
+          "n10":n10,"h10":h10,"r10":round(100*r10,1) if n10 else 0.0,
+          "n30":n30,"h30":h30,"r30":round(100*r30,1) if n30 else 0.0,
+          "n60":n60,"h60":h60,"r60":round(100*r60,1) if n60 else 0.0,
+          "current_streak":cur,"max_streak":best,
+          "composite":composite
+        }
+
+    mature=max((v["n60"] for v in stats.values()),default=0)
+    confidence=min(1.0,mature/30.0)
+    raw={k:math.exp(8.0*(v["composite"]-baseline)) for k,v in stats.items()}
+    perf_total=sum(raw.values()) or 1.0
+    perf={k:raw[k]/perf_total for k in raw}
+    equal=1.0/max(1,len(perf))
+    blended={k:(1-confidence)*equal+confidence*perf[k] for k in perf}
+    weights=_normalize_capped_weights(blended,.10,.35)
+    for k in stats:
+        stats[k]["weight_pct"]=round(100*weights.get(k,equal),1)
+
+    data={"stats":stats,"weights":weights,"mature_n":mature}
+    with pool_perf_lock:
+        pool_perf_cache["ts"]=now
+        pool_perf_cache["data"]=data
+    return data
+
+def _pool_ensemble_score(r,profile,strategy="20"):
+    models=_specialist_model_scores(r,profile,strategy)
+    perf=_pool_performance()
+    weights=perf.get("weights") or {k:.20 for k in models}
+    ens={}
+    for n in range(1,50):
+        ens[n]=sum(float(weights.get(k,.20))*float(models[k].get(n,.5)) for k in models)
+    return _norm_values(ens,range(1,50)),models,perf
+
+def _stable_signal_predictions(r,profile):
+    """High-coverage trend signals, all locked BEFORE the draw."""
+    tr=_trend_profiles(r)
+    zmap=_number_zodiac_map(r)
+    zheat=_hot_zodiac_scores(r,profile)
+
+    top2w=sorted(["红","蓝","绿"],key=lambda x:(-tr["wave"].get(x,0),x))[:2]
+    top7z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,0),z))[:7]
+    best_size=max(["大","小"],key=lambda x:(tr["size"].get(x,0),x))
+    best_parity=max(["单","双"],key=lambda x:(tr["parity"].get(x,0),x))
+    top3wp=sorted(WAVE_PARITY_KEYS,key=lambda x:(-tr["wave_parity"].get(x,0),x))[:3]
+    head=_vote_04_head_decision(r,force=True,profile="27码十期")
+    killed=head.get("killed_head","")
+
+    return {
+      "稳双波":[n for n in range(1,50) if wave_of(n) in set(top2w)],
+      "稳7肖":[n for n in range(1,50) if zmap.get(n) in set(top7z)],
+      "稳大小":[n for n in range(1,50) if size_of(n)==best_size],
+      "稳单双":[n for n in range(1,50) if parity_of(n)==best_parity],
+      "稳波单双3":[n for n in range(1,50) if wave_parity_of(n) in set(top3wp)],
+      "稳0/4杀头":[n for n in range(1,50) if (not killed or head_of(n)!=killed)],
+    }
+
+def _generic_profile_stats(profile,limit=120):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24,actual_special
+                              FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(limit))).fetchall()
+        finally:
+            c.close()
+    n10,h10,r10=_rows_rate(rows,10)
+    n30,h30,r30=_rows_rate(rows,30)
+    n60,h60,r60=_rows_rate(rows,60)
+    cur,best=_streak_from_rows(rows)
+    return {
+      "n10":n10,"h10":h10,"r10":round(100*r10,1) if n10 else 0.0,
+      "n30":n30,"h30":h30,"r30":round(100*r30,1) if n30 else 0.0,
+      "n60":n60,"h60":h60,"r60":round(100*r60,1) if n60 else 0.0,
+      "current_streak":cur,"max_streak":best
+    }
+
+def _pool_dashboard():
+    perf=_pool_performance()
+    stats=perf.get("stats",{})
+
+    # Unique value: the only specialist that hit that issue.
+    profiles=list(POOL_MODEL_PROFILES.values())
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24,actual_special
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) DESC
+                               LIMIT 360""",tuple(profiles)).fetchall()
+            frows=c.execute("""SELECT target_issue,hit24,actual_special
+                               FROM prediction_log
+                               WHERE profile=? AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) DESC
+                               LIMIT 60""",(POOL_FINAL_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    by_issue={}
+    prof_to_key={v:k for k,v in POOL_MODEL_PROFILES.items()}
+    for x in rows:
+        d=by_issue.setdefault(str(x["target_issue"]),{"actual":x["actual_special"],"hits":{}})
+        k=prof_to_key.get(str(x["profile"]))
+        if k:
+            d["hits"][k]=int(x["hit24"] or 0)
+
+    unique={k:0 for k in POOL_MODEL_PROFILES}
+    for issue in sorted(by_issue,key=lambda x:int(x),reverse=True)[:60]:
+        h=[k for k,v in by_issue[issue]["hits"].items() if v]
+        if len(h)==1:
+            unique[h[0]]+=1
+    for k in stats:
+        stats[k]["unique_hits60"]=unique.get(k,0)
+
+    f_by_issue={str(x["target_issue"]):int(x["hit24"] or 0) for x in frows}
+    recent=[]
+    for issue in sorted(by_issue,key=lambda x:int(x),reverse=True)[:10]:
+        d=by_issue[issue]
+        recent.append({
+          "issue":issue,"actual":d.get("actual"),
+          "T":d["hits"].get("T"),"Z":d["hits"].get("Z"),
+          "C":d["hits"].get("C"),"W":d["hits"].get("W"),
+          "A":d["hits"].get("A"),"F":f_by_issue.get(issue)
+        })
+    return {"stats":stats,"recent10":recent,"mature_n":perf.get("mature_n",0)}
+
+def _stable_dashboard():
+    items={}
+    warnings=[]
+    for name,prof in STABLE_SIGNAL_PROFILES.items():
+        st=_generic_profile_stats(prof,120)
+        items[name]=st
+        if st["current_streak"]>=5:
+            warnings.append({"name":name,"streak":st["current_streak"]})
+    warnings=sorted(warnings,key=lambda x:(-x["streak"],x["name"]))
+    return {"items":items,"warnings":warnings}
+
 def _selection_number_scores(r, profile, strategy="20"):
     """Trend is the main model; AI has two smaller jobs.
 
@@ -2920,12 +3307,27 @@ def _selection_number_scores(r, profile, strategy="20"):
         consensus=1.0-abs(t-a)
         score[n]=trend_w*t+base_ai_w*a+corr_w*c+.035*consensus
 
+    # v33: add a genuine multi-model pool. It starts cautiously and becomes
+    # more important only after enough locked real samples exist.
+    pool_ens,_pool_models,pool_perf=_pool_ensemble_score(r,profile,strategy)
+    base_norm=_norm_values(score,range(1,50))
+    mature=int(pool_perf.get("mature_n",0))
+    pool_mix=.20+.30*min(1.0,mature/30.0)
+    score={
+      n:(1.0-pool_mix)*base_norm.get(n,.5)+pool_mix*pool_ens.get(n,.5)
+      for n in range(1,50)
+    }
+
     ctx=dict(ctx)
     ctx["regime"]=regime
     ctx["correction_trained"]=corr_trained
     ctx["correction_weight_pct"]=round(corr_w*100,1)
     ctx["trend_weight_pct"]=round(trend_w*100,1)
     ctx["base_ai_weight_pct"]=round(base_ai_w*100,1)
+    ctx["pool_mix_pct"]=round(pool_mix*100,1)
+    ctx["pool_weights_pct"]={
+      k:round(100*v,1) for k,v in (pool_perf.get("weights") or {}).items()
+    }
     return score,zmap,zheat,ctx
 
 def _trend_diagnostics(r,profile,strategy="20"):
@@ -3759,6 +4161,9 @@ def settle_predictions(issue, nums, zs):
         print(f"[AUDIT] settle failed: {e}",flush=True)
 
     if rows:
+        with pool_perf_lock:
+            pool_perf_cache["ts"]=0.0
+            pool_perf_cache["data"]=None
         best,_=refresh_learner_cache(60)
         try:
             refresh_dynamic_ai_mix()
@@ -3844,6 +4249,31 @@ def record_shadow_predictions(r):
         _record_strategy_audit(target,"27码十期",c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+
+    # Parallel specialist pool: same 20-code target, different logic.
+    try:
+        best_profile,_=_select_profile(r)
+        specialists=_specialist_model_scores(r,best_profile,"20")
+        for key,prof in POOL_MODEL_PROFILES.items():
+            ranked=sorted(range(1,50),key=lambda n:(-specialists[key].get(n,-1e9),n))
+            codes=ranked[:20]
+            records.append((target,prof,",".join(str(n) for n in codes),"","",py))
+        # F = the actual final 20-code list, kept separately from 20码精选 for
+        # easy T/Z/C/W/A/F table comparisons.
+        c20f,_mf=_predict20_hot(r,best_profile)
+        records.append((target,POOL_FINAL_PROFILE,",".join(str(n) for n in c20f),"","",py))
+    except Exception as e:
+        print(f"[POOL] locked specialist models failed: {type(e).__name__}: {e}",flush=True)
+
+    # High-coverage stable signals: these are also locked pre-draw and settled
+    # through the same prediction_log, so streaks cannot be backfilled.
+    try:
+        best_profile,_=_select_profile(r)
+        stable=_stable_signal_predictions(r,best_profile)
+        for prof,codes in stable.items():
+            records.append((target,prof,",".join(str(n) for n in codes),"","",py))
+    except Exception as e:
+        print(f"[STABLE] locked signals failed: {type(e).__name__}: {e}",flush=True)
 
     if records:
         with db_lock:
@@ -3979,7 +4409,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v32",
+      "version":"v33",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -4413,6 +4843,8 @@ def build_model():
     diag20=_strategy_diagnostics("20码精选",60)
     diag27=_strategy_diagnostics("27码十期",60)
     correction=_correction_status()
+    model_pool=_pool_dashboard()
+    stable_signals=_stable_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -4428,6 +4860,8 @@ def build_model():
       "diagnostics20":diag20,
       "diagnostics27":diag27,
       "correction":correction,
+      "model_pool":model_pool,
+      "stable_signals":stable_signals,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -4470,7 +4904,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"趋势主攻 + AI纠错 · 冷肖反转复审 + 21-27边缘救援 + 27码三票杀头"
+        "mode":"多策略并行锁单 + 实盘动态权重 + AI纠错 + 20/27双策略"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -4661,6 +5095,13 @@ def strategy_diagnostics_api():
       "code20":_strategy_diagnostics("20码精选",60),
       "code27":_strategy_diagnostics("27码十期",60),
       "correction":_correction_status()
+    })
+
+@app.get("/api/model-pool")
+def model_pool_api():
+    return jsonify({
+      "model_pool":_pool_dashboard(),
+      "stable_signals":_stable_dashboard()
     })
 
 @app.get("/api/backup-status")
