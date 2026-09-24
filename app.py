@@ -722,14 +722,30 @@ async function loadMain(){
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
     const c3=m27.cold3_codes||{};
     const c3txt=(m27.coldest3||[]).map(z=>`${z}${(c3[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
-    const roundStart=(cur27.start && String(cur27.start)!=='0')?cur27.start:(m27.block_start||'--');
-    const roundEnd=(cur27.end && String(cur27.end)!=='0')?cur27.end:(m27.block_end||'--');
-    const opened=Number(cur27.n??0);
-    const hits=Number(cur27.hits??0);
-    const misses=Number(cur27.misses??Math.max(0,opened-hits));
+    // v46: new live codes = new live round. Never let previous-round
+    // settlement numbers remain under a newly changed 27-code set.
+    const liveRoundStart=String(m27.block_start||'');
+    const liveRoundEnd=String(m27.block_end||'');
+    const statRoundStart=String(cur27.start||'');
+    const same27Round=!!liveRoundStart && statRoundStart===liveRoundStart;
+    const roundStart=liveRoundStart||((cur27.start && String(cur27.start)!=='0')?String(cur27.start):'--');
+    const roundEnd=liveRoundEnd||((cur27.end && String(cur27.end)!=='0')?String(cur27.end):'--');
+    const opened=same27Round?Number(cur27.n??0):0;
+    const hits=same27Round?Number(cur27.hits??0):0;
+    const misses=same27Round?Number(cur27.misses??Math.max(0,opened-hits)):0;
+
+    const c3pairs=(m27.coldest3||[]).map(z=>{
+      const arr=(c3[z]||[]).map(fmt);
+      return `${z}:${arr.join('/')||'--'}`;
+    }).join(' · ')||'--';
+    const cold6=(m27.cold_defense6||[]);
+    const cold6ok=(m27.coldest3||[]).length===3
+      && (m27.coldest3||[]).every(z=>(c3[z]||[]).length===2)
+      && cold6.length===6;
+
     code27Block.textContent=`本轮 ${roundStart} — ${roundEnd}`;
     code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
-    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖每肖2个杀码 · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
+    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖 ${c3pairs} · ${cold6ok?'6/6杀码✓':'冷肖码待补'} · 变盘${m27.trend_switches??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -5917,6 +5933,7 @@ def _predict27_tenblock(r, profile, target_issue):
       "killed_head":active_filter.get("killed_head",""),
       "head_streak":head_streak,
       "trend_switched":bool(switched),
+      "round_reset":bool(switched),
       "trend_segment":segment,
       "trend_switches":switches,
       "coldest3":meta.get("coldest3",[]),
@@ -6797,7 +6814,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v45",
+      "version":"v46",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -7229,6 +7246,27 @@ def build_model():
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats()
     stats27=_stats27_v5()
+
+    # v46: if live 27-code logic has just changed codes and opened a fresh
+    # 10-period round, prediction_log may not contain that new target yet.
+    # Never display the previous round's range/hit count under the new codes.
+    live27_start=str(meta27.get("block_start") or "")
+    live27_end=str(meta27.get("block_end") or (_issue_add(live27_start,9) if live27_start else ""))
+    cur27=dict((stats27.get("current") or {}))
+    if live27_start and str(cur27.get("start") or "") != live27_start:
+        stats27=dict(stats27)
+        stats27["current"]={
+          "start":live27_start,
+          "end":live27_end,
+          "n":0,
+          "hits":0,
+          "misses":0
+        }
+        stats27["live_round_reset"]=True
+    else:
+        stats27=dict(stats27)
+        stats27["live_round_reset"]=False
+
     diag20=_strategy_diagnostics("20码精选",60)
     diag27=_strategy_diagnostics(TEN27_V5_PROFILE,60)
     correction=_correction_status()
