@@ -274,6 +274,33 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   .rate{font-size:20px}
   .historyItem{grid-template-columns:104px 1fr}
 }
+
+/* v34 compact mobile dashboard */
+.wrap{max-width:860px;padding:calc(env(safe-area-inset-top) + 7px) 8px 22px}
+.topbar{margin:0 1px 7px;gap:7px}.title{font-size:21px}.subtitle{font-size:9px;margin-top:3px}
+.livebox{font-size:10px;padding:5px 8px}.card{border-radius:14px;padding:10px;margin-bottom:7px;box-shadow:0 9px 24px #00000020}
+.sectionHead{margin-bottom:7px;gap:6px}.sectionTitle{font-size:14px}.sectionHint{font-size:9px}
+.copyBtn{padding:5px 8px;border-radius:8px;font-size:9px}
+.balls{gap:4px}.ball{border-radius:9px;font-size:12px}.smallball{width:25px;height:25px;font-size:10px}
+.latestRow{gap:4px}.comboBox{padding:8px;border-radius:11px}.zpairGrid{gap:4px}.zpair{padding:6px 3px;border-radius:10px}
+.zpairName{font-size:13px;margin-bottom:4px}.microball{width:21px;height:21px;font-size:9px}
+.trendGrid{grid-template-columns:repeat(4,1fr);gap:4px}.strategyGrid{gap:4px}
+.strategyBox,.trendBox{padding:6px;border-radius:10px}.strategyTitle,.trendTitle{font-size:8px;margin-bottom:3px}
+.strategyMain,.trendMain{font-size:10px;line-height:1.35}.stats{gap:4px}.stat{padding:7px;border-radius:10px}
+.statName{font-size:9px}.rate{font-size:17px;margin-top:3px}.err{font-size:9px;margin-top:2px}
+.pillrow{gap:4px;margin-top:6px}.pill{font-size:9px;padding:4px 6px}.modelRow{grid-template-columns:25px 1fr auto;gap:5px;padding:4px 0}
+.modelKey{font-size:13px}.modelMeta{font-size:9px}.modelWeight{font-size:11px}.lockTable{font-size:9px;min-width:500px}
+.lockTable th,.lockTable td{padding:5px 4px}.historyScroll{height:260px}.historyItem{grid-template-columns:92px 1fr;padding:7px 1px;gap:6px}
+.historyIssue{font-size:10px}.historyMeta{font-size:8px}.foot{font-size:8px;line-height:1.45}.streakAlert{padding:7px 9px;margin-bottom:7px;font-size:10px;border-radius:10px}
+#pingteOne{font-size:26px!important}
+.rescueModal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:999;padding:18px}
+.rescueModal.show{display:flex}.rescueBox{width:min(92vw,420px);background:#121b2b;border:1px solid #41577d;border-radius:16px;padding:16px;box-shadow:0 20px 60px #000a}
+.rescueTitle{font-size:17px;font-weight:900;margin-bottom:8px}.rescueCode{font-size:32px;font-weight:950;text-align:center;margin:12px 0}
+.rescueText{font-size:11px;color:#b6c2d4;line-height:1.55}.rescueClose{width:100%;margin-top:12px;padding:9px;border:0;border-radius:10px;background:#263d67;color:#fff;font-weight:850}
+@media(max-width:430px){
+  .trendGrid{grid-template-columns:repeat(4,1fr)}
+  .grid2{gap:5px}.metric{font-size:16px}.metricLabel{font-size:9px}
+}
 </style>
 </head>
 <body>
@@ -380,7 +407,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="pillrow" style="margin-top:10px">
       <span class="pill">趋势主攻 · AI纠错边缘救援</span>
       <span class="pill">冷肖先反转复审 · 最终冷3肖不取</span>
-      <span class="pill">0/4弱头可直接杀</span>
+      <span class="pill">20码不硬杀0/4头</span>
       <span class="pill">红蓝绿×单双共同评分</span>
     </div>
   </section>
@@ -388,8 +415,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">27码 · 十期一换</div>
-        <div id="code27Hint" class="sectionHint">趋势+纠错AI+历史战绩三票制 · 必杀0/4其中一头</div>
+        <div class="sectionTitle">27码 · 10期一轮</div>
+        <div id="code27Hint" class="sectionHint">轮内每期重算 · 多策略弱头才杀 · 强外码可补第28码</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -496,8 +523,16 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div id="historyScroll" class="historyScroll"></div>
   </section>
 
+  <div id="rescueModal" class="rescueModal">
+    <div class="rescueBox">
+      <div class="rescueTitle">⚠️ 28码补位提醒</div>
+      <div id="rescueModalCode" class="rescueCode">--</div>
+      <div id="rescueModalText" class="rescueText">多策略发现27码之外的强共识号码。</div>
+      <button class="rescueClose" onclick="closeRescueModal()">知道了</button>
+    </div>
+  </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v33新增T趋势、Z生肖、C冷热、W波色单双、A纠错五套独立模型，全部开奖前锁定并分别结算；最近10/30/60期真实表现决定动态权重，再参与20码与27码排序。稳定趋势层同时锁定双波、7肖、大小、单双、波色单双3类和0/4杀头，并统计真实连中。所有成绩只来自开奖前锁单，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v34采用紧凑界面。20码不再硬杀0/4头；27码按10期一轮统计，但轮内每期重新计算。T/Z/C/W/A多策略共同判断0头/4头强弱，只有弱势证据充分才排除；若27码之外出现强共识号码，会弹出提醒并自动补为第28码。所有成绩只来自开奖前锁单，不代表未来概率。</div>
 </div>
 
 <script>
@@ -535,6 +570,19 @@ async function copy27(){
 function balls(nums,small=false){
   return (nums||[]).map((n,i)=>`<span class="${small?'smallball':'ball'} ${cls(n)} ${small&&i===6?'special':''}">${fmt(n)}</span>`).join('')
 }
+function closeRescueModal(){
+  rescueModal.classList.remove('show');
+}
+function maybeShowRescue28(meta,targetIssue){
+  const r=(meta||{}).rescue28||{};
+  if(!r.active || !r.code) return;
+  const key='rescue28_'+String(targetIssue||'')+'_'+String(r.code);
+  if(localStorage.getItem(key)) return;
+  rescueModalCode.textContent=fmt(r.code);
+  rescueModalText.textContent=`${r.message||'发现强外码'} · ${r.support_models??0}/5模型支持 · 综合排名${r.rank??'--'}`;
+  rescueModal.classList.add('show');
+  localStorage.setItem(key,'1');
+}
 function hm(v){
   if(v===1) return '<span class="hit">✓</span>';
   if(v===0) return '<span class="miss">×</span>';
@@ -555,7 +603,7 @@ async function loadMain(){
     modelPoolRows.innerHTML=['T','Z','C','W','A'].map(k=>{
       const x=ms[k]||{};
       return `<div class="modelRow"><div class="modelKey">${k}</div>
-        <div><div>${labels[k]}</div><div class="modelMeta">10期 ${x.h10??0}/${x.n10??0} · 30期 ${x.h30??0}/${x.n30??0} · 60期 ${x.h60??0}/${x.n60??0} · 独中 ${x.unique_hits60??0}</div></div>
+        <div><div>${labels[k]}</div><div class="modelMeta">10 ${x.h10??0}/${x.n10??0} · 30 ${x.h30??0}/${x.n30??0} · 60 ${x.h60??0}/${x.n60??0} · 独${x.unique_hits60??0}</div></div>
         <div class="modelWeight">${x.weight_pct??20}%</div></div>`;
     }).join('');
     poolMaturity.textContent=`动态权重样本 ${mp.mature_n??0}/30`;
@@ -571,11 +619,13 @@ async function loadMain(){
     const recent=mp.recent10||[];
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
-    code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} 十期固定`;
-    const hv=(m27.head_decision||{}).votes||{};
-    code27Kill.textContent=`本轮必杀：${m27.killed_head||'--'} · 趋势${hv['趋势']||'--'} / AI${hv['纠错AI']||'--'} / 历史${hv['历史成功率']||'--'}`;
+    code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} · 本轮第${m27.round_position??0}/10期 · 每期重算`;
+    const hd=m27.head_decision||{};
+    code27Kill.textContent=m27.killed_head?`弱头排除：${m27.killed_head} · 多策略支持 ${hd.vote_support_pct??0}%`:`不强杀 · ${m27.weak_head||'--'}略弱`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
-    code27Stats.textContent=last27?`上一完整轮：10中${last27.hits??0}`:`本轮：${cur27.hits??0}中${cur27.n??0}/10`;
+    const r28=m27.rescue28||{};
+    code27Stats.textContent=`${last27?`上轮10中${last27.hits??0}`:`本轮${cur27.hits??0}/${cur27.n??0}`} · 当前${m27.code_count??27}码${r28.active?' · 已补28码':''}`;
+    maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
       <div class="zpairName">${p.zodiac}</div>
@@ -3261,6 +3311,76 @@ def _stable_dashboard():
     warnings=sorted(warnings,key=lambda x:(-x["streak"],x["name"]))
     return {"items":items,"warnings":warnings}
 
+
+def _pool_04_weakness_decision(r,profile,strategy="27"):
+    """Use T/Z/C/W/A + their real-performance weights to compare 0头 vs 4头.
+
+    v34 does NOT force a head kill.
+    A hard exclusion is activated only when the multi-model weakness gap is
+    meaningful; otherwise both heads remain eligible.
+    """
+    models=_specialist_model_scores(r,profile,strategy)
+    perf=_pool_performance()
+    weights=perf.get("weights") or {k:.20 for k in models}
+
+    def avg_for_head(score_map,h):
+        nums=[n for n in range(1,50) if head_of(n)==h]
+        return sum(float(score_map.get(n,.5)) for n in nums)/max(1,len(nums))
+
+    per_model={}
+    weighted={"0头":0.0,"4头":0.0}
+    votes={"0头":0,"4头":0}
+    for key,score_map in models.items():
+        a0=avg_for_head(score_map,"0头")
+        a4=avg_for_head(score_map,"4头")
+        weak="0头" if a0<=a4 else "4头"
+        votes[weak]+=1
+        per_model[key]={
+          "0头":round(a0,3),"4头":round(a4,3),"weak":weak,
+          "weight_pct":round(100*float(weights.get(key,.20)),1)
+        }
+        weighted["0头"]+=float(weights.get(key,.20))*a0
+        weighted["4头"]+=float(weights.get(key,.20))*a4
+
+    weaker="0头" if weighted["0头"]<=weighted["4头"] else "4头"
+    stronger="4头" if weaker=="0头" else "0头"
+    gap=weighted[stronger]-weighted[weaker]
+    vote_support=votes[weaker]/5.0
+
+    # Mature real model-pool evidence can lower the activation threshold slightly.
+    mature=int(perf.get("mature_n",0))
+    threshold=.105 if mature<10 else (.090 if mature<30 else .080)
+    active=(gap>=threshold and vote_support>=.60)
+
+    return {
+      "active":bool(active),
+      "killed_head":weaker if active else "",
+      "weak_head":weaker,
+      "gap":round(gap,3),
+      "threshold":round(threshold,3),
+      "vote_support_pct":round(100*vote_support,1),
+      "weighted":{"0头":round(weighted["0头"],3),"4头":round(weighted["4头"],3)},
+      "votes":votes,
+      "models":per_model,
+      "reason":(
+        f"多策略确认{weaker}偏弱，启用排除"
+        if active else
+        f"{weaker}略弱但证据不足，不强杀"
+      )
+    }
+
+def _round10_info(issue):
+    try:
+        x=int(issue)
+        start=(x//10)*10
+        pos=x-start+1
+        return {
+          "start":str(start),"end":str(start+9),
+          "position":max(1,min(10,pos))
+        }
+    except Exception:
+        return {"start":"","end":"","position":0}
+
 def _selection_number_scores(r, profile, strategy="20"):
     """Trend is the main model; AI has two smaller jobs.
 
@@ -3368,14 +3488,15 @@ def _predict20_hot(r, profile):
              if z not in set(coldest3)]
     top3=allowed[:3]
 
-    head=_combined_04_head_decision(r,force=False)
-    killed=head["killed_head"]
+    # v34: 20码不再硬杀0/4头。头数强弱已经包含在趋势评分里，
+    # 但不会因为单一头数判断直接把整头号码踢掉。
+    head=_pool_04_weakness_decision(r,profile,"20")
+    killed=""
 
     pools={}
     for z in allowed:
         pools[z]=sorted(
-            [n for n in range(1,50)
-             if zmap.get(n)==z and (not killed or head_of(n)!=killed)],
+            [n for n in range(1,50) if zmap.get(n)==z],
             key=lambda n:(-score.get(n,-1e9),n)
         )
 
@@ -3399,8 +3520,6 @@ def _predict20_hot(r, profile):
     if len(selected)<20:
         for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
             if n in used or zmap.get(n) not in allowed:
-                continue
-            if killed and head_of(n)==killed:
                 continue
             z=zmap.get(n)
             cap=3 if z in top3 else 2
@@ -3432,7 +3551,7 @@ def _predict20_hot(r, profile):
     edge=[n for n in ranked49[20:27]
           if n not in selected
           and zmap.get(n) in allowed
-          and (not killed or head_of(n)!=killed)]
+]
     for cand in sorted(edge,key=lambda n:(-rescue_metric(n),ranked49.index(n))):
         if len(rescue_swaps)>=2:
             break
@@ -3460,8 +3579,6 @@ def _predict20_hot(r, profile):
         for n in ranked49:
             if n in seen or zmap.get(n) not in allowed:
                 continue
-            if killed and head_of(n)==killed:
-                continue
             z=zmap.get(n)
             cap=3 if z in top3 else 2
             if sum(1 for x in dedup if zmap.get(x)==z)>=cap:
@@ -3477,7 +3594,8 @@ def _predict20_hot(r, profile):
       "coldest3":coldest3,
       "cold_meta":cold_meta,
       "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
-      "killed_head":killed,
+      "killed_head":"",
+      "weak_head":head.get("weak_head",""),
       "head_decision":head,
       "groups":groups,
       "ranked49":ranked49,
@@ -3529,41 +3647,30 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """27码：10期固定一组；三票制必杀0头/4头其中一头。"""
-    br,start,end=_tenblock_state(r,target_issue)
+    """27码：10期一轮，但轮内每期都重算。
 
-    # Reuse the already locked list inside the same 10-period block.
-    existing=_existing_27_block_codes(start,end)
-    score,zmap,zheat,ctx=_selection_number_scores(br,profile,"27")
+    - 不再十期固定同一组号码
+    - 0/4头不再强制必杀
+    - 只有T/Z/C/W/A多策略共同确认一头明显偏弱时才硬排除
+    - 若27码外出现强共识号码，则自动作为第28码补位，并给前端弹窗提醒
+    """
+    round_info=_round10_info(target_issue)
+    score,zmap,zheat,ctx=_selection_number_scores(r,profile,"27")
 
-    coldest3,cold_meta=_final_coldest3(br,profile,"27",zheat)
+    coldest3,cold_meta=_final_coldest3(r,profile,"27",zheat)
     allowed=[z for z in sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
              if z not in set(coldest3)]
 
-    head=_vote_04_head_decision(br,force=True,profile="27码十期")
-    killed=head["killed_head"]
+    head=_pool_04_weakness_decision(r,profile,"27")
+    killed=head.get("killed_head","") if head.get("active") else ""
     ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
 
-    if existing:
-        return existing[:27],{
-          "block_start":str(start),"block_end":str(end),
-          "hot_mid_zodiacs":allowed,"coldest3":coldest3,
-          "cold_meta":cold_meta,
-          "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
-          "killed_head":killed,"head_decision":head,
-          "reused":True,
-          "ranked49":ranked49,
-          "regime":(ctx.get("regime") or {}).get("name","平衡"),
-          "correction_trained":ctx.get("correction_trained",0),
-          "correction_weight_pct":ctx.get("correction_weight_pct",0),
-          "trend_weight_pct":ctx.get("trend_weight_pct",0)
-        }
-
+    # Base 27: every issue re-evaluated.
     selected=[]; groups=[]
     for z in allowed:
         pool=sorted(
             [n for n in range(1,50)
-             if zmap.get(n)==z and head_of(n)!=killed],
+             if zmap.get(n)==z and (not killed or head_of(n)!=killed)],
             key=lambda n:(-score.get(n,-1e9),n)
         )
         take=pool[:3]
@@ -3573,24 +3680,88 @@ def _predict27_tenblock(r, profile, target_issue):
     used=set(selected)
     if len(selected)<27:
         for n in ranked49:
-            if n in used or zmap.get(n) not in allowed or head_of(n)==killed:
+            if n in used:
+                continue
+            if zmap.get(n) not in allowed:
+                continue
+            if killed and head_of(n)==killed:
                 continue
             selected.append(n); used.add(n)
             if len(selected)>=27:
                 break
 
-    return selected[:27],{
-      "block_start":str(start),"block_end":str(end),
-      "hot_mid_zodiacs":allowed,"coldest3":coldest3,
+    selected=selected[:27]
+    used=set(selected)
+
+    # ---------- 28码强外码补位 ----------
+    # A number outside the 27 must have broad support across the specialist pool.
+    specialists=_specialist_model_scores(r,profile,"27")
+    ensemble,_models,perf=_pool_ensemble_score(r,profile,"27")
+    model_ranks={}
+    for key,sm in specialists.items():
+        order=sorted(range(1,50),key=lambda n:(-sm.get(n,-1e9),n))
+        model_ranks[key]={n:i+1 for i,n in enumerate(order)}
+
+    candidates=[]
+    for n in range(1,50):
+        if n in used:
+            continue
+        support=sum(1 for key in specialists if model_ranks[key].get(n,99)<=27)
+        top20=sum(1 for key in specialists if model_ranks[key].get(n,99)<=20)
+        ens=float(ensemble.get(n,0.0))
+        overall_rank=ranked49.index(n)+1 if n in ranked49 else 99
+
+        # A killed-head number can still be rescued only with overwhelming
+        # specialist support, otherwise the head decision remains meaningful.
+        conflicts_head=bool(killed and head_of(n)==killed)
+        if conflicts_head:
+            active=(support>=5 and top20>=3 and ens>=.78)
+        else:
+            active=(support>=4 and ens>=.68) or (support>=3 and top20>=3 and ens>=.74)
+
+        if active:
+            quality=.55*ens+.25*(support/5.0)+.20*(top20/5.0)
+            candidates.append((quality,n,support,top20,ens,overall_rank,conflicts_head))
+
+    rescue28=None
+    if candidates:
+        quality,n,support,top20,ens,overall_rank,conflicts_head=max(candidates,key=lambda x:(x[0],-x[5],-x[1]))
+        selected.append(n)
+        rescue28={
+          "active":True,
+          "code":n,
+          "support_models":support,
+          "top20_models":top20,
+          "ensemble_score":round(ens,3),
+          "rank":overall_rank,
+          "head_conflict":bool(conflicts_head),
+          "message":f"多策略发现27码外强共识号码 {n:02d}，已补为第28码"
+        }
+    else:
+        rescue28={"active":False,"code":None,"message":""}
+
+    return selected,{
+      "block_start":round_info["start"],
+      "block_end":round_info["end"],
+      "round_position":round_info["position"],
+      "round_mode":"10期一轮·轮内每期重算",
+      "hot_mid_zodiacs":allowed,
+      "coldest3":coldest3,
       "cold_meta":cold_meta,
       "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
-      "killed_head":killed,"head_decision":head,
-      "groups":groups,"reused":False,
+      "killed_head":killed,
+      "weak_head":head.get("weak_head",""),
+      "head_decision":head,
+      "groups":groups,
+      "reused":False,
       "ranked49":ranked49,
+      "rescue28":rescue28,
+      "code_count":len(selected),
       "regime":(ctx.get("regime") or {}).get("name","平衡"),
       "correction_trained":ctx.get("correction_trained",0),
       "correction_weight_pct":ctx.get("correction_weight_pct",0),
-      "trend_weight_pct":ctx.get("trend_weight_pct",0)
+      "trend_weight_pct":ctx.get("trend_weight_pct",0),
+      "pool_weights_pct":ctx.get("pool_weights_pct",{})
     }
 
 def _record_strategy_audit(target_issue,profile,selected,meta):
@@ -4409,7 +4580,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v33",
+      "version":"v34",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -4904,7 +5075,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"多策略并行锁单 + 实盘动态权重 + AI纠错 + 20/27双策略"
+        "mode":"多策略动态27码 · 10期一轮 · 弱头条件排除 · 强外码28补位"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
