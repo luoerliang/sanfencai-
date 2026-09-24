@@ -320,8 +320,8 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
     </div>
     <div id="sp" class="balls"></div>
     <div class="pillrow" style="margin-top:10px">
-      <span class="pill">AI+趋势共识优先</span>
-      <span class="pill">最冷3肖彻底不取</span>
+      <span class="pill">趋势主攻 · AI纠错边缘救援</span>
+      <span class="pill">冷肖先反转复审 · 最终冷3肖不取</span>
       <span class="pill">0/4弱头可直接杀</span>
       <span class="pill">红蓝绿×单双共同评分</span>
     </div>
@@ -331,7 +331,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">27码 · 十期一换</div>
-        <div id="code27Hint" class="sectionHint">AI+趋势必杀0/4其中一头</div>
+        <div id="code27Hint" class="sectionHint">趋势+纠错AI+历史战绩三票制 · 必杀0/4其中一头</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -450,7 +450,7 @@ let SPECIAL20=[];
 let SPECIAL27=[];
 function fmt(n){return String(n).padStart(2,'0')}
 async function copySpecial(){
-  const text=SPECIAL20.join(' ');
+  const text=SPECIAL20.join(',');
   try{
     await navigator.clipboard.writeText(text);
   }catch(e){
@@ -463,7 +463,7 @@ async function copySpecial(){
   setTimeout(()=>t.classList.remove('show'),1800);
 }
 async function copy27(){
-  const text=SPECIAL27.join(' ');
+  const text=SPECIAL27.join(',');
   try{ await navigator.clipboard.writeText(text); }
   catch(e){
     const ta=document.createElement('textarea');
@@ -489,7 +489,8 @@ async function loadMain(){
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
     code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} 十期固定`;
-    code27Kill.textContent=`本轮必杀：${m27.killed_head||'--'}`;
+    const hv=(m27.head_decision||{}).votes||{};
+    code27Kill.textContent=`本轮必杀：${m27.killed_head||'--'} · 趋势${hv['趋势']||'--'} / AI${hv['纠错AI']||'--'} / 历史${hv['历史成功率']||'--'}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     code27Stats.textContent=last27?`上一完整轮：10中${last27.hits??0}`:`本轮：${cur27.hits??0}中${cur27.n??0}/10`;
     const pairs=d.zodiac_pairs||[];
@@ -528,9 +529,12 @@ async function loadMain(){
     regimeState.innerHTML=`20码：${m20.regime||'平衡'}<br>27码：${m27.regime||'平衡'}`;
     corr20State.innerHTML=`已学错题 ${(cr['20']||{}).trained??0} 次<br>当前纠错权重 ${m20.correction_weight_pct??0}%`;
     rank20State.innerHTML=`1-10 ${rb['1-10']??0} · 11-20 ${rb['11-20']??0}<br>21-27 ${rb['21-27']??0} · 28+ ${rb['28+']??0}`;
-    head27State.innerHTML=`成功 ${dg27.head_kill_success??0}/${dg27.head_kill_n??0}<br>${dg27.head_kill_rate??0}%`;
-    zodiacTransitionState.textContent=`生肖转移优先：${(m20.zodiac_transition_top||[]).join('、')||'--'}`;
-    failureState.textContent=`冷三肖误杀 ${dg20.cold_zodiac_errors??0} · 底层排序 ${fr['底层排序']??0}`;
+    const kh=dg27.head_kill_by_head||{}, k0=kh['0头']||{}, k4=kh['4头']||{};
+    head27State.innerHTML=`总 ${dg27.head_kill_success??0}/${dg27.head_kill_n??0} = ${dg27.head_kill_rate??0}%<br>杀0 ${k0.hits??0}/${k0.n??0} · 杀4 ${k4.hits??0}/${k4.n??0}`;
+    const rescued=(m20.rescued_cold_zodiacs||[]);
+    const swaps=(m20.edge_rescue_swaps||[]);
+    zodiacTransitionState.textContent=`生肖转移：${(m20.zodiac_transition_top||[]).join('、')||'--'} · 冷肖救回 ${rescued.join('、')||'无'}`;
+    failureState.textContent=`21-27复审替换 ${swaps.length}码 · 冷三肖误杀 ${dg20.cold_zodiac_errors??0} · 底层排序 ${fr['底层排序']??0}`;
     const sg=d.strategy||{};
     coldSignal.innerHTML=sg.cold_rebound_now?'冷反弹信号：启用':'冷反弹信号：普通';
     coldZodiac.innerHTML=(sg.cold_zodiacs||[]).length?`偏冷：${sg.cold_zodiacs.join('、')}`:'暂无';
@@ -2168,7 +2172,12 @@ def train_correction_after_new_draw(issue, actual_special):
             head_err=bool(diag["killed_head"]) and head_of(actual)==diag["killed_head"]
             trend_failed=(rank>cutoff) or cold_err or head_err
             if trend_failed:
-                if _update_correction_model(state,actual,strategy,persist=False):
+                severity=1.0
+                if rank>27: severity+=.55
+                elif rank>20: severity+=.25
+                if cold_err: severity+=.20
+                if head_err: severity+=.20
+                if _update_correction_model(state,actual,strategy,persist=False,sample_weight=severity):
                     updated.append(strategy)
 
         for strategy in updated:
@@ -2205,10 +2214,14 @@ def bootstrap_correction_models():
                 cutoff=20 if strategy=="20" else 27
                 ranked=diag["ranked49"]
                 rank=(ranked.index(actual)+1) if actual in ranked else 99
-                failed=(rank>cutoff or actual_z in set(diag["coldest3"])
-                        or (diag["killed_head"] and head_of(actual)==diag["killed_head"]))
+                cold_err=actual_z in set(diag["coldest3"])
+                head_err=bool(diag["killed_head"]) and head_of(actual)==diag["killed_head"]
+                failed=(rank>cutoff or cold_err or head_err)
                 if failed:
-                    _update_correction_model(state,actual,strategy,persist=False)
+                    severity=1.0+(.55 if rank>27 else (.25 if rank>20 else 0.0))
+                    severity+=.20 if cold_err else 0.0
+                    severity+=.20 if head_err else 0.0
+                    _update_correction_model(state,actual,strategy,persist=False,sample_weight=severity)
         for strategy in need:
             save_correction_state(strategy)
         print(f"[CORRECT] bootstrap complete status={_correction_status()}",flush=True)
@@ -2282,11 +2295,11 @@ def _correction_probs(r,strategy):
     X=_ai_feature_matrix(r)
     return _softmax_probs_from_X(X,w)
 
-def _update_correction_model(state_rows, actual_special, strategy, persist=True):
-    """Train ONLY on cases where the trend-side decision failed.
+def _update_correction_model(state_rows, actual_special, strategy, persist=True, sample_weight=1.0):
+    """Train ONLY on trend failures, with rank-severity weighting.
 
-    This deliberately gives AI a different job from the trend model:
-    learn what the trend model tends to miss, instead of copying it.
+    The objective is still to raise the actual special number in the 01-49
+    ranking, but a 28+ miss receives more learning pressure than a 21-27 miss.
     """
     strategy=str(strategy)
     if not state_rows or strategy not in correction_state:
@@ -2309,6 +2322,7 @@ def _update_correction_model(state_rows, actual_special, strategy, persist=True)
 
     base_lr=.072 if strategy=="20" else .058
     lr=base_lr/((1.0+steps/45.0)**0.5)
+    lr*=max(.65,min(1.85,float(sample_weight)))
     for j in range(len(w)):
         w[j]=(1.0-0.0007*lr)*w[j]+lr*grad[j]
         w[j]=max(-5.5,min(5.5,w[j]))
@@ -2650,6 +2664,69 @@ def _hot_zodiac_scores(r, profile):
     return score
 
 
+
+def _zodiac_mass_from_number_probs(probs,r):
+    zmap=_number_zodiac_map(r)
+    mass={z:0.0 for z in ALL_ZODIACS}
+    for n,p in probs.items():
+        z=zmap.get(int(n))
+        if z in mass:
+            mass[z]+=float(p)
+    return mass
+
+def _final_coldest3(r, profile, strategy, zheat):
+    """Choose the FINAL coldest 3 after a reversal-rescue check.
+
+    A zodiac is not rescued merely because it is cold. Rescue requires
+    independent forward support from transition + correction AI / 7-position
+    structure. The final result still excludes exactly 3 zodiacs.
+    """
+    base_rank=sorted(ALL_ZODIACS,key=lambda z:(zheat.get(z,0.0),z))
+    raw_cold=base_rank[:3]
+
+    trans,_tm=_zodiac_transition_model(r)
+    corr=_correction_probs(r,strategy)
+    corr_z=_zodiac_mass_from_number_probs(corr,r)
+    corr_n=_norm_values(corr_z,ALL_ZODIACS)
+
+    # Current 7-position structure: zodiacs absent recently get no free rescue;
+    # zodiacs with transition support and recent structural presence gain support.
+    presence=Counter()
+    for i,x in enumerate(r[:12]):
+        w=exp_weight(i,4)
+        for z in _draw_zodiac_set(x):
+            presence[z]+=w
+    presence_n=_norm_values(presence,ALL_ZODIACS)
+
+    rescue_score={
+      z:.50*trans.get(z,.5)+.32*corr_n.get(z,.5)+.18*presence_n.get(z,.5)
+      for z in ALL_ZODIACS
+    }
+    trans_top=set(sorted(ALL_ZODIACS,key=lambda z:(-trans.get(z,0),z))[:3])
+    corr_top=set(sorted(ALL_ZODIACS,key=lambda z:(-corr_n.get(z,0),z))[:4])
+
+    rescued=[]
+    for z in raw_cold:
+        # Need at least two independent reasons, not just one hot-looking feature.
+        reasons=int(z in trans_top)+int(z in corr_top)+int(presence_n.get(z,.5)>=.62)
+        if reasons>=2 and rescue_score.get(z,0)>=.60:
+            rescued.append(z)
+
+    # Re-rank coldness after applying only a modest rescue bump.
+    adjusted=dict(zheat)
+    for z in rescued:
+        adjusted[z]+=0.18+0.10*rescue_score.get(z,.5)
+
+    final3=sorted(ALL_ZODIACS,key=lambda z:(adjusted.get(z,0.0),z))[:3]
+    # Exactly three are always excluded; rescued zodiacs can still remain if
+    # they are overwhelmingly the weakest after the rescue test.
+    return final3,{
+      "raw_coldest3":raw_cold,
+      "rescued_zodiacs":[z for z in rescued if z not in final3],
+      "rescue_scores":{z:round(rescue_score.get(z,0),3) for z in raw_cold},
+      "final_coldest3":final3
+    }
+
 def _ai_head_strength(r):
     with ai_lock:
         ready=bool(ai_state.get("ready",False))
@@ -2684,6 +2761,75 @@ def _combined_04_head_decision(r, force=False):
       "combined":{"0头":round(h0,3),"4头":round(h4,3)},
       "trend":{"0头":round(float(trend_raw.get("0头",0)),3),"4头":round(float(trend_raw.get("4头",0)),3)},
       "ai":{"0头":round(float(ai_raw.get("0头",0)),3),"4头":round(float(ai_raw.get("4头",0)),3)}
+    }
+
+
+def _head_kill_history(profile="27码十期",window=40):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT killed_head,head_kill_success
+                              FROM strategy_audit
+                              WHERE profile=? AND settled=1
+                                AND killed_head IN ('0头','4头')
+                                AND head_kill_success IS NOT NULL
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(window))).fetchall()
+        finally:
+            c.close()
+    stats={}
+    for h in ("0头","4头"):
+        vals=[int(x["head_kill_success"] or 0) for x in rows if str(x["killed_head"])==h]
+        n=len(vals); hits=sum(vals)
+        # Beta(2,2) smoothing avoids a tiny sample dominating a ten-period block.
+        rate=(hits+2)/(n+4)
+        stats[h]={"n":n,"hits":hits,"rate":rate}
+    return stats
+
+def _correction_head_strength(r,strategy="27"):
+    probs=_correction_probs(r,strategy)
+    mass={h:0.0 for h in HEAD_BASE}
+    for n,p in probs.items():
+        mass[head_of(int(n))]+=float(p)
+    # Normalize for different theoretical head sizes.
+    return {h:mass[h]/max(HEAD_BASE[h],1e-9) for h in HEAD_BASE}
+
+def _vote_04_head_decision(r, force=True, profile="27码十期"):
+    """Three-way head decision.
+
+    Vote 1: trend head model
+    Vote 2: correction AI
+    Vote 3: actual historical kill success for killing 0 vs 4
+    """
+    trend_raw=_head_trend(r).get("strength",{})
+    corr_raw=_correction_head_strength(r,"27")
+    hist=_head_kill_history(profile,40)
+
+    trend_vote="0头" if float(trend_raw.get("0头",1)) <= float(trend_raw.get("4头",1)) else "4头"
+    corr_vote="0头" if float(corr_raw.get("0头",1)) <= float(corr_raw.get("4头",1)) else "4头"
+    hist_vote="0头" if hist["0头"]["rate"] >= hist["4头"]["rate"] else "4头"
+
+    votes=Counter([trend_vote,corr_vote,hist_vote])
+    if votes["0头"]!=votes["4头"]:
+        killed="0头" if votes["0头"]>votes["4头"] else "4头"
+    else:
+        # Theoretically unreachable with 3 votes, but keep deterministic fallback.
+        killed=trend_vote
+
+    # Confidence is consensus + historical separation.
+    hist_gap=abs(hist["0头"]["rate"]-hist["4头"]["rate"])
+    confidence=(max(votes.values())/3.0)*.72+min(.28,hist_gap)
+    return {
+      "killed_head":killed if force else (killed if confidence>=.58 else ""),
+      "forced":bool(force),
+      "method":"三票制",
+      "votes":{"趋势":trend_vote,"纠错AI":corr_vote,"历史成功率":hist_vote},
+      "vote_count":{"0头":votes["0头"],"4头":votes["4头"]},
+      "confidence":round(confidence,3),
+      "history":{
+        h:{"n":hist[h]["n"],"hits":hist[h]["hits"],"rate":round(hist[h]["rate"]*100,1)}
+        for h in ("0头","4头")
+      }
     }
 
 def _trend_only_number_scores(r, profile, strategy="20"):
@@ -2789,7 +2935,7 @@ def _trend_diagnostics(r,profile,strategy="20"):
     ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
     coldest3=ranked_z[-3:]
     if str(strategy)=="27":
-        head=_combined_04_head_decision(r,force=True)
+        head=_vote_04_head_decision(r,force=True,profile="27码十期")
         cutoff=27
     else:
         head=_combined_04_head_decision(r,force=False)
@@ -2807,16 +2953,18 @@ def _trend_diagnostics(r,profile,strategy="20"):
 def _predict20_hot(r, profile):
     """20码：每期一换。
 
-    - 最冷3肖彻底不取
-    - 剩余9肖默认各2码 = 18
-    - 前3热肖最多3码，其中两个热肖各加1个 = 20
-    - 0/4头若AI+趋势判断一头明显更弱，20码彻底杀掉该头
+    - 最终最冷3肖彻底不取，但先做冷肖反转救回判断
+    - 剩余9肖默认各2码
+    - 前3热肖最多3码
+    - 弱0/4头仍可直接杀
+    - 21~27名进入纠错复审，最多替换2个同生肖弱码
     """
     score,zmap,zheat,ctx=_selection_number_scores(r,profile,"20")
-    ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
-    allowed=ranked_z[:9]
-    top3=ranked_z[:3]
-    coldest3=ranked_z[-3:]
+
+    coldest3,cold_meta=_final_coldest3(r,profile,"20",zheat)
+    allowed=[z for z in sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
+             if z not in set(coldest3)]
+    top3=allowed[:3]
 
     head=_combined_04_head_decision(r,force=False)
     killed=head["killed_head"]
@@ -2844,7 +2992,7 @@ def _predict20_hot(r, profile):
         selected.extend(take)
         groups.append({"zodiac":z,"codes":take,"quota":quotas[z]})
 
-    # Defensive fill: never use coldest3 and never violate the killed head.
+    # Defensive fill while honoring final coldest3 + killed head.
     used=set(selected)
     if len(selected)<20:
         for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
@@ -2861,15 +3009,77 @@ def _predict20_hot(r, profile):
                 break
 
     ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+
+    # -------- 21~27边缘救援 --------
+    # We keep the user's zodiac quotas intact by swapping only within the SAME zodiac.
+    corr=_correction_probs(r,"20")
+    corr_n=_norm_values(corr,range(1,50))
     ztrans,ztrans_meta=_zodiac_transition_model(r)
-    return selected[:20],{
+    trend=_trend_profiles(r)
+    combo_n=_norm_values(trend.get("wave_parity",{}),WAVE_PARITY_KEYS)
+
+    def rescue_metric(n):
+        z=zmap.get(n)
+        return (
+          .52*corr_n.get(n,.5)
+          +.28*ztrans.get(z,.5)
+          +.20*combo_n.get(wave_parity_of(n),.5)
+        )
+
+    rescue_swaps=[]
+    edge=[n for n in ranked49[20:27]
+          if n not in selected
+          and zmap.get(n) in allowed
+          and (not killed or head_of(n)!=killed)]
+    for cand in sorted(edge,key=lambda n:(-rescue_metric(n),ranked49.index(n))):
+        if len(rescue_swaps)>=2:
+            break
+        z=zmap.get(cand)
+        same=[n for n in selected if zmap.get(n)==z]
+        if not same:
+            continue
+        weakest=min(same,key=lambda n:(rescue_metric(n),score.get(n,0)))
+        gain=rescue_metric(cand)-rescue_metric(weakest)
+        # Strong independent correction signal is required.
+        if rescue_metric(cand)>=.62 and gain>=.10:
+            selected[selected.index(weakest)]=cand
+            rescue_swaps.append({
+              "in":cand,"out":weakest,"zodiac":z,
+              "gain":round(gain,3)
+            })
+
+    # preserve exact 20 unique codes
+    dedup=[]
+    seen=set()
+    for n in selected:
+        if n not in seen:
+            dedup.append(n); seen.add(n)
+    if len(dedup)<20:
+        for n in ranked49:
+            if n in seen or zmap.get(n) not in allowed:
+                continue
+            if killed and head_of(n)==killed:
+                continue
+            z=zmap.get(n)
+            cap=3 if z in top3 else 2
+            if sum(1 for x in dedup if zmap.get(x)==z)>=cap:
+                continue
+            dedup.append(n); seen.add(n)
+            if len(dedup)>=20:
+                break
+    selected=dedup[:20]
+
+    return selected,{
       "hot_zodiacs":allowed,
       "top3_hot":top3,
       "coldest3":coldest3,
+      "cold_meta":cold_meta,
+      "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
       "killed_head":killed,
       "head_decision":head,
       "groups":groups,
       "ranked49":ranked49,
+      "edge_rescue_swaps":rescue_swaps,
       "regime":(ctx.get("regime") or {}).get("name","平衡"),
       "correction_trained":ctx.get("correction_trained",0),
       "correction_weight_pct":ctx.get("correction_weight_pct",0),
@@ -2917,23 +3127,27 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """27码：10期固定一组，AI+趋势必杀0头/4头其中一头。"""
+    """27码：10期固定一组；三票制必杀0头/4头其中一头。"""
     br,start,end=_tenblock_state(r,target_issue)
 
-    # Reuse the first locked list in the block, guaranteeing "十期一换".
+    # Reuse the already locked list inside the same 10-period block.
     existing=_existing_27_block_codes(start,end)
     score,zmap,zheat,ctx=_selection_number_scores(br,profile,"27")
-    ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
-    allowed=ranked_z[:9]      # 热肖 + 中位肖
-    coldest3=ranked_z[-3:]
-    head=_combined_04_head_decision(br,force=True)
+
+    coldest3,cold_meta=_final_coldest3(br,profile,"27",zheat)
+    allowed=[z for z in sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
+             if z not in set(coldest3)]
+
+    head=_vote_04_head_decision(br,force=True,profile="27码十期")
     killed=head["killed_head"]
+    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
 
     if existing:
-        ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
         return existing[:27],{
           "block_start":str(start),"block_end":str(end),
           "hot_mid_zodiacs":allowed,"coldest3":coldest3,
+          "cold_meta":cold_meta,
+          "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
           "killed_head":killed,"head_decision":head,
           "reused":True,
           "ranked49":ranked49,
@@ -2954,21 +3168,20 @@ def _predict27_tenblock(r, profile, target_issue):
         selected.extend(take)
         groups.append({"zodiac":z,"codes":take})
 
-    # Normally 9肖×3码 = 27 exactly after one head is killed.
-    # If a rare mapping shortage occurs, fill only from the same non-coldest 9肖.
     used=set(selected)
     if len(selected)<27:
-        for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
+        for n in ranked49:
             if n in used or zmap.get(n) not in allowed or head_of(n)==killed:
                 continue
             selected.append(n); used.add(n)
             if len(selected)>=27:
                 break
 
-    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
     return selected[:27],{
       "block_start":str(start),"block_end":str(end),
       "hot_mid_zodiacs":allowed,"coldest3":coldest3,
+      "cold_meta":cold_meta,
+      "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
       "killed_head":killed,"head_decision":head,
       "groups":groups,"reused":False,
       "ranked49":ranked49,
@@ -2977,7 +3190,6 @@ def _predict27_tenblock(r, profile, target_issue):
       "correction_weight_pct":ctx.get("correction_weight_pct",0),
       "trend_weight_pct":ctx.get("trend_weight_pct",0)
     }
-
 
 def _record_strategy_audit(target_issue,profile,selected,meta):
     ranked=meta.get("ranked49") or []
@@ -3053,6 +3265,7 @@ def _strategy_diagnostics(profile,window=60):
     reasons=Counter()
     cold_errors=0
     kill_n=kill_success=0
+    kill_by_head={"0头":{"n":0,"hits":0},"4头":{"n":0,"hits":0}}
     for x in rows:
         rank=int(x["actual_rank"] or 0)
         if 1<=rank<=10: buckets["1-10"]+=1
@@ -3063,7 +3276,14 @@ def _strategy_diagnostics(profile,window=60):
         cold_errors+=int(x["cold_zodiac_error"] or 0)
         if x["head_kill_success"] is not None:
             kill_n+=1
-            kill_success+=int(x["head_kill_success"] or 0)
+            hs=int(x["head_kill_success"] or 0)
+            kill_success+=hs
+            kh=str(x["killed_head"] or "")
+            if kh in kill_by_head:
+                kill_by_head[kh]["n"]+=1
+                kill_by_head[kh]["hits"]+=hs
+    for kh,v in kill_by_head.items():
+        v["rate"]=round(100*v["hits"]/v["n"],1) if v["n"] else 0.0
     n=len(rows)
     return {
       "n":n,
@@ -3073,6 +3293,7 @@ def _strategy_diagnostics(profile,window=60):
       "head_kill_n":kill_n,
       "head_kill_success":kill_success,
       "head_kill_rate":round(100*kill_success/kill_n,1) if kill_n else 0.0,
+      "head_kill_by_head":kill_by_head,
       "failure_reasons":dict(reasons)
     }
 
@@ -3758,7 +3979,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v31",
+      "version":"v32",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -4249,7 +4470,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"趋势主攻 + AI专门纠错 · 20码/27码分开学习"
+        "mode":"趋势主攻 + AI纠错 · 冷肖反转复审 + 21-27边缘救援 + 27码三票杀头"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
