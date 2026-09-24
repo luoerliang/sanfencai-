@@ -202,6 +202,7 @@ TEN27_V7_MOBILE_PROFILE="27V7后4"
 TEN27_V7_28_PROFILE="27V7第28码"
 TEN27_V7_RAW_PROFILE="27V7原始Top27"
 B27_V50_PROFILE="27B每期动态v50"
+B27_V51_PROFILE="27B动态杀头v51"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -533,7 +534,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">B组27码 · 每期动态</div>
-        <div class="sectionHint">刚开奖 + 前10期实时窗口 · 每期开奖后重算下一期</div>
+        <div class="sectionHint">刚开奖 + 前10期实时窗口 · 每期动态杀0/1/2/3/4其中一头</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
@@ -648,7 +649,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v50双轨验证：A组27码完全保留现有10期长码规则；B组27码在每期开奖入库后，用“刚开奖+前10期”11期实时窗口重新计算下一期，同时继续使用T/Z/C/W/A长期学习结果。A/B全部开奖前锁单，开奖后自动结算，后台继续学习、纠错和远程备份。</div>
+  <div class="foot">v51：A组继续按10期长码规则运行；B组每期开奖后使用“刚开奖+前10期”实时窗口，并结合T/Z/C/W/A长期学习，动态判断0/1/2/3/4五个头中相对最弱的一头并排除。头数强弱按理论头数基准校正，避免0头因只有9个号码而天然被判弱。A/B全部开奖前锁单，开奖后自动结算。</div>
 </div>
 
 <script>
@@ -798,7 +799,8 @@ async function loadMain(){
     const wlast=wb.length?wb[0]:'--';
     code27BWindow.textContent=`窗口 ${wfirst} — ${wlast} · ${m27b.window??0}期`;
     code27BRecord.textContent=`实盘已开 ${s27b.n??0}期 · 中 ${s27b.hits??0}期 · 错 ${s27b.misses??0}期`;
-    code27BMeta.textContent=`最近20 ${s27b.recent20_hits??0}/${s27b.recent20_n??0} = ${s27b.recent20_rate??0}% · 每期重算`;
+    const hs=m27b.head_strength||{};
+    code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 杀头验证 ${s27b.head_kill_success??0}/${s27b.head_kill_n??0}=${s27b.head_kill_rate??0}%（基准${s27b.head_kill_baseline??0}%） · 最近20 ${s27b.recent20_hits??0}/${s27b.recent20_n??0}=${s27b.recent20_rate??0}%`;
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
       <div class="zpairName">${p.zodiac}</div>
@@ -6620,19 +6622,16 @@ def _tenblock_state(r,target_issue):
 
 
 def _predict27_dynamic_b(r, profile):
-    """B组27码：每期开奖后立即重算下一期。
+    """B组27码：每期开奖后实时重算，并动态杀0/1/2/3/4其中一头。
 
-    核心思想：
-    - 最新开奖 + 往前10期 = 11期实时窗口；
-    - T/Z/C/W/A 全历史学习结果作为底座；
-    - 最近11期的号码、波色单双、头数、生肖状态负责快速调节；
-    - 每一期都重新生成27码并在开奖前锁单。
+    头数判断不直接看原始出现次数，而按理论基准校正：
+    0头有9码，其余头各10码，避免0头天然因为号码少而总被误判最弱。
     """
-    nums=range(1,50)
+    nums=list(range(1,50))
     recent=list(r[:11])
     zmap=_number_zodiac_map(r)
 
-    # 1) 全历史多策略池：稳定底座
+    # 1) 全历史多策略池
     specialists=_specialist_model_scores(r,profile,"20")
     perf=_pool_performance()
     weights=perf.get("weights") or {k:.20 for k in specialists}
@@ -6641,7 +6640,7 @@ def _predict27_dynamic_b(r, profile):
         pool[n]=sum(float(weights.get(k,.20))*float(specialists[k].get(n,.5)) for k in specialists)
     pool=_norm_values(pool,nums)
 
-    # 2) 最近11期实时号码强度：最新开奖权重最高
+    # 2) 最近11期号码强度
     rc=Counter()
     for i,x in enumerate(recent):
         try:
@@ -6650,20 +6649,17 @@ def _predict27_dynamic_b(r, profile):
             pass
     recent_num=_norm_values(rc,nums)
 
-    # 3) 最近11期结构：波色单双、头数、生肖
-    wp=Counter()
-    hd=Counter()
-    zc=Counter()
-    totalw=0.0
+    # 3) 最近11期结构
+    wp=Counter(); hd11=Counter(); zc=Counter(); total11=0.0
     for i,x in enumerate(recent):
         try:
             n=int(x["special"])
         except Exception:
             continue
         w=exp_weight(i,4.2)
-        totalw+=w
+        total11+=w
         wp[wave_parity_of(n)]+=w
-        hd[head_of(n)]+=w
+        hd11[head_of(n)]+=w
         z=normalize_z(x["z7"] or "")
         if z:
             zc[z]+=w
@@ -6671,13 +6667,13 @@ def _predict27_dynamic_b(r, profile):
     struct={}
     for n in nums:
         z=zmap.get(n)
-        wpv=(wp.get(wave_parity_of(n),0.0)/totalw) if totalw else 0.0
-        hdv=(hd.get(head_of(n),0.0)/totalw) if totalw else 0.0
-        zv=(zc.get(z,0.0)/totalw) if (totalw and z) else 0.0
-        struct[n]=.46*wpv+.26*hdv+.28*zv
+        wpv=(wp.get(wave_parity_of(n),0.0)/total11) if total11 else 0.0
+        hv=(hd11.get(head_of(n),0.0)/total11) if total11 else 0.0
+        zv=(zc.get(z,0.0)/total11) if (total11 and z) else 0.0
+        struct[n]=.46*wpv+.26*hv+.28*zv
     struct=_norm_values(struct,nums)
 
-    # 4) 最新一期 -> 下一期的历史转移，作为实时修正
+    # 4) 最新一期 -> 下一期历史转移
     try:
         ns,_zt,_ht,_wt,_st,_pt,tmeta=_forward_transition_scores(r)
         trans=_norm_values(ns,nums)
@@ -6686,7 +6682,7 @@ def _predict27_dynamic_b(r, profile):
         trans={n:.5 for n in nums}
         trans_samples=0
 
-    # 5) 组合：实时窗口为主，但不丢掉长期学习
+    # 5) 未杀码综合分
     score={
       n:.48*pool.get(n,.5)
         +.22*recent_num.get(n,.5)
@@ -6695,28 +6691,141 @@ def _predict27_dynamic_b(r, profile):
       for n in nums
     }
     score=_norm_values(score,nums)
-    ranked=sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
+
+    # --------------------------------------------------------
+    # 动态杀一头：0/1/2/3/4全参与
+    # --------------------------------------------------------
+    heads=["0头","1头","2头","3头","4头"]
+
+    # A. 模型本身对每一头的平均强度（平均而非总和，避免头数大小偏差）
+    model_head={}
+    trans_head={}
+    for h in heads:
+        hn=[n for n in nums if head_of(n)==h]
+        model_head[h]=sum(score.get(n,.5) for n in hn)/max(1,len(hn))
+        trans_head[h]=sum(trans.get(n,.5) for n in hn)/max(1,len(hn))
+
+    # B. 最近11 / 最近30，按理论概率归一化
+    def norm_head_window(block,half):
+        c=Counter(); tw=0.0
+        for i,x in enumerate(block):
+            try:
+                n=int(x["special"])
+            except Exception:
+                continue
+            w=exp_weight(i,half)
+            c[head_of(n)]+=w
+            tw+=w
+        out={}
+        for h in heads:
+            share=(c[h]/tw) if tw else HEAD_BASE[h]
+            out[h]=share/max(HEAD_BASE[h],1e-9)
+        # normalize around the group so values are comparable
+        mean=sum(out.values())/len(out) if out else 1.0
+        return {h:(out[h]/mean if mean else 1.0) for h in heads}
+
+    h11=norm_head_window(r[:11],4.2)
+    h30=norm_head_window(r[:30],10.0)
+
+    # C. 综合头强度：越低越弱
+    # model 40% + 近11 30% + 近30 20% + 转移10%
+    # model/trans先做组内均值归一化
+    mm=sum(model_head.values())/len(model_head)
+    tm=sum(trans_head.values())/len(trans_head)
+    head_strength={}
+    for h in heads:
+        m=(model_head[h]/mm) if mm else 1.0
+        t=(trans_head[h]/tm) if tm else 1.0
+        head_strength[h]=.40*m+.30*h11[h]+.20*h30[h]+.10*t
+
+    ordered_heads=sorted(heads,key=lambda h:(head_strength[h],h))
+    killed_head=ordered_heads[0]
+    second_head=ordered_heads[1]
+    gap=float(head_strength[second_head]-head_strength[killed_head])
+
+    if gap>=.10:
+        kill_conf="强"
+    elif gap>=.05:
+        kill_conf="中"
+    else:
+        kill_conf="弱"
+
+    ranked_all=sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
+    ranked=[n for n in ranked_all if head_of(n)!=killed_head]
     selected=ranked[:27]
 
-    # Explainability for live tuning.
+    # Support explainability
     support={}
+    model_orders={}
+    for k,sm in specialists.items():
+        order=sorted(nums,key=lambda x:(-sm.get(x,-1e9),x))
+        model_orders[k]=set(order[:20])
     for n in nums:
-        support[n]=sum(
-          1 for k,sm in specialists.items()
-          if n in sorted(nums,key=lambda x:(-sm.get(x,-1e9),x))[:20]
-        )
+        support[n]=sum(1 for k in specialists if n in model_orders[k])
 
     return selected,{
-      "mode":"B组每期动态·最新开奖+前10期",
+      "mode":"B组每期动态·最新开奖+前10期·动态杀一头",
       "window":len(recent),
       "window_issues":[str(x["issue"]) for x in recent if x["issue"]],
-      "ranked49":ranked,
+      "ranked49":ranked_all,
+      "killed_head":killed_head,
+      "head_strength":{h:round(head_strength[h],3) for h in heads},
+      "head_gap":round(gap,3),
+      "head_confidence":kill_conf,
       "pool_weights_pct":{k:round(100*float(weights.get(k,.20)),1) for k in specialists},
       "transition_samples":trans_samples,
-      "top_support":{f"{n:02d}":int(support.get(n,0)) for n in ranked[:27]},
+      "top_support":{f"{n:02d}":int(support.get(n,0)) for n in selected},
       "latest_issue":str(r[0]["issue"]) if r else "",
-      "recalc_each_issue":True
+      "recalc_each_issue":True,
+      "regime":f"B动态杀{killed_head}·{kill_conf}信号",
+      "audit_regime":f"B27V51|kill={killed_head}|gap={gap:.3f}|conf={kill_conf}"
     }
+
+def _stats27b_v51(window=60):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT hit24 FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(B27_V51_PROFILE,int(window))).fetchall()
+            audits=c.execute("""SELECT killed_head,head_kill_success
+                                FROM strategy_audit
+                                WHERE profile=? AND settled=1 AND killed_head<>''
+                                ORDER BY CAST(target_issue AS INTEGER) DESC
+                                LIMIT ?""",(B27_V51_PROFILE,int(window))).fetchall()
+        finally:
+            c.close()
+
+    n=len(rows)
+    hits=sum(int(x["hit24"] or 0) for x in rows)
+    recent20=list(rows[:20])
+    h20=sum(int(x["hit24"] or 0) for x in recent20)
+
+    hk_n=len(audits)
+    hk_ok=sum(int(x["head_kill_success"] or 0) for x in audits)
+    baseline=0.0
+    if audits:
+        baseline=sum(1.0-float(HEAD_BASE.get(str(x["killed_head"]),10/49)) for x in audits)/len(audits)
+
+    rate=round(100*hk_ok/hk_n,1) if hk_n else 0.0
+    base_rate=round(100*baseline,1) if hk_n else 0.0
+    return {
+      "n":n,
+      "hits":hits,
+      "misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0,
+      "recent20_n":len(recent20),
+      "recent20_hits":h20,
+      "recent20_misses":max(0,len(recent20)-h20),
+      "recent20_rate":round(100*h20/len(recent20),1) if recent20 else 0.0,
+      "head_kill_n":hk_n,
+      "head_kill_success":hk_ok,
+      "head_kill_rate":rate,
+      "head_kill_baseline":base_rate,
+      "head_kill_edge":round(rate-base_rate,1) if hk_n else 0.0
+    }
+
 
 def _stats27b_v50(window=60):
     with db_lock:
@@ -7637,10 +7746,11 @@ def record_shadow_predictions(r):
         best_profile,_=_select_profile(r)
         c27b,_m27b=_predict27_dynamic_b(r,best_profile)
         records.append((
-            target,B27_V50_PROFILE,
+            target,B27_V51_PROFILE,
             ",".join(str(n) for n in c27b),
             "","",py
         ))
+        _record_strategy_audit(target,B27_V51_PROFILE,c27b,_m27b)
     except Exception as e:
         print(f"[27B] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -7824,7 +7934,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v50",
+      "version":"v51",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8259,7 +8369,7 @@ def build_model():
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_v7()
-    stats27b=_stats27b_v50(60)
+    stats27b=_stats27b_v51(60)
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
     # 10-period round, prediction_log may not contain that new target yet.
@@ -8351,7 +8461,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F动态19-23 + A组27长码10期 + B组27每期动态"
+        "mode":"F动态19-23 + A组27长码10期 + B组27每期动态杀一头"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
