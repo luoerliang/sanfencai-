@@ -184,6 +184,11 @@ TEN27_V4_PROFILE="27十期精确长码"
 TEN27_V4_CORE_PROFILE="27V4核心23"
 TEN27_V4_MOBILE_PROFILE="27V4机动4"
 TEN27_V4_28_PROFILE="27V4第28码"
+TEN27_V5_PROFILE="27十期严格冷肖杀码"
+TEN27_V5_CORE_PROFILE="27V5核心23"
+TEN27_V5_MOBILE_PROFILE="27V5后4"
+TEN27_V5_28_PROFILE="27V5第28码"
+F_DYNAMIC_V45_PROFILE="F动态v45"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -491,6 +496,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="miniInfoRow">
       <span id="code20Brief">每期重算</span>
       <span id="code20Fusion">F自纠错</span>
+      <span id="code20Record">已开0期 · 中0期 · 错0期</span>
     </div>
   </section>
 
@@ -704,10 +710,11 @@ async function loadMain(){
     }
     const recent=mp.recent10||[];
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
-    const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
+    const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{};
     const cs=m20.consensus||{};
     code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码 · 2/5保 ${cs.protected2_count??0}/4`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
+    code20Record.textContent=`已开 ${sF.n??0}期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fed=d.f_error_diag||{};
     fErrorRescueInfo.textContent=`F错${fed.f_misses??0} · 融合漏${fed.fusion_miss??0} · 全池错${fed.pool_all_miss??0}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
@@ -718,11 +725,11 @@ async function loadMain(){
     const roundStart=(cur27.start && String(cur27.start)!=='0')?cur27.start:(m27.block_start||'--');
     const roundEnd=(cur27.end && String(cur27.end)!=='0')?cur27.end:(m27.block_end||'--');
     const opened=Number(cur27.n??0);
-    const hits=Number(cur27.final_hits??0);
-    const misses=Math.max(0,opened-hits);
+    const hits=Number(cur27.hits??0);
+    const misses=Number(cur27.misses??Math.max(0,opened-hits));
     code27Block.textContent=`本轮 ${roundStart} — ${roundEnd}`;
     code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
-    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖各2码 · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
+    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖每肖2个杀码 · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -1125,7 +1132,7 @@ def _patch_live_cache_latest(issue, nums, zs):
     with live_cache_lock:
         data = dict(live_cache.get("data") or {})
         try:
-            next_issue = str(int(issue) + 1)
+            next_issue = _next_issue_id(issue)
         except Exception:
             next_issue = ""
         data.update({
@@ -4700,6 +4707,329 @@ def _f_failure_attribution(window=60):
 
 
 
+
+def _long27_v5_token(filt,round_start,segment=1,switches=0):
+    waves=",".join(filt.get("killed_wave_parity") or [])
+    head=str(filt.get("killed_head") or "")
+    return (
+      f"LONG27V5|waves={waves}|head={head}|round={round_start}"
+      f"|segment={int(segment)}|switches={int(switches)}"
+    )
+
+def _long27_v5_parse(token):
+    out={"waves":[],"head":"","round":"","segment":1,"switches":0}
+    t=str(token or "")
+    if not t.startswith("LONG27V5|"):
+        return out
+    for part in t.split("|")[1:]:
+        if "=" not in part:
+            continue
+        k,v=part.split("=",1)
+        if k=="waves":
+            out["waves"]=[x for x in v.split(",") if x]
+        elif k=="head":
+            out["head"]=v
+        elif k=="round":
+            out["round"]=v
+        elif k=="segment":
+            try: out["segment"]=int(v)
+            except Exception: pass
+        elif k=="switches":
+            try: out["switches"]=int(v)
+            except Exception: pass
+    return out
+
+def _long27_v5_round_context(target_issue):
+    """A code change starts a NEW 10-period round and resets hit/miss display."""
+    with db_lock:
+        c=connect()
+        try:
+            full=c.execute("""SELECT target_issue,special24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (TEN27_V5_PROFILE,)).fetchall()
+            cores=c.execute("""SELECT target_issue,special24
+                               FROM prediction_log
+                               WHERE profile=?
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                            (TEN27_V5_CORE_PROFILE,)).fetchall()
+            tails=c.execute("""SELECT target_issue,special24
+                               FROM prediction_log
+                               WHERE profile=?
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                            (TEN27_V5_MOBILE_PROFILE,)).fetchall()
+            audits=c.execute("""SELECT target_issue,regime
+                                FROM strategy_audit
+                                WHERE profile=?
+                                ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                             (TEN27_V5_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    target=str(target_issue)
+    if not full:
+        return {
+          "new_round":True,"position":1,"round_start":target,
+          "start_issue":target,"end_issue":_issue_add(target,9),
+          "core23":[],"mobile4":[],
+          "prev_filter":{"waves":[],"head":"","round":"","segment":1,"switches":0}
+        }
+
+    full_by_issue={str(x["target_issue"]):dict(x) for x in full}
+    core_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in cores}
+    tail_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in tails}
+    audit_map={str(x["target_issue"]):str(x["regime"] or "") for x in audits}
+
+    latest_issue=str(full[-1]["target_issue"])
+    latest_token=_long27_v5_parse(audit_map.get(latest_issue,""))
+    round_start=str(latest_token.get("round") or latest_issue)
+
+    current_round=[]
+    for x in full:
+        q=str(x["target_issue"])
+        tok=_long27_v5_parse(audit_map.get(q,""))
+        if str(tok.get("round") or q)==round_start:
+            current_round.append(q)
+
+    # If target already exists, return its round position.
+    if target in full_by_issue:
+        tok=_long27_v5_parse(audit_map.get(target,""))
+        rs=str(tok.get("round") or target)
+        members=[]
+        for x in full:
+            q=str(x["target_issue"])
+            t=_long27_v5_parse(audit_map.get(q,""))
+            if str(t.get("round") or q)==rs:
+                members.append(q)
+        pos=(members.index(target)+1) if target in members else 1
+        latest_for_round=members[-1] if members else target
+        return {
+          "new_round":False,"position":pos,"round_start":rs,
+          "start_issue":rs,"end_issue":_issue_add(rs,9),
+          "core23":list(core_map.get(latest_for_round) or [])[:23],
+          "mobile4":list(tail_map.get(latest_for_round) or [])[:4],
+          "prev_filter":_long27_v5_parse(audit_map.get(latest_for_round,""))
+        }
+
+    # 10 settled/predicted positions completed -> natural new round.
+    if len(current_round)>=10:
+        return {
+          "new_round":True,"position":1,"round_start":target,
+          "start_issue":target,"end_issue":_issue_add(target,9),
+          "core23":[],"mobile4":[],
+          "prev_filter":latest_token
+        }
+
+    return {
+      "new_round":False,"position":len(current_round)+1,"round_start":round_start,
+      "start_issue":round_start,"end_issue":_issue_add(round_start,9),
+      "core23":list(core_map.get(latest_issue) or [])[:23],
+      "mobile4":list(tail_map.get(latest_issue) or [])[:4],
+      "prev_filter":latest_token
+    }
+
+def _build_long27_v5_codes(r,profile,filt):
+    """Strict clarified rule.
+
+    Coldest 3 zodiacs:
+      * exactly 2 codes EACH;
+      * BOTH codes must belong to one of the TWO killed wave×parity groups;
+      * non-killed wave×parity codes are NEVER allowed for a cold zodiac.
+
+    Head rule:
+      * first try to avoid the killed 0/4 head;
+      * only if a cold zodiac cannot supply 2 killed-wave codes after the head
+        filter, use another killed-wave code from that same zodiac even if it
+        touches the killed head. This is exposed in metadata, never hidden.
+
+    Other zodiacs:
+      * max 3 each.
+    """
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    zmap=_number_zodiac_map(r)
+
+    killed_wp=set(filt.get("killed_wave_parity") or [])
+    killed_head=str(filt.get("killed_head") or "")
+    cold3=_long27_v4_cold3(r,profile)
+    coldset=set(cold3)
+
+    selected=[]
+    zcount=Counter()
+    cold_codes={}
+    head_override=[]
+
+    for z in cold3:
+        # STRICT: only the two killed wave×parity groups can enter a cold zodiac.
+        eligible=[
+          n for n in ranked
+          if zmap.get(n)==z
+          and wave_parity_of(n) in killed_wp
+        ]
+        safe=[n for n in eligible if not killed_head or head_of(n)!=killed_head]
+
+        picks=[]
+        for n in safe:
+            if n not in picks:
+                picks.append(n)
+            if len(picks)>=2:
+                break
+
+        # Still killed-wave only. If head filtering leaves fewer than 2,
+        # the cold-zodiac "2 killed codes" rule has priority as requested.
+        if len(picks)<2:
+            for n in eligible:
+                if n in picks:
+                    continue
+                picks.append(n)
+                if killed_head and head_of(n)==killed_head:
+                    head_override.append(n)
+                if len(picks)>=2:
+                    break
+
+        # No non-killed code fallback. If the mapping genuinely cannot offer
+        # 2 killed-wave codes, the shortage is kept visible instead of cheating.
+        picks=picks[:2]
+        cold_codes[z]=picks
+        for n in picks:
+            if n not in selected:
+                selected.append(n)
+                zcount[z]+=1
+
+    # Main pool: cold zodiacs cannot receive anything else.
+    for n in ranked:
+        if len(selected)>=27:
+            break
+        if n in selected:
+            continue
+        z=zmap.get(n)
+        if z in coldset:
+            continue
+        if killed_head and head_of(n)==killed_head:
+            continue
+        if wave_parity_of(n) in killed_wp:
+            continue
+        if z and zcount[z]>=3:
+            continue
+        selected.append(n)
+        if z:
+            zcount[z]+=1
+
+    # Need more? Relax only wave×parity for NON-cold zodiacs.
+    forced_fill=[]
+    if len(selected)<27:
+        for n in ranked:
+            if len(selected)>=27:
+                break
+            if n in selected:
+                continue
+            z=zmap.get(n)
+            if z in coldset:
+                continue
+            if killed_head and head_of(n)==killed_head:
+                continue
+            if z and zcount[z]>=3:
+                continue
+            selected.append(n)
+            forced_fill.append(n)
+            if z:
+                zcount[z]+=1
+
+    # Last resort for code count: keep cold-zodiac strictness untouched.
+    if len(selected)<27:
+        for n in ranked:
+            if len(selected)>=27:
+                break
+            if n in selected:
+                continue
+            z=zmap.get(n)
+            if z in coldset:
+                continue
+            if z and zcount[z]>=3:
+                continue
+            selected.append(n)
+            forced_fill.append(n)
+            if z:
+                zcount[z]+=1
+
+    selected=selected[:27]
+    shortages={z:max(0,2-len(cold_codes.get(z,[]))) for z in cold3}
+    shortages={z:v for z,v in shortages.items() if v>0}
+
+    meta=dict(meta)
+    meta.update({
+      "ranked49":ranked,
+      "filter20":filt,
+      "coldest3":cold3,
+      "cold3_codes":cold_codes,
+      "cold_defense6":[n for z in cold3 for n in cold_codes.get(z,[])],
+      "cold_shortages":shortages,
+      "cold_head_override":head_override,
+      "forced_fill":forced_fill,
+      "zodiac_counts":dict(Counter(zmap.get(n) for n in selected if zmap.get(n)))
+    })
+    return selected,score,specialists,perf,meta
+
+def _stats27_v5():
+    profiles=[TEN27_V5_PROFILE,TEN27_V5_CORE_PROFILE,TEN27_V5_MOBILE_PROFILE,TEN27_V5_28_PROFILE]
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24,settled,special24
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders})
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           tuple(profiles)).fetchall()
+            audits=c.execute("""SELECT target_issue,regime
+                                FROM strategy_audit
+                                WHERE profile=?
+                                ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                             (TEN27_V5_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    by_issue={}
+    for x in rows:
+        q=str(x["target_issue"])
+        by_issue.setdefault(q,{})[str(x["profile"])]=dict(x)
+    audit_map={str(x["target_issue"]):str(x["regime"] or "") for x in audits}
+    issues=sorted([q for q,d in by_issue.items() if TEN27_V5_PROFILE in d],key=lambda x:int(x))
+
+    groups={}
+    order=[]
+    for q in issues:
+        tok=_long27_v5_parse(audit_map.get(q,""))
+        rs=str(tok.get("round") or q)
+        if rs not in groups:
+            groups[rs]=[]
+            order.append(rs)
+        groups[rs].append(q)
+
+    summaries=[]
+    for rs in order:
+        chunk=groups[rs]
+        settled=[q for q in chunk if int(by_issue[q][TEN27_V5_PROFILE]["settled"] or 0)==1]
+        hits=sum(int(by_issue[q][TEN27_V5_PROFILE].get("hit24",0) or 0) for q in settled)
+        summaries.append({
+          "start":rs,
+          "end":_issue_add(rs,9),
+          "n":len(settled),
+          "hits":hits,
+          "misses":max(0,len(settled)-hits)
+        })
+
+    empty={"start":0,"end":0,"n":0,"hits":0,"misses":0}
+    current=summaries[-1] if summaries else dict(empty)
+    complete=next((g for g in reversed(summaries) if g["n"]>=10),None)
+    return {
+      "current":current,
+      "last_complete":complete,
+      "rounds_completed":sum(1 for g in summaries if g["n"]>=10),
+      "overall":_profile_hit_stats(TEN27_V5_PROFILE,60)
+    }
+
 def _long27_v4_window20(r):
     """Clarified user rule for one 10-period long-code round.
 
@@ -5503,27 +5833,15 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """Clarified 10-period long-code rule.
-
-    Round start:
-      - previous 20 specials -> kill 2 weakest wave×parity categories;
-      - previous 20 specials -> kill weaker 0/4 head;
-      - each zodiac max 3;
-      - coldest 3 zodiacs defend exactly 2 codes from the killed wave×parity
-        categories, but those 2 must still avoid the killed head.
-
-    During the round:
-      - keep the same 27;
-      - ONLY if the killed head itself appears 2 consecutive draws, re-check
-        the latest 20 wave×parity distribution and switch to the OTHER head,
-        then rebuild the long-code set for the remaining round.
-    """
-    rc=_long27_v4_round_context(target_issue)
+    """10-period long-code rule; any formal code change starts a fresh 10-round."""
+    rc=_long27_v5_round_context(target_issue)
     latest20=_long27_v4_window20(r)
 
     if rc.get("new_round") or not rc.get("core23"):
         active_filter=latest20
-        chosen27,_score,_spec,perf,meta=_build_long27_v4_codes(r,profile,active_filter)
+        chosen27,_score,_spec,perf,meta=_build_long27_v5_codes(r,profile,active_filter)
+        round_start=str(target_issue)
+        position=1
         segment=1
         switches=0
         switched=False
@@ -5532,6 +5850,8 @@ def _predict27_tenblock(r, profile, target_issue):
         prev=rc.get("prev_filter") or {}
         prev_waves=list(prev.get("waves") or [])
         prev_head=str(prev.get("head") or "")
+        round_start=str(rc.get("round_start") or rc.get("start_issue") or target_issue)
+        position=int(rc.get("position") or 1)
         segment=int(prev.get("segment") or 1)
         switches=int(prev.get("switches") or 0)
 
@@ -5546,13 +5866,15 @@ def _predict27_tenblock(r, profile, target_issue):
         switched=False
         head_streak=_long27_v4_head_streak(r,prev_head,3)
 
-        # User rule: killed head appears 2 straight -> trend changed.
-        # Re-check latest 20 wave×parity and kill the OTHER 0/4 head.
+        # Formal trend change: killed head appears twice in a row.
+        # Rebuild codes AND start a fresh 10-period round immediately.
         if prev_head and head_streak>=2:
             opposite="4头" if prev_head=="0头" else "0头"
             active_filter=latest20
             active_filter["killed_head"]=opposite
-            chosen27,_score,_spec,perf,meta=_build_long27_v4_codes(r,profile,active_filter)
+            chosen27,_score,_spec,perf,meta=_build_long27_v5_codes(r,profile,active_filter)
+            round_start=str(target_issue)
+            position=1
             segment+=1
             switches+=1
             switched=True
@@ -5565,6 +5887,8 @@ def _predict27_tenblock(r, profile, target_issue):
           "coldest3":_long27_v4_cold3(r,profile),
           "cold3_codes":{},
           "cold_defense6":[],
+          "cold_shortages":{},
+          "cold_head_override":[],
           "forced_fill":[]
         }
 
@@ -5578,13 +5902,13 @@ def _predict27_tenblock(r, profile, target_issue):
         selected.append(int(rescue28["code"]))
 
     model_stats=(perf.get("stats") or {}) if isinstance(perf,dict) else {}
-    audit_regime=_long27_v4_token(active_filter,segment,switches)
+    audit_regime=_long27_v5_token(active_filter,round_start,segment,switches)
 
     return selected,{
-      "block_start":rc.get("start_issue") or str(target_issue),
-      "block_end":rc.get("end_issue") or _issue_add(target_issue,9),
-      "round_position":int(rc.get("position") or 1),
-      "round_mode":"10期长码·两弱波单双·弱头·冷3肖防守2码",
+      "block_start":round_start,
+      "block_end":_issue_add(round_start,9),
+      "round_position":position,
+      "round_mode":"10期长码·变码即重开10期",
       "core23":core23,
       "mobile4":mobile4,
       "code_count":len(selected),
@@ -5598,11 +5922,9 @@ def _predict27_tenblock(r, profile, target_issue):
       "coldest3":meta.get("coldest3",[]),
       "cold3_codes":meta.get("cold3_codes",{}),
       "cold_defense6":meta.get("cold_defense6",[]),
+      "cold_shortages":meta.get("cold_shortages",{}),
+      "cold_head_override":meta.get("cold_head_override",[]),
       "forced_fill":meta.get("forced_fill",[]),
-      "head_decision":{
-        "killed_head":active_filter.get("killed_head",""),
-        "reason":"首轮前20期0/4少者；若杀头连续出2期则改杀另一头"
-      },
       "ranked49":meta.get("ranked49") or [],
       "rescue28":rescue28,
       "ten_horizon":{
@@ -5737,6 +6059,27 @@ def _profile_hit_stats(profile,window=60):
     n=len(rows)
     hits=sum(int(x["hit24"] or 0) for x in rows)
     return {"n":n,"hits":hits,"rate":round(100*hits/n,1) if n else 0.0}
+
+
+def _f_dynamic_current_stats():
+    """Honest forward stats for the current F-dynamic version only."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT hit24 FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (F_DYNAMIC_V45_PROFILE,)).fetchall()
+        finally:
+            c.close()
+    n=len(rows)
+    hits=sum(int(x["hit24"] or 0) for x in rows)
+    return {
+      "n":n,
+      "hits":hits,
+      "misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0
+    }
 
 def _stats27_blocks():
     with db_lock:
@@ -6284,11 +6627,11 @@ def record_shadow_predictions(r):
         rescue28=_m27.get("rescue28") or {}
         rescue_codes=[int(rescue28["code"])] if rescue28.get("active") and rescue28.get("code") else []
 
-        records.append((target,TEN27_V4_PROFILE,",".join(str(n) for n in c27),"","",py))
-        records.append((target,TEN27_V4_CORE_PROFILE,",".join(str(n) for n in core23),"","",py))
-        records.append((target,TEN27_V4_MOBILE_PROFILE,",".join(str(n) for n in mobile4),"","",py))
-        records.append((target,TEN27_V4_28_PROFILE,",".join(str(n) for n in rescue_codes),"","",py))
-        _record_strategy_audit(target,TEN27_V4_PROFILE,c27,_m27)
+        records.append((target,TEN27_V5_PROFILE,",".join(str(n) for n in c27),"","",py))
+        records.append((target,TEN27_V5_CORE_PROFILE,",".join(str(n) for n in core23),"","",py))
+        records.append((target,TEN27_V5_MOBILE_PROFILE,",".join(str(n) for n in mobile4),"","",py))
+        records.append((target,TEN27_V5_28_PROFILE,",".join(str(n) for n in rescue_codes),"","",py))
+        _record_strategy_audit(target,TEN27_V5_PROFILE,c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -6304,6 +6647,9 @@ def record_shadow_predictions(r):
         # easy T/Z/C/W/A/F table comparisons.
         c20f,_mf=_predict20_hot(r,best_profile)
         records.append((target,POOL_FINAL_PROFILE,",".join(str(n) for n in c20f),"","",py))
+        # Separate current-version F stats so old F rules do not contaminate
+        # "已开/中/错" shown under the live F card.
+        records.append((target,F_DYNAMIC_V45_PROFILE,",".join(str(n) for n in c20f),"","",py))
     except Exception as e:
         print(f"[POOL] locked specialist models failed: {type(e).__name__}: {e}",flush=True)
 
@@ -6451,7 +6797,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v44",
+      "version":"v45",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -6881,9 +7227,10 @@ def build_model():
     c20,meta20=_predict20_hot(r,profile)
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
     stats20=_profile_hit_stats("20码精选",60)
-    stats27=_stats27_v4()
+    statsF=_f_dynamic_current_stats()
+    stats27=_stats27_v5()
     diag20=_strategy_diagnostics("20码精选",60)
-    diag27=_strategy_diagnostics(TEN27_V4_PROFILE,60)
+    diag27=_strategy_diagnostics(TEN27_V5_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
@@ -6899,6 +7246,7 @@ def build_model():
       "strategy20":meta20,
       "strategy27":meta27,
       "stats20":stats20,
+      "statsF":statsF,
       "stats27":stats27,
       "diagnostics20":diag20,
       "diagnostics27":diag27,
@@ -7103,9 +7451,9 @@ def _build_stats_background():
 def stats_api():
     base=learner_validation_stats()
     base["code20"]=_profile_hit_stats("20码精选",60)
-    base["code27"]=_stats27_v4()
+    base["code27"]=_stats27_v5()
     base["diag20"]=_strategy_diagnostics("20码精选",60)
-    base["diag27"]=_strategy_diagnostics(TEN27_V4_PROFILE,60)
+    base["diag27"]=_strategy_diagnostics(TEN27_V5_PROFILE,60)
     base["correction"]=_correction_status()
     return jsonify(base)
 
@@ -7178,7 +7526,7 @@ def complement_status():
 def strategy_diagnostics_api():
     return jsonify({
       "code20":_strategy_diagnostics("20码精选",60),
-      "code27":_strategy_diagnostics(TEN27_V4_PROFILE,60),
+      "code27":_strategy_diagnostics(TEN27_V5_PROFILE,60),
       "correction":_correction_status()
     })
 
