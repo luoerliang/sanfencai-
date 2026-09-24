@@ -118,6 +118,12 @@ ai_state = {
     "updated_at": ""
 }
 
+correction_lock = threading.RLock()
+correction_state = {
+    "20": {"weights":[0.0]*len(AI_FEATURES),"steps":0,"trained":0,"updated_at":""},
+    "27": {"weights":[0.0]*len(AI_FEATURES),"steps":0,"trained":0,"updated_at":""}
+}
+
 auto_state = {
     "last_draw_issue": "",
     "last_prediction_issue": "",
@@ -289,7 +295,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
 
   <section class="card">
     <div class="sectionHead">
-      <div class="sectionTitle">AI × 趋势互补</div>
+      <div class="sectionTitle">旧互补对照（保留历史验证）</div>
       <div class="sectionHint">真实前瞻记录 · 不倒推开奖结果</div>
     </div>
     <div class="strategyGrid">
@@ -372,6 +378,25 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
 
   <section class="card">
     <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">趋势主攻 · AI纠错诊断</div>
+        <div class="sectionHint">只用开奖前锁定记录判断错误发生在哪一层</div>
+      </div>
+    </div>
+    <div class="strategyGrid">
+      <div class="strategyBox"><div class="strategyTitle">当前状态</div><div id="regimeState" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">20码纠错AI</div><div id="corr20State" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">20码排名落点</div><div id="rank20State" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">27码杀头验证</div><div id="head27State" class="strategyMain">--</div></div>
+    </div>
+    <div class="pillrow">
+      <span id="zodiacTransitionState" class="pill"></span>
+      <span id="failureState" class="pill"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
       <div class="sectionTitle">冷热 · 头数策略</div>
       <div class="sectionHint">历史条件成立才启用</div>
     </div>
@@ -414,7 +439,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   </section>
 
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。20码每期重算：最冷3肖不取，AI+趋势共识优先，弱0/4头可直接杀；27码每10期固定一组，AI+趋势必杀0头/4头其中一头。AI与趋势同时学习/跟踪红单、红双、蓝单、蓝双、绿单、绿双。所有命中率只统计开奖前已锁定预测，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v31改成趋势主攻、AI专门纠错：生肖转移/7码结构先决定热中冷层，基础AI负责非线性结构，纠错AI只训练趋势漏掉、冷三肖误杀、杀头误杀和排名截断案例。20码与27码使用独立纠错权重；所有诊断只统计开奖前已锁定记录，不代表未来概率。</div>
 </div>
 
 <script>
@@ -489,7 +514,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${lr.ai_mix_pct??0}%<br>特码/四肖/平特一肖/波色/大小/单双/头数/冷热/红蓝绿×单双共同训练`;
+    learningState.innerHTML=`趋势主模型 + AI纠错模型<br>基础AI继续学结构，纠错AI只学趋势漏掉的期`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -498,6 +523,14 @@ async function loadMain(){
     compMiss.textContent=`${cp.both_miss??0}/${cp.n??0}`;
     compSlots.textContent=`第二码席位：AI ${cp.ai_second_slots??6} · 趋势 ${cp.trend_second_slots??6}`;
     compFinal.textContent=(cp.final_n??0)>0?`互补在线 ${cp.final_hits??0}/${cp.final_n} = ${cp.final_rate??0}%`:'互补在线：从本版开始独立验证';
+    const dg20=d.diagnostics20||{}, dg27=d.diagnostics27||{}, cr=d.correction||{};
+    const rb=dg20.rank_buckets||{}, fr=dg20.failure_reasons||{};
+    regimeState.innerHTML=`20码：${m20.regime||'平衡'}<br>27码：${m27.regime||'平衡'}`;
+    corr20State.innerHTML=`已学错题 ${(cr['20']||{}).trained??0} 次<br>当前纠错权重 ${m20.correction_weight_pct??0}%`;
+    rank20State.innerHTML=`1-10 ${rb['1-10']??0} · 11-20 ${rb['11-20']??0}<br>21-27 ${rb['21-27']??0} · 28+ ${rb['28+']??0}`;
+    head27State.innerHTML=`成功 ${dg27.head_kill_success??0}/${dg27.head_kill_n??0}<br>${dg27.head_kill_rate??0}%`;
+    zodiacTransitionState.textContent=`生肖转移优先：${(m20.zodiac_transition_top||[]).join('、')||'--'}`;
+    failureState.textContent=`冷三肖误杀 ${dg20.cold_zodiac_errors??0} · 底层排序 ${fr['底层排序']??0}`;
     const sg=d.strategy||{};
     coldSignal.innerHTML=sg.cold_rebound_now?'冷反弹信号：启用':'冷反弹信号：普通';
     coldZodiac.innerHTML=(sg.cold_zodiacs||[]).length?`偏冷：${sg.cold_zodiacs.join('、')}`:'暂无';
@@ -517,7 +550,8 @@ async function loadStats(){
     const r=await fetch('/api/stats?_='+Date.now(),{cache:'no-store'});
     const st=await r.json();
     const c20=st.code20||{}, c27=st.code27||{}, ov27=c27.overall||{};
-    statsHint.textContent=`20码实盘 ${c20.hits??0}/${c20.n??0} · 27码实盘 ${ov27.hits??0}/${ov27.n??0}`;
+    const d20=st.diag20||{}, d27=st.diag27||{};
+    statsHint.textContent=`20码 ${c20.hits??0}/${c20.n??0} · 27码 ${ov27.hits??0}/${ov27.n??0} · 冷三肖误杀 ${d20.cold_zodiac_errors??0}`;
     if(st.building){
       hit22.textContent='计算中'; err22.textContent='';
       hit4.textContent='计算中'; err4.textContent='';
@@ -537,7 +571,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${a.ai_mix_pct??0}%<br>AI实盘 ${f.ai_rate60??n.hit24??0}% · 对比${f.benchmark_profile||'统计'} ${f.stat_rate60??0}%`;
+    learningState.innerHTML=`趋势主模型 + AI纠错模型<br>AI不再和趋势做同一件事`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -638,6 +672,36 @@ def init_db():
           historical_validation_n INTEGER DEFAULT 0,
           historical_hit24 REAL DEFAULT 0.0,
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS correction_model(
+          strategy TEXT PRIMARY KEY,
+          weights TEXT NOT NULL,
+          steps INTEGER DEFAULT 0,
+          trained INTEGER DEFAULT 0,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )""")
+        for _strategy in ("20","27"):
+            c.execute("""INSERT OR IGNORE INTO correction_model
+              (strategy,weights,steps,trained)
+              VALUES (?,?,0,0)""",(_strategy,json.dumps([0.0]*len(AI_FEATURES))))
+        c.execute("""CREATE TABLE IF NOT EXISTS strategy_audit(
+          target_issue TEXT NOT NULL,
+          profile TEXT NOT NULL,
+          ranked49 TEXT,
+          selected_codes TEXT,
+          excluded_zodiacs TEXT,
+          killed_head TEXT,
+          regime TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          settled INTEGER DEFAULT 0,
+          actual_special INTEGER,
+          actual_zodiac TEXT,
+          actual_rank INTEGER,
+          selected_hit INTEGER,
+          cold_zodiac_error INTEGER,
+          head_kill_success INTEGER,
+          failure_reason TEXT,
+          PRIMARY KEY(target_issue,profile)
         )""")
         c.execute("""INSERT OR IGNORE INTO ai_model
           (id,weights,steps,trained,last_issue,lr)
@@ -2080,11 +2144,195 @@ def bootstrap_ai_history():
     retrain_ai_rolling_100("boot")
 
 
+
+def train_correction_after_new_draw(issue, actual_special):
+    """Use the exact state that existed before the just-arrived draw."""
+    try:
+        rows=recent_rows(900)
+        if not rows or str(rows[0]["issue"])!=str(issue):
+            return
+        state=rows[1:]
+        if len(state)<120:
+            return
+        profile,_=_select_profile(state)
+        actual=int(actual_special)
+        actual_z=normalize_z(rows[0]["z7"] or "")
+        updated=[]
+
+        for strategy in ("20","27"):
+            diag=_trend_diagnostics(state,profile,strategy)
+            cutoff=20 if strategy=="20" else 27
+            ranked=diag["ranked49"]
+            rank=(ranked.index(actual)+1) if actual in ranked else 99
+            cold_err=actual_z in set(diag["coldest3"])
+            head_err=bool(diag["killed_head"]) and head_of(actual)==diag["killed_head"]
+            trend_failed=(rank>cutoff) or cold_err or head_err
+            if trend_failed:
+                if _update_correction_model(state,actual,strategy,persist=False):
+                    updated.append(strategy)
+
+        for strategy in updated:
+            save_correction_state(strategy)
+        if updated:
+            print(f"[CORRECT] issue={issue} trained={','.join(updated)}",flush=True)
+    except Exception as e:
+        print(f"[CORRECT] online failed: {type(e).__name__}: {e}",flush=True)
+
+def bootstrap_correction_models():
+    """Small walk-forward bootstrap; validation numbers are NOT backfilled.
+
+    It only initializes the correction brain from historical trend failures.
+    Real forward validation still starts when the version is actually running.
+    """
+    with correction_lock:
+        need=[k for k,v in correction_state.items() if int(v.get("trained",0))==0]
+    if not need:
+        return
+    try:
+        rows=recent_rows(320)
+        if len(rows)<180:
+            return
+        # 30 historical walk-forward targets keeps startup cost controlled.
+        for k in range(29,-1,-1):
+            state=rows[k+1:]
+            if len(state)<140:
+                continue
+            actual=int(rows[k]["special"])
+            actual_z=normalize_z(rows[k]["z7"] or "")
+            profile="趋势快"
+            for strategy in list(need):
+                diag=_trend_diagnostics(state,profile,strategy)
+                cutoff=20 if strategy=="20" else 27
+                ranked=diag["ranked49"]
+                rank=(ranked.index(actual)+1) if actual in ranked else 99
+                failed=(rank>cutoff or actual_z in set(diag["coldest3"])
+                        or (diag["killed_head"] and head_of(actual)==diag["killed_head"]))
+                if failed:
+                    _update_correction_model(state,actual,strategy,persist=False)
+        for strategy in need:
+            save_correction_state(strategy)
+        print(f"[CORRECT] bootstrap complete status={_correction_status()}",flush=True)
+    except Exception as e:
+        print(f"[CORRECT] bootstrap failed: {type(e).__name__}: {e}",flush=True)
+
 def train_ai_after_new_draw(issue, nums):
-    """After each draw, re-train on the latest rolling 100 completed draws."""
+    """After each draw: base AI rolling refit + error-correction AI update."""
     retrain_ai_rolling_100(str(issue))
+    train_correction_after_new_draw(str(issue),int(nums[6]))
 
 
+
+
+def load_correction_state():
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("SELECT * FROM correction_model").fetchall()
+        finally:
+            c.close()
+    with correction_lock:
+        for row in rows:
+            strategy=str(row["strategy"])
+            if strategy not in correction_state:
+                continue
+            try:
+                w=json.loads(row["weights"] or "[]")
+            except Exception:
+                w=[]
+            if len(w)<len(AI_FEATURES):
+                w=list(w)+[0.0]*(len(AI_FEATURES)-len(w))
+            elif len(w)>len(AI_FEATURES):
+                w=list(w)[:len(AI_FEATURES)]
+            correction_state[strategy]={
+              "weights":[float(x) for x in w],
+              "steps":int(row["steps"] or 0),
+              "trained":int(row["trained"] or 0),
+              "updated_at":str(row["updated_at"] or "")
+            }
+
+def save_correction_state(strategy):
+    if strategy not in correction_state:
+        return
+    with correction_lock:
+        st=dict(correction_state[strategy])
+    with db_lock:
+        c=connect()
+        try:
+            c.execute("""INSERT INTO correction_model(strategy,weights,steps,trained,updated_at)
+                         VALUES (?,?,?,?,CURRENT_TIMESTAMP)
+                         ON CONFLICT(strategy) DO UPDATE SET
+                           weights=excluded.weights,
+                           steps=excluded.steps,
+                           trained=excluded.trained,
+                           updated_at=CURRENT_TIMESTAMP""",
+                      (strategy,json.dumps(st["weights"],separators=(",",":")),
+                       int(st["steps"]),int(st["trained"])))
+            c.commit()
+        finally:
+            c.close()
+
+def _correction_probs(r,strategy):
+    strategy=str(strategy)
+    with correction_lock:
+        st=correction_state.get(strategy) or {"weights":[0.0]*len(AI_FEATURES),"trained":0}
+        w=list(st["weights"])
+        trained=int(st["trained"])
+    if trained<=0:
+        return {n:1/49.0 for n in range(1,50)}
+    X=_ai_feature_matrix(r)
+    return _softmax_probs_from_X(X,w)
+
+def _update_correction_model(state_rows, actual_special, strategy, persist=True):
+    """Train ONLY on cases where the trend-side decision failed.
+
+    This deliberately gives AI a different job from the trend model:
+    learn what the trend model tends to miss, instead of copying it.
+    """
+    strategy=str(strategy)
+    if not state_rows or strategy not in correction_state:
+        return False
+    X=_ai_feature_matrix(state_rows)
+    with correction_lock:
+        st=correction_state[strategy]
+        w=list(st["weights"])
+        steps=int(st["steps"])
+        trained=int(st["trained"])
+    probs=_softmax_probs_from_X(X,w)
+    y=int(actual_special)
+
+    expected=[0.0]*len(AI_FEATURES)
+    for n,p in probs.items():
+        xn=X[n]
+        for j,v in enumerate(xn):
+            expected[j]+=p*v
+    grad=[X[y][j]-expected[j] for j in range(len(AI_FEATURES))]
+
+    base_lr=.072 if strategy=="20" else .058
+    lr=base_lr/((1.0+steps/45.0)**0.5)
+    for j in range(len(w)):
+        w[j]=(1.0-0.0007*lr)*w[j]+lr*grad[j]
+        w[j]=max(-5.5,min(5.5,w[j]))
+
+    with correction_lock:
+        correction_state[strategy]={
+          "weights":w,
+          "steps":steps+1,
+          "trained":trained+1,
+          "updated_at":time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    if persist:
+        save_correction_state(strategy)
+    return True
+
+def _correction_status():
+    with correction_lock:
+        return {
+          k:{
+            "trained":int(v.get("trained",0)),
+            "steps":int(v.get("steps",0)),
+            "updated_at":v.get("updated_at","")
+          } for k,v in correction_state.items()
+        }
 
 def _rate_for_profile(profile, window):
     with db_lock:
@@ -2262,6 +2510,86 @@ def complement_matrix(window=60, benchmark_profile=None):
     }
 
 
+
+def _zodiac_transition_model(r):
+    """Independent zodiac transition model for the next SPECIAL zodiac.
+
+    It looks at:
+    - latest special zodiac
+    - all 7 zodiacs in the latest draw
+    - previous special-zodiac context
+    - head / wave similarity
+    and learns historical state -> next-special-zodiac transitions.
+    """
+    score=defaultdict(float)
+    if len(r)<60:
+        return {z:.5 for z in ALL_ZODIACS},{"samples":0}
+
+    cur=r[0]
+    cur_z=normalize_z(cur["z7"] or "")
+    cur_set=_draw_zodiac_set(cur)
+    prev_z=normalize_z(r[1]["z7"] or "") if len(r)>1 else ""
+    cur_head=head_of(cur["special"])
+    cur_wave=wave_of(cur["special"])
+    samples=0
+
+    for j in range(1,min(len(r)-1,650)):
+        state=r[j]
+        outcome=r[j-1]
+        out_z=normalize_z(outcome["z7"] or "")
+        if out_z not in ALL_ZODIACS:
+            continue
+        match=0.0
+        if normalize_z(state["z7"] or "")==cur_z:
+            match+=2.00
+        stset=_draw_zodiac_set(state)
+        if cur_set and stset:
+            match+=1.35*(len(cur_set & stset)/max(1,len(cur_set | stset)))
+        if head_of(state["special"])==cur_head:
+            match+=.42
+        if wave_of(state["special"])==cur_wave:
+            match+=.32
+        if j+1<len(r) and normalize_z(r[j+1]["z7"] or "")==prev_z:
+            match+=.70
+        if match<=0:
+            continue
+        score[out_z]+=exp_weight(j,220)*match
+        samples+=1
+
+    norm=_norm_values(score,ALL_ZODIACS)
+    return norm,{"samples":samples}
+
+def _detect_regime(r):
+    """Lightweight state switch. It changes weights, not the historical record."""
+    if not r:
+        return {"name":"平衡","confidence":0.0}
+    last12=r[:min(12,len(r))]
+    heads=Counter(head_of(x["special"]) for x in last12)
+    combos=Counter(wave_parity_of(x["special"]) for x in last12)
+    zs=[normalize_z(x["z7"] or "") for x in last12 if x["z7"]]
+    zc=Counter(zs)
+    n=max(1,len(last12))
+
+    head_share=max(heads.values(),default=0)/n
+    combo_share=max(combos.values(),default=0)/n
+    unique_z=len(set(zs))
+    top_z=max(zc.values(),default=0)/max(1,len(zs))
+    rebound=_nmy_cold_rebound_lift(r)
+
+    if rebound.get("active"):
+        return {"name":"冷码反弹","confidence":round(min(1.0,.55+max(0,rebound.get("lift",0))*2),2)}
+    if head_share>=.50:
+        return {"name":"头数集中","confidence":round(head_share,2)}
+    if combo_share>=.42:
+        return {"name":"波色单双偏态","confidence":round(combo_share,2)}
+    if unique_z>=9:
+        return {"name":"生肖轮动","confidence":round(unique_z/12,2)}
+    if top_z>=.25:
+        return {"name":"热肖延续","confidence":round(top_z,2)}
+    if head_share<.34 and combo_share<.30 and unique_z>=8:
+        return {"name":"高随机","confidence":.65}
+    return {"name":"平衡","confidence":.55}
+
 def _norm_values(d, keys):
     vals=[float(d.get(k,0.0)) for k in keys]
     lo=min(vals) if vals else 0.0
@@ -2271,31 +2599,56 @@ def _norm_values(d, keys):
     return {k:(float(d.get(k,0.0))-lo)/(hi-lo) for k in keys}
 
 def _hot_zodiac_scores(r, profile):
+    """Upgraded zodiac layer.
+
+    The coldest-3 decision is no longer just recent hot/cold:
+    recent heat + AI zodiac mass + special-zodiac transition
+    + 7-position state transition + omission/rebound are combined.
+    """
     trend_z=_zodiac_scores_profile(r,profile)
     trend_n=_norm_values(trend_z,ALL_ZODIACS)
     ai_z=_ai_zodiac_mass(r)
     ai_n=_norm_values(ai_z,ALL_ZODIACS)
+    trans,trans_meta=_zodiac_transition_model(r)
     _nc,z_cold,_ng,_zg=_cold_metrics(r)
+    ctx=_strategy_context(r)
 
     recent=Counter()
     for i,x in enumerate(r[:24]):
         w=exp_weight(i,8)
         z=normalize_z(x["z7"] or "")
         if z:
-            recent[z]+=1.8*w
+            recent[z]+=1.65*w
+        # The 7-number zodiac structure matters, but less than special zodiac.
         for k in range(1,7):
             zz=normalize_z(x[f"z{k}"] or "")
             if zz:
-                recent[zz]+=.24*w
+                recent[zz]+=.25*w
     recent_n=_norm_values(recent,ALL_ZODIACS)
 
-    return {
-      z:.46*trend_n.get(z,.5)
-        +.28*ai_n.get(z,.5)
-        +.18*recent_n.get(z,.5)
-        +.08*(1.0-float(z_cold.get(z,.5)))
-      for z in ALL_ZODIACS
-    }
+    regime=_detect_regime(r)
+    score={}
+    for z in ALL_ZODIACS:
+        # A cold zodiac with strong transition support is treated as rebound,
+        # not blindly thrown into the coldest three.
+        rebound=float(z_cold.get(z,.5))*float(trans.get(z,.5))
+        score[z]=(
+          .25*trend_n.get(z,.5)
+          +.18*ai_n.get(z,.5)
+          +.28*trans.get(z,.5)
+          +.15*recent_n.get(z,.5)
+          +.09*rebound
+          +.05*(1.0-float(z_cold.get(z,.5)))
+        )
+        if ctx.get("cold_rebound_now"):
+            score[z]+=.05*rebound
+        if regime["name"]=="生肖轮动":
+            score[z]+=.04*trans.get(z,.5)
+        elif regime["name"]=="热肖延续":
+            score[z]+=.03*recent_n.get(z,.5)
+
+    return score
+
 
 def _ai_head_strength(r):
     with ai_lock:
@@ -2333,17 +2686,12 @@ def _combined_04_head_decision(r, force=False):
       "ai":{"0头":round(float(ai_raw.get("0头",0)),3),"4头":round(float(ai_raw.get("4头",0)),3)}
     }
 
-def _selection_number_scores(r, profile):
-    """Agreement-first ranking.
-
-    Old complement mode could over-reward disagreement. This one rewards
-    AI/trend agreement first, then uses zodiac heat, structure, and the six
-    红/蓝/绿 × 单/双 trend states.
-    """
+def _trend_only_number_scores(r, profile, strategy="20"):
+    """Trend-side score without general AI or correction AI."""
     zmap=_number_zodiac_map(r)
     ctx=_strategy_context(r)
-    trend_score,_meta,_zt=_predictive_number_scores(r,profile,ctx)
-    trend_n=_norm_values(trend_score,range(1,50))
+    raw,_meta,_zt=_predictive_number_scores(r,profile,ctx)
+    trend_n=_norm_values(raw,range(1,50))
 
     pair=_within_zodiac_pair_bonus(r,zmap)
     pair_n={}
@@ -2351,41 +2699,110 @@ def _selection_number_scores(r, profile):
         pool=[n for n in range(1,50) if zmap.get(n)==z]
         pair_n.update(_norm_pool(pair,pool))
 
-    with ai_lock:
-        ready=bool(ai_state.get("ready",False))
-    if ready:
-        _X,_lg,probs=_ai_logits_and_probs(r)
-        ai_n=_normalize_ai_probs(probs)
-    else:
-        ai_n={n:.5 for n in range(1,50)}
-
     trend=_trend_profiles(r)
-    combo=trend.get("wave_parity",{})
-    combo_n=_norm_values(combo,WAVE_PARITY_KEYS)
+    combo_n=_norm_values(trend.get("wave_parity",{}),WAVE_PARITY_KEYS)
     zheat=_hot_zodiac_scores(r,profile)
     zheat_n=_norm_values(zheat,ALL_ZODIACS)
+    regime=_detect_regime(r)
 
-    fusion=get_dynamic_ai_mix()
-    raw_ai=float(fusion.get("mix_pct",35.0))/100.0
-    ai_w=max(.28,min(.52,raw_ai))
-    trend_w=1.0-ai_w
+    if str(strategy)=="27":
+        weights={"trend":.68,"pair":.10,"combo":.08,"zodiac":.14}
+    else:
+        weights={"trend":.62,"pair":.11,"combo":.11,"zodiac":.16}
+
+    if regime["name"]=="生肖轮动":
+        weights["zodiac"]+=.05; weights["trend"]-=.05
+    elif regime["name"]=="波色单双偏态":
+        weights["combo"]+=.05; weights["trend"]-=.05
+    elif regime["name"]=="头数集中":
+        weights["trend"]+=.04; weights["zodiac"]-=.04
 
     score={}
     for n in range(1,50):
         z=zmap.get(n)
-        a=float(ai_n.get(n,.5))
-        t=float(trend_n.get(n,.5))
-        agreement=1.0-abs(a-t)
         score[n]=(
-          .48*(trend_w*t+ai_w*a)
-          +.18*agreement
-          +.13*float(pair_n.get(n,.5))
-          +.12*float(combo_n.get(wave_parity_of(n),.5))
-          +.09*float(zheat_n.get(z,.5))
+          weights["trend"]*trend_n.get(n,.5)
+          +weights["pair"]*pair_n.get(n,.5)
+          +weights["combo"]*combo_n.get(wave_parity_of(n),.5)
+          +weights["zodiac"]*zheat_n.get(z,.5)
         )
-        if ctx["cold_rebound_now"]:
-            score[n]+=.04*ctx["num_cold"].get(n,0.0)
+    return score,zmap,zheat,ctx,regime
+
+def _selection_number_scores(r, profile, strategy="20"):
+    """Trend is the main model; AI has two smaller jobs.
+
+    1) general AI supplies nonlinear context;
+    2) correction AI is trained ONLY when trend misses.
+    This reduces AI/trend homogenization.
+    """
+    trend_score,zmap,zheat,ctx,regime=_trend_only_number_scores(r,profile,strategy)
+    trend_n=_norm_values(trend_score,range(1,50))
+
+    with ai_lock:
+        ai_ready=bool(ai_state.get("ready",False))
+    if ai_ready:
+        _X,_lg,base_probs=_ai_logits_and_probs(r)
+        base_ai=_normalize_ai_probs(base_probs)
+    else:
+        base_ai={n:.5 for n in range(1,50)}
+
+    corr_probs=_correction_probs(r,strategy)
+    corr_n=_norm_values(corr_probs,range(1,50))
+
+    with correction_lock:
+        corr_trained=int(correction_state.get(str(strategy),{}).get("trained",0))
+
+    # Strategy-specific separation:
+    # 20码 = more responsive correction; 27码 = more stable trend.
+    if str(strategy)=="27":
+        base_ai_w=.09
+        corr_w=min(.17,.06+.11*min(1.0,corr_trained/45.0))
+    else:
+        base_ai_w=.11
+        corr_w=min(.23,.07+.16*min(1.0,corr_trained/45.0))
+
+    if regime["name"]=="高随机":
+        corr_w=min(corr_w+.03,.25 if str(strategy)=="20" else .19)
+    trend_w=1.0-base_ai_w-corr_w
+
+    score={}
+    for n in range(1,50):
+        t=float(trend_n.get(n,.5))
+        a=float(base_ai.get(n,.5))
+        c=float(corr_n.get(n,.5))
+        # Small consensus bonus, but disagreement is no longer rewarded by itself.
+        consensus=1.0-abs(t-a)
+        score[n]=trend_w*t+base_ai_w*a+corr_w*c+.035*consensus
+
+    ctx=dict(ctx)
+    ctx["regime"]=regime
+    ctx["correction_trained"]=corr_trained
+    ctx["correction_weight_pct"]=round(corr_w*100,1)
+    ctx["trend_weight_pct"]=round(trend_w*100,1)
+    ctx["base_ai_weight_pct"]=round(base_ai_w*100,1)
     return score,zmap,zheat,ctx
+
+def _trend_diagnostics(r,profile,strategy="20"):
+    """Pre-draw trend-only diagnostic used for training the correction AI."""
+    score,zmap,zheat,ctx,regime=_trend_only_number_scores(r,profile,strategy)
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
+    coldest3=ranked_z[-3:]
+    if str(strategy)=="27":
+        head=_combined_04_head_decision(r,force=True)
+        cutoff=27
+    else:
+        head=_combined_04_head_decision(r,force=False)
+        cutoff=20
+    return {
+      "ranked49":ranked,
+      "top":ranked[:cutoff],
+      "coldest3":coldest3,
+      "killed_head":head.get("killed_head",""),
+      "regime":regime.get("name","平衡"),
+      "zmap":zmap
+    }
+
 
 def _predict20_hot(r, profile):
     """20码：每期一换。
@@ -2395,7 +2812,7 @@ def _predict20_hot(r, profile):
     - 前3热肖最多3码，其中两个热肖各加1个 = 20
     - 0/4头若AI+趋势判断一头明显更弱，20码彻底杀掉该头
     """
-    score,zmap,zheat,ctx=_selection_number_scores(r,profile)
+    score,zmap,zheat,ctx=_selection_number_scores(r,profile,"20")
     ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
     allowed=ranked_z[:9]
     top3=ranked_z[:3]
@@ -2443,13 +2860,23 @@ def _predict20_hot(r, profile):
             if len(selected)>=20:
                 break
 
+    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    ztrans,ztrans_meta=_zodiac_transition_model(r)
     return selected[:20],{
       "hot_zodiacs":allowed,
       "top3_hot":top3,
       "coldest3":coldest3,
       "killed_head":killed,
       "head_decision":head,
-      "groups":groups
+      "groups":groups,
+      "ranked49":ranked49,
+      "regime":(ctx.get("regime") or {}).get("name","平衡"),
+      "correction_trained":ctx.get("correction_trained",0),
+      "correction_weight_pct":ctx.get("correction_weight_pct",0),
+      "trend_weight_pct":ctx.get("trend_weight_pct",0),
+      "base_ai_weight_pct":ctx.get("base_ai_weight_pct",0),
+      "zodiac_transition_top":sorted(ALL_ZODIACS,key=lambda z:(-ztrans.get(z,0),z))[:4],
+      "zodiac_transition_samples":ztrans_meta.get("samples",0)
     }
 
 def _issue_block10(issue):
@@ -2495,7 +2922,7 @@ def _predict27_tenblock(r, profile, target_issue):
 
     # Reuse the first locked list in the block, guaranteeing "十期一换".
     existing=_existing_27_block_codes(start,end)
-    score,zmap,zheat,ctx=_selection_number_scores(br,profile)
+    score,zmap,zheat,ctx=_selection_number_scores(br,profile,"27")
     ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
     allowed=ranked_z[:9]      # 热肖 + 中位肖
     coldest3=ranked_z[-3:]
@@ -2503,11 +2930,17 @@ def _predict27_tenblock(r, profile, target_issue):
     killed=head["killed_head"]
 
     if existing:
+        ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
         return existing[:27],{
           "block_start":str(start),"block_end":str(end),
           "hot_mid_zodiacs":allowed,"coldest3":coldest3,
           "killed_head":killed,"head_decision":head,
-          "reused":True
+          "reused":True,
+          "ranked49":ranked49,
+          "regime":(ctx.get("regime") or {}).get("name","平衡"),
+          "correction_trained":ctx.get("correction_trained",0),
+          "correction_weight_pct":ctx.get("correction_weight_pct",0),
+          "trend_weight_pct":ctx.get("trend_weight_pct",0)
         }
 
     selected=[]; groups=[]
@@ -2532,11 +2965,115 @@ def _predict27_tenblock(r, profile, target_issue):
             if len(selected)>=27:
                 break
 
+    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
     return selected[:27],{
       "block_start":str(start),"block_end":str(end),
       "hot_mid_zodiacs":allowed,"coldest3":coldest3,
       "killed_head":killed,"head_decision":head,
-      "groups":groups,"reused":False
+      "groups":groups,"reused":False,
+      "ranked49":ranked49,
+      "regime":(ctx.get("regime") or {}).get("name","平衡"),
+      "correction_trained":ctx.get("correction_trained",0),
+      "correction_weight_pct":ctx.get("correction_weight_pct",0),
+      "trend_weight_pct":ctx.get("trend_weight_pct",0)
+    }
+
+
+def _record_strategy_audit(target_issue,profile,selected,meta):
+    ranked=meta.get("ranked49") or []
+    excluded=meta.get("coldest3") or []
+    killed=str(meta.get("killed_head") or "")
+    regime=str(meta.get("regime") or "")
+    with db_lock:
+        c=connect()
+        try:
+            c.execute("""INSERT OR IGNORE INTO strategy_audit
+              (target_issue,profile,ranked49,selected_codes,excluded_zodiacs,killed_head,regime)
+              VALUES (?,?,?,?,?,?,?)""",
+              (str(target_issue),str(profile),
+               ",".join(str(n) for n in ranked),
+               ",".join(str(n) for n in selected),
+               ",".join(excluded),killed,regime))
+            c.commit()
+        finally:
+            c.close()
+
+def _settle_strategy_audits(issue,actual_special,actual_zodiac):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT * FROM strategy_audit
+                              WHERE target_issue=? AND settled=0""",(str(issue),)).fetchall()
+            for row in rows:
+                ranked=_csv_nums(row["ranked49"])
+                selected=set(_csv_nums(row["selected_codes"]))
+                excluded=set(_csv_text(row["excluded_zodiacs"]))
+                killed=str(row["killed_head"] or "")
+                rank=(ranked.index(int(actual_special))+1) if int(actual_special) in ranked else 0
+                hit=int(int(actual_special) in selected)
+                cold_err=int(bool(actual_zodiac) and actual_zodiac in excluded)
+                head_success=None
+                if killed:
+                    head_success=int(head_of(int(actual_special))!=killed)
+
+                if hit:
+                    reason="命中"
+                elif cold_err:
+                    reason="冷三肖误杀"
+                elif killed and head_success==0:
+                    reason="杀头误杀"
+                elif rank and rank<=20 and row["profile"]=="20码精选":
+                    reason="生肖配额挤出"
+                elif rank and rank<=27:
+                    reason="截断边缘"
+                else:
+                    reason="底层排序"
+
+                c.execute("""UPDATE strategy_audit SET
+                  settled=1,actual_special=?,actual_zodiac=?,actual_rank=?,
+                  selected_hit=?,cold_zodiac_error=?,head_kill_success=?,failure_reason=?
+                  WHERE target_issue=? AND profile=?""",
+                  (int(actual_special),str(actual_zodiac or ""),int(rank),hit,cold_err,
+                   head_success,reason,str(issue),str(row["profile"])))
+            c.commit()
+        finally:
+            c.close()
+
+def _strategy_diagnostics(profile,window=60):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT * FROM strategy_audit
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(window))).fetchall()
+        finally:
+            c.close()
+    buckets={"1-10":0,"11-20":0,"21-27":0,"28+":0}
+    reasons=Counter()
+    cold_errors=0
+    kill_n=kill_success=0
+    for x in rows:
+        rank=int(x["actual_rank"] or 0)
+        if 1<=rank<=10: buckets["1-10"]+=1
+        elif 11<=rank<=20: buckets["11-20"]+=1
+        elif 21<=rank<=27: buckets["21-27"]+=1
+        else: buckets["28+"]+=1
+        reasons[str(x["failure_reason"] or "")]+=1
+        cold_errors+=int(x["cold_zodiac_error"] or 0)
+        if x["head_kill_success"] is not None:
+            kill_n+=1
+            kill_success+=int(x["head_kill_success"] or 0)
+    n=len(rows)
+    return {
+      "n":n,
+      "rank_buckets":buckets,
+      "cold_zodiac_errors":cold_errors,
+      "cold_zodiac_error_rate":round(100*cold_errors/n,1) if n else 0.0,
+      "head_kill_n":kill_n,
+      "head_kill_success":kill_success,
+      "head_kill_rate":round(100*kill_success/kill_n,1) if kill_n else 0.0,
+      "failure_reasons":dict(reasons)
     }
 
 def _profile_hit_stats(profile,window=60):
@@ -2995,6 +3532,11 @@ def settle_predictions(issue, nums, zs):
         finally:
             c.close()
 
+    try:
+        _settle_strategy_audits(issue,actual_special,actual_z)
+    except Exception as e:
+        print(f"[AUDIT] settle failed: {e}",flush=True)
+
     if rows:
         best,_=refresh_learner_cache(60)
         try:
@@ -3066,6 +3608,7 @@ def record_shadow_predictions(r):
             ",".join(str(n) for n in c20),
             "","",py
         ))
+        _record_strategy_audit(target,"20码精选",c20,_m20)
     except Exception as e:
         print(f"[20CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -3077,6 +3620,7 @@ def record_shadow_predictions(r):
             ",".join(str(n) for n in c27),
             "","",py
         ))
+        _record_strategy_audit(target,"27码十期",c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -3124,9 +3668,15 @@ def export_learning_payload(limit=1000):
                               ORDER BY CAST(target_issue AS INTEGER) DESC, profile
                               LIMIT ?""",(int(limit),)).fetchall()
             airow=c.execute("SELECT * FROM ai_model WHERE id=1").fetchone()
+            audits=c.execute("""SELECT * FROM strategy_audit
+                                ORDER BY CAST(target_issue AS INTEGER) DESC,profile
+                                LIMIT 1000""").fetchall()
+            corrections=c.execute("SELECT * FROM correction_model ORDER BY strategy").fetchall()
             return {
               "logs":[{k:x[k] for k in x.keys()} for x in rows],
-              "ai":({k:airow[k] for k in airow.keys()} if airow else None)
+              "ai":({k:airow[k] for k in airow.keys()} if airow else None),
+              "audits":[{k:x[k] for k in x.keys()} for x in audits],
+              "correction":[{k:x[k] for k in x.keys()} for x in corrections]
             }
         finally:
             c.close()
@@ -3208,7 +3758,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v28",
+      "version":"v31",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -3278,10 +3828,10 @@ def restore_checkpoint_if_better():
                 c.close()
 
         restored=0
-        if len(ck_logs) > current_logs:
-            restored += import_learning_payload(learning)
+        restored += import_learning_payload(learning)
         restored += _restore_draw_dicts(payload.get("draws",[]) or [])
         load_ai_state()
+        load_correction_state()
         refresh_learner_cache(60)
         print(f"[BACKUP] restored checkpoint logs={len(ck_logs)} inserted={restored}",flush=True)
         return restored
@@ -3292,6 +3842,8 @@ def restore_checkpoint_if_better():
 def import_learning_payload(payload):
     logs=payload.get("logs",[]) if isinstance(payload,dict) else []
     ai_payload=payload.get("ai") if isinstance(payload,dict) else None
+    audits=payload.get("audits",[]) if isinstance(payload,dict) else []
+    correction_payload=payload.get("correction",[]) if isinstance(payload,dict) else []
     inserted=0
     with db_lock:
         c=connect()
@@ -3348,6 +3900,76 @@ def import_learning_payload(payload):
                 load_ai_state()
         except Exception as e:
             print(f"[AI] inherited state failed: {e}",flush=True)
+    if audits:
+        with db_lock:
+            c=connect()
+            try:
+                for x in audits:
+                    c.execute("""INSERT INTO strategy_audit
+                      (target_issue,profile,ranked49,selected_codes,excluded_zodiacs,
+                       killed_head,regime,created_at,settled,actual_special,actual_zodiac,
+                       actual_rank,selected_hit,cold_zodiac_error,head_kill_success,failure_reason)
+                      VALUES (?,?,?,?,?,?,?,COALESCE(NULLIF(?,''),CURRENT_TIMESTAMP),
+                              ?,?,?,?,?,?,?,?)
+                      ON CONFLICT(target_issue,profile) DO UPDATE SET
+                        ranked49=excluded.ranked49,
+                        selected_codes=excluded.selected_codes,
+                        excluded_zodiacs=excluded.excluded_zodiacs,
+                        killed_head=excluded.killed_head,
+                        regime=excluded.regime,
+                        settled=MAX(strategy_audit.settled,excluded.settled),
+                        actual_special=COALESCE(excluded.actual_special,strategy_audit.actual_special),
+                        actual_zodiac=COALESCE(NULLIF(excluded.actual_zodiac,''),strategy_audit.actual_zodiac),
+                        actual_rank=COALESCE(excluded.actual_rank,strategy_audit.actual_rank),
+                        selected_hit=COALESCE(excluded.selected_hit,strategy_audit.selected_hit),
+                        cold_zodiac_error=COALESCE(excluded.cold_zodiac_error,strategy_audit.cold_zodiac_error),
+                        head_kill_success=COALESCE(excluded.head_kill_success,strategy_audit.head_kill_success),
+                        failure_reason=COALESCE(NULLIF(excluded.failure_reason,''),strategy_audit.failure_reason)""",
+                      (str(x.get("target_issue","")),str(x.get("profile","")),
+                       str(x.get("ranked49","")),str(x.get("selected_codes","")),
+                       str(x.get("excluded_zodiacs","")),str(x.get("killed_head","")),
+                       str(x.get("regime","")),str(x.get("created_at","")),
+                       int(x.get("settled") or 0),x.get("actual_special"),
+                       str(x.get("actual_zodiac") or ""),x.get("actual_rank"),
+                       x.get("selected_hit"),x.get("cold_zodiac_error"),
+                       x.get("head_kill_success"),str(x.get("failure_reason") or "")))
+                c.commit()
+            finally:
+                c.close()
+
+    if correction_payload:
+        with db_lock:
+            c=connect()
+            try:
+                for x in correction_payload:
+                    strategy=str(x.get("strategy") or "")
+                    if strategy not in ("20","27"):
+                        continue
+                    incoming=int(x.get("trained") or 0)
+                    cur=c.execute("SELECT trained FROM correction_model WHERE strategy=?",(strategy,)).fetchone()
+                    current=int(cur["trained"] or 0) if cur else 0
+                    if incoming>=current:
+                        weights=str(x.get("weights") or "[]")
+                        try:
+                            parsed=json.loads(weights)
+                        except Exception:
+                            parsed=[]
+                        if len(parsed)<len(AI_FEATURES):
+                            parsed=list(parsed)+[0.0]*(len(AI_FEATURES)-len(parsed))
+                        elif len(parsed)>len(AI_FEATURES):
+                            parsed=list(parsed)[:len(AI_FEATURES)]
+                        c.execute("""INSERT INTO correction_model(strategy,weights,steps,trained,updated_at)
+                                     VALUES (?,?,?,?,CURRENT_TIMESTAMP)
+                                     ON CONFLICT(strategy) DO UPDATE SET
+                                       weights=excluded.weights,steps=excluded.steps,
+                                       trained=excluded.trained,updated_at=CURRENT_TIMESTAMP""",
+                                  (strategy,json.dumps(parsed,separators=(",",":")),
+                                   int(x.get("steps") or 0),incoming))
+                c.commit()
+            finally:
+                c.close()
+        load_correction_state()
+
     refresh_learner_cache(60)
     return inserted
 
@@ -3567,6 +4189,9 @@ def build_model():
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
     stats20=_profile_hit_stats("20码精选",60)
     stats27=_stats27_blocks()
+    diag20=_strategy_diagnostics("20码精选",60)
+    diag27=_strategy_diagnostics("27码十期",60)
+    correction=_correction_status()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -3579,6 +4204,9 @@ def build_model():
       "strategy27":meta27,
       "stats20":stats20,
       "stats27":stats27,
+      "diagnostics20":diag20,
+      "diagnostics27":diag27,
+      "correction":correction,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -3621,7 +4249,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"20码每期精选 + 27码十期固定 · AI/趋势共识优先"
+        "mode":"趋势主攻 + AI专门纠错 · 20码/27码分开学习"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -3736,6 +4364,9 @@ def stats_api():
     base=learner_validation_stats()
     base["code20"]=_profile_hit_stats("20码精选",60)
     base["code27"]=_stats27_blocks()
+    base["diag20"]=_strategy_diagnostics("20码精选",60)
+    base["diag27"]=_strategy_diagnostics("27码十期",60)
+    base["correction"]=_correction_status()
     return jsonify(base)
 
 @app.get("/api/learning")
@@ -3802,6 +4433,14 @@ def auto_status():
 def complement_status():
     fusion=get_dynamic_ai_mix()
     return jsonify(complement_matrix(60, fusion.get("benchmark_profile") or learner_cache.get("best_profile","趋势快")))
+
+@app.get("/api/strategy-diagnostics")
+def strategy_diagnostics_api():
+    return jsonify({
+      "code20":_strategy_diagnostics("20码精选",60),
+      "code27":_strategy_diagnostics("27码十期",60),
+      "correction":_correction_status()
+    })
 
 @app.get("/api/backup-status")
 def backup_status():
@@ -4024,6 +4663,7 @@ def boot():
     # From v26 onward, also inherit learned prediction/score history.
     sync_previous_learning()
     load_ai_state()
+    load_correction_state()
     refresh_learner_cache(60)
     try:
         refresh_dynamic_ai_mix()
@@ -4054,6 +4694,7 @@ def boot():
     threading.Thread(target=rebuild_live_cache,daemon=True,name="initial-model-build").start()
     threading.Thread(target=build_long_prior,daemon=True,name="full-history-prior").start()
     threading.Thread(target=bootstrap_ai_history,daemon=True,name="ai-history-bootstrap").start()
+    threading.Thread(target=bootstrap_correction_models,daemon=True,name="correction-ai-bootstrap").start()
 
 boot()
 
