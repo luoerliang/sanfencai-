@@ -180,6 +180,10 @@ TEN27_V3_PROFILE="27十期20窗变盘"
 TEN27_V3_CORE_PROFILE="27V3核心23"
 TEN27_V3_MOBILE_PROFILE="27V3机动4"
 TEN27_V3_28_PROFILE="27V3第28码"
+TEN27_V4_PROFILE="27十期精确长码"
+TEN27_V4_CORE_PROFILE="27V4核心23"
+TEN27_V4_MOBILE_PROFILE="27V4机动4"
+TEN27_V4_28_PROFILE="27V4第28码"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -489,7 +493,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">27码 · 10期长码</div>
-        <div id="code27Hint" class="sectionHint">前20期找弱波色单双/0·4头 · 逆势连续2期才变码</div>
+        <div id="code27Hint" class="sectionHint">前20期杀两弱波色单双+弱0/4头 · 每肖≤3 · 冷3肖防守2码</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -704,9 +708,10 @@ async function loadMain(){
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, f20=m27.filter20||{}, trg=m27.trend_trigger||{};
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
+    const cd=(m27.cold_defense2||[]).map(fmt).join(',')||'--';
     code27Block.textContent=`第${m27.round_position??0}/10 · 核23 ${cur27.core23_hits??0}/${cur27.n??0} · 总${cur27.final_hits??0}/${cur27.n??0}`;
-    code27Kill.textContent=`杀波 ${kw} · 杀头 ${m27.killed_head||'无'} · 段${m27.trend_segment??1}`;
-    code27Stats.textContent=`机救${cur27.mobile4_rescues??0} · 28救${cur27.rescue28??0} · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
+    code27Kill.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 杀头连出${m27.head_streak??0}`;
+    code27Stats.textContent=`冷3肖防守 ${cd} · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -4683,6 +4688,373 @@ def _f_failure_attribution(window=60):
     }
 
 
+
+def _long27_v4_window20(r):
+    """Clarified user rule for one 10-period long-code round.
+
+    Look back exactly 20 specials:
+    1) rank 红单/红双/蓝单/蓝双/绿单/绿双 and kill the two least frequent;
+    2) compare 0头 vs 4头 and kill the less frequent one; tie = no head kill.
+    """
+    block=r[:20]
+    wp=Counter()
+    heads=Counter()
+    for x in block:
+        try:
+            n=int(x["special"])
+        except Exception:
+            continue
+        wp[wave_parity_of(n)]+=1
+        h=head_of(n)
+        if h in ("0头","4头"):
+            heads[h]+=1
+
+    all_wp=list(WAVE_PARITY_KEYS)
+    ordered=sorted(all_wp,key=lambda k:(wp.get(k,0),k))
+    killed_wp=ordered[:2]
+
+    c0=int(heads.get("0头",0))
+    c4=int(heads.get("4头",0))
+    killed_head=""
+    if c0<c4:
+        killed_head="0头"
+    elif c4<c0:
+        killed_head="4头"
+
+    return {
+      "window":len(block),
+      "wave_counts":{k:int(wp.get(k,0)) for k in all_wp},
+      "killed_wave_parity":list(killed_wp),
+      "head_counts":{"0头":c0,"4头":c4},
+      "killed_head":killed_head
+    }
+
+def _long27_v4_token(filt,segment=1,switches=0):
+    waves=",".join(filt.get("killed_wave_parity") or [])
+    head=str(filt.get("killed_head") or "")
+    return f"LONG27V4|waves={waves}|head={head}|segment={int(segment)}|switches={int(switches)}"
+
+def _long27_v4_parse(token):
+    out={"waves":[],"head":"","segment":1,"switches":0}
+    t=str(token or "")
+    if not t.startswith("LONG27V4|"):
+        return out
+    for part in t.split("|")[1:]:
+        if "=" not in part:
+            continue
+        k,v=part.split("=",1)
+        if k=="waves":
+            out["waves"]=[x for x in v.split(",") if x]
+        elif k=="head":
+            out["head"]=v
+        elif k=="segment":
+            try: out["segment"]=int(v)
+            except Exception: pass
+        elif k=="switches":
+            try: out["switches"]=int(v)
+            except Exception: pass
+    return out
+
+def _long27_v4_round_context(target_issue):
+    """Sequential honest groups of 10 using V4 profiles only."""
+    with db_lock:
+        c=connect()
+        try:
+            full=c.execute("""SELECT target_issue,special24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (TEN27_V4_PROFILE,)).fetchall()
+            cores=c.execute("""SELECT target_issue,special24
+                               FROM prediction_log
+                               WHERE profile=?
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                            (TEN27_V4_CORE_PROFILE,)).fetchall()
+            mobiles=c.execute("""SELECT target_issue,special24
+                                 FROM prediction_log
+                                 WHERE profile=?
+                                 ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                              (TEN27_V4_MOBILE_PROFILE,)).fetchall()
+            audits=c.execute("""SELECT target_issue,regime
+                                FROM strategy_audit
+                                WHERE profile=?
+                                ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                             (TEN27_V4_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    target=str(target_issue)
+    issues=[str(x["target_issue"]) for x in full]
+
+    if target in issues:
+        idx=issues.index(target)
+        gstart=(idx//10)*10
+        pos=idx-gstart+1
+    else:
+        n=len(full)
+        rem=n%10
+        if rem:
+            gstart=n-rem
+            pos=rem+1
+        else:
+            return {
+              "new_round":True,"position":1,"start_issue":target,
+              "end_issue":_issue_add(target,9),
+              "core23":[],"mobile4":[],
+              "prev_filter":{"waves":[],"head":"","segment":1,"switches":0}
+            }
+
+    round_issues=issues[gstart:gstart+10]
+    if not round_issues:
+        return {
+          "new_round":True,"position":1,"start_issue":target,
+          "end_issue":_issue_add(target,9),
+          "core23":[],"mobile4":[],
+          "prev_filter":{"waves":[],"head":"","segment":1,"switches":0}
+        }
+
+    rset=set(round_issues)
+    core_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in cores if str(x["target_issue"]) in rset}
+    mobile_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in mobiles if str(x["target_issue"]) in rset}
+    audit_map={str(x["target_issue"]):str(x["regime"] or "") for x in audits if str(x["target_issue"]) in rset}
+
+    start_issue=round_issues[0]
+    latest_issue=round_issues[-1]
+    core23=list(core_map.get(latest_issue) or core_map.get(start_issue) or [])
+    mobile4=list(mobile_map.get(latest_issue) or mobile_map.get(start_issue) or [])
+    prev_token=audit_map.get(latest_issue) or audit_map.get(start_issue) or ""
+
+    return {
+      "new_round":False,"position":pos,
+      "start_issue":start_issue,"end_issue":_issue_add(start_issue,9),
+      "core23":core23[:23],"mobile4":mobile4[:4],
+      "prev_filter":_long27_v4_parse(prev_token)
+    }
+
+def _long27_v4_head_streak(r,killed_head,max_check=3):
+    """Only the killed 0/4 head can trigger a trend switch."""
+    if not killed_head:
+        return 0
+    run=0
+    for x in r[:max_check]:
+        try:
+            n=int(x["special"])
+        except Exception:
+            break
+        if head_of(n)==killed_head:
+            run+=1
+        else:
+            break
+    return run
+
+def _long27_v4_cold3(r,profile):
+    zheat=_hot_zodiac_scores(r,profile)
+    return sorted(ALL_ZODIACS,key=lambda z:(zheat.get(z,0.0),z))[:3]
+
+def _build_long27_v4_codes(r,profile,filt):
+    """Build exactly 27 according to clarified rule.
+
+    - Reserve exactly 2 defensive seats from the coldest 3 zodiacs.
+    - Those 2 defensive seats MUST belong to the killed wave-parity groups.
+    - They MUST NOT belong to the killed 0/4 head.
+    - Every zodiac max 3 total codes.
+    - All other seats exclude killed wave-parity + killed head.
+    """
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    zmap=_number_zodiac_map(r)
+
+    killed_wp=set(filt.get("killed_wave_parity") or [])
+    killed_head=str(filt.get("killed_head") or "")
+    cold3=_long27_v4_cold3(r,profile)
+
+    # 2 cold-zodiac defensive exceptions from the killed wave-parity groups.
+    defense_candidates=[
+      n for n in ranked
+      if zmap.get(n) in set(cold3)
+      and wave_parity_of(n) in killed_wp
+      and (not killed_head or head_of(n)!=killed_head)
+    ]
+
+    defense=[]
+    zcount=Counter()
+    for n in defense_candidates:
+        z=zmap.get(n)
+        if zcount[z]>=3:
+            continue
+        defense.append(n)
+        zcount[z]+=1
+        if len(defense)>=2:
+            break
+
+    # Main 25 seats strictly avoid the killed wave-parity groups and killed head.
+    main=[]
+    for n in ranked:
+        if n in defense:
+            continue
+        if killed_head and head_of(n)==killed_head:
+            continue
+        if wave_parity_of(n) in killed_wp:
+            continue
+        z=zmap.get(n)
+        if z and zcount[z]>=3:
+            continue
+        main.append(n)
+        if z: zcount[z]+=1
+        if len(main)>=25:
+            break
+
+    # If max-3 + structural kills leave us short, first relax ONLY the wave-parity
+    # restriction, never the killed head; still respect max 3 per zodiac.
+    forced_fill=[]
+    if len(main)+len(defense)<27:
+        for n in ranked:
+            if n in main or n in defense:
+                continue
+            if killed_head and head_of(n)==killed_head:
+                continue
+            z=zmap.get(n)
+            if z and zcount[z]>=3:
+                continue
+            main.append(n)
+            forced_fill.append(n)
+            if z: zcount[z]+=1
+            if len(main)+len(defense)>=27:
+                break
+
+    selected=(main+defense)[:27]
+
+    # Last-resort head-safe fill if still short; keep max3 if possible.
+    if len(selected)<27:
+        for n in ranked:
+            if n in selected:
+                continue
+            if killed_head and head_of(n)==killed_head:
+                continue
+            z=zmap.get(n)
+            if z and sum(1 for x in selected if zmap.get(x)==z)>=3:
+                continue
+            selected.append(n)
+            forced_fill.append(n)
+            if len(selected)>=27:
+                break
+
+    meta=dict(meta)
+    meta.update({
+      "ranked49":ranked,
+      "filter20":filt,
+      "coldest3":cold3,
+      "cold_defense2":defense[:2],
+      "forced_fill":forced_fill,
+      "zodiac_counts":dict(Counter(zmap.get(n) for n in selected if zmap.get(n)))
+    })
+    return selected[:27],score,specialists,perf,meta
+
+def _long27_v4_rescue28(r,profile,base27,filt):
+    """Rare 28th rescue; still obey killed head and max-3 zodiac."""
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranks=_ten27_specialist_support(specialists)
+    zmap=_number_zodiac_map(r)
+    occupied=set(base27)
+    zcount=Counter(zmap.get(n) for n in base27 if zmap.get(n))
+    killed_head=str(filt.get("killed_head") or "")
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+
+    candidates=[]
+    for n in ranked:
+        if n in occupied:
+            continue
+        if killed_head and head_of(n)==killed_head:
+            continue
+        z=zmap.get(n)
+        if z and zcount[z]>=3:
+            continue
+        support=sum(1 for k in specialists if ranks[k].get(n,99)<=18)
+        top10=sum(1 for k in specialists if ranks[k].get(n,99)<=10)
+        hrank=ranked.index(n)+1
+        sc=float(score.get(n,0))
+        if (hrank<=13 and support>=4 and sc>=.78) or (hrank<=10 and support>=3 and top10>=2 and sc>=.82):
+            quality=.58*sc+.27*(support/5.0)+.15*(top10/5.0)
+            candidates.append((quality,n,hrank,support,top10,sc))
+
+    if not candidates:
+        return {"active":False,"code":None,"message":""}
+
+    _q,n,hrank,support,top10,sc=max(candidates,key=lambda x:(x[0],-x[2],-x[1]))
+    return {
+      "active":True,"code":n,"rank":hrank,
+      "support_models":support,"top10_models":top10,
+      "ensemble_score":round(sc,3),
+      "message":f"长码27外强覆盖码 {n:02d}，本期临时补为第28码"
+    }
+
+def _stats27_v4():
+    profiles=[TEN27_V4_PROFILE,TEN27_V4_CORE_PROFILE,TEN27_V4_MOBILE_PROFILE,TEN27_V4_28_PROFILE]
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24,settled,special24
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders})
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           tuple(profiles)).fetchall()
+            audits=c.execute("""SELECT target_issue,regime
+                                FROM strategy_audit
+                                WHERE profile=?
+                                ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                             (TEN27_V4_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    by_issue={}
+    for x in rows:
+        issue=str(x["target_issue"])
+        by_issue.setdefault(issue,{})[str(x["profile"])]=dict(x)
+    audit_map={str(x["target_issue"]):str(x["regime"] or "") for x in audits}
+
+    issues=sorted([i for i,d in by_issue.items() if TEN27_V4_PROFILE in d],key=lambda x:int(x))
+    groups=[]
+    for i in range(0,len(issues),10):
+        chunk=issues[i:i+10]
+        if not chunk:
+            continue
+        settled=[q for q in chunk if int(by_issue[q][TEN27_V4_PROFILE]["settled"] or 0)==1]
+        core_hits=mobile_rescue=rescue28=final_hits=0
+        segments=[]
+        for q in chunk:
+            tok=_long27_v4_parse(audit_map.get(q,""))
+            segments.append(int(tok.get("segment",1)))
+        for q in settled:
+            d=by_issue[q]
+            ch=int((d.get(TEN27_V4_CORE_PROFILE) or {}).get("hit24",0) or 0)
+            mh=int((d.get(TEN27_V4_MOBILE_PROFILE) or {}).get("hit24",0) or 0)
+            rh=int((d.get(TEN27_V4_28_PROFILE) or {}).get("hit24",0) or 0)
+            fh=int((d.get(TEN27_V4_PROFILE) or {}).get("hit24",0) or 0)
+            core_hits+=ch
+            if mh and not ch:
+                mobile_rescue+=1
+            if rh and not ch and not mh:
+                rescue28+=1
+            final_hits+=fh
+
+        start=chunk[0]
+        groups.append({
+          "start":start,"end":_issue_add(start,9),"n":len(settled),
+          "core23_hits":core_hits,"mobile4_rescues":mobile_rescue,
+          "rescue28":rescue28,"final_hits":final_hits,
+          "trend_switches":max(segments,default=1)-1
+        })
+
+    empty={"start":0,"end":0,"n":0,"core23_hits":0,"mobile4_rescues":0,"rescue28":0,"final_hits":0,"trend_switches":0}
+    current=groups[-1] if groups else dict(empty)
+    complete=next((g for g in reversed(groups) if g["n"]>=10),None)
+    return {
+      "current":current,"last_complete":complete,
+      "rounds_completed":sum(1 for g in groups if g["n"]>=10),
+      "overall":_profile_hit_stats(TEN27_V4_PROFILE,60)
+    }
+
 def _long27_window20_filter(r):
     """User-defined long-code filter from the previous 20 specials.
 
@@ -5065,87 +5437,103 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """10-period long-code mode driven by previous-20 structure.
+    """Clarified 10-period long-code rule.
 
-    Normal state: keep the same 27 through the 10-period round.
-    Trend-change state: if an actively killed head OR killed wave-parity
-    appears for 2+ consecutive draws, re-check the latest 20 draws; when the
-    weak structure changes, rebuild the 27 for the remaining round.
+    Round start:
+      - previous 20 specials -> kill 2 weakest wave×parity categories;
+      - previous 20 specials -> kill weaker 0/4 head;
+      - each zodiac max 3;
+      - coldest 3 zodiacs defend exactly 2 codes from the killed wave×parity
+        categories, but those 2 must still avoid the killed head.
+
+    During the round:
+      - keep the same 27;
+      - ONLY if the killed head itself appears 2 consecutive draws, re-check
+        the latest 20 wave×parity distribution and switch to the OTHER head,
+        then rebuild the long-code set for the remaining round.
     """
-    rc=_long27_v3_round_context(target_issue)
-    current_filter=_long27_window20_filter(r)
+    rc=_long27_v4_round_context(target_issue)
+    latest20=_long27_v4_window20(r)
 
     if rc.get("new_round") or not rc.get("core23"):
-        chosen27,_score,_spec,perf,meta=_build_long27_codes(r,profile,current_filter)
+        active_filter=latest20
+        chosen27,_score,_spec,perf,meta=_build_long27_v4_codes(r,profile,active_filter)
         segment=1
         switches=0
-        active_filter=current_filter
         switched=False
-        trigger={"wave":0,"head":0,"trigger":False}
+        head_streak=0
     else:
         prev=rc.get("prev_filter") or {}
-        prev_waves=prev.get("waves") or []
-        prev_head=prev.get("head") or ""
+        prev_waves=list(prev.get("waves") or [])
+        prev_head=str(prev.get("head") or "")
         segment=int(prev.get("segment") or 1)
         switches=int(prev.get("switches") or 0)
-        trigger=_long27_killed_streak(r,prev_waves,prev_head,3)
 
-        # Default: long code does not move.
         chosen27=list(rc.get("core23") or [])[:23]+list(rc.get("mobile4") or [])[:4]
         active_filter={
           "window":20,
-          "wave_counts":current_filter.get("wave_counts",{}),
-          "head_counts":current_filter.get("head_counts",{}),
-          "killed_wave_parity":list(prev_waves),
+          "wave_counts":latest20.get("wave_counts",{}),
+          "head_counts":latest20.get("head_counts",{}),
+          "killed_wave_parity":prev_waves,
           "killed_head":prev_head
         }
         switched=False
+        head_streak=_long27_v4_head_streak(r,prev_head,3)
 
-        # User rule: killed signal showing 2/3 periods in a row = trend change.
-        if trigger.get("trigger"):
-            new_waves=list(current_filter.get("killed_wave_parity") or [])
-            new_head=str(current_filter.get("killed_head") or "")
-            if set(new_waves)!=set(prev_waves) or new_head!=prev_head:
-                chosen27,_score,_spec,perf,meta=_build_long27_codes(r,profile,current_filter)
-                active_filter=current_filter
-                segment+=1
-                switches+=1
-                switched=True
+        # User rule: killed head appears 2 straight -> trend changed.
+        # Re-check latest 20 wave×parity and kill the OTHER 0/4 head.
+        if prev_head and head_streak>=2:
+            opposite="4头" if prev_head=="0头" else "0头"
+            active_filter=latest20
+            active_filter["killed_head"]=opposite
+            chosen27,_score,_spec,perf,meta=_build_long27_v4_codes(r,profile,active_filter)
+            segment+=1
+            switches+=1
+            switched=True
 
-    # If no rebuild occurred above, fetch diagnostics/perf for display.
     if 'perf' not in locals():
         _score,_spec,perf,_hm=_ten27_horizon_score(r,profile)
-        meta={"analog_samples":_hm.get("analog_samples",0),"forced_fill":[]}
+        meta={
+          "analog_samples":_hm.get("analog_samples",0),
+          "ranked49":sorted(range(1,50),key=lambda n:(-_score.get(n,-1e9),n)),
+          "coldest3":_long27_v4_cold3(r,profile),
+          "cold_defense2":[],
+          "forced_fill":[]
+        }
 
     chosen27=list(dict.fromkeys(chosen27))[:27]
     core23=chosen27[:23]
     mobile4=chosen27[23:27]
-    rescue28=_long27_rescue28(r,profile,chosen27,active_filter)
+    rescue28=_long27_v4_rescue28(r,profile,chosen27,active_filter)
+
     selected=list(chosen27)
     if rescue28.get("active") and rescue28.get("code") not in selected:
         selected.append(int(rescue28["code"]))
 
     model_stats=(perf.get("stats") or {}) if isinstance(perf,dict) else {}
-    audit_regime=_long27_filter_token(active_filter,segment,switches)
+    audit_regime=_long27_v4_token(active_filter,segment,switches)
 
     return selected,{
       "block_start":rc.get("start_issue") or str(target_issue),
       "block_end":rc.get("end_issue") or _issue_add(target_issue,9),
       "round_position":int(rc.get("position") or 1),
-      "round_mode":"10期长码·20期结构·逆势2连变盘",
-      "core23":core23,"mobile4":mobile4,
+      "round_mode":"10期长码·两弱波单双·弱头·冷3肖防守2码",
+      "core23":core23,
+      "mobile4":mobile4,
       "code_count":len(selected),
       "filter20":active_filter,
-      "trend_trigger":trigger,
+      "killed_wave_parity":active_filter.get("killed_wave_parity",[]),
+      "killed_head":active_filter.get("killed_head",""),
+      "head_streak":head_streak,
       "trend_switched":bool(switched),
       "trend_segment":segment,
       "trend_switches":switches,
+      "coldest3":meta.get("coldest3",[]),
+      "cold_defense2":meta.get("cold_defense2",[]),
       "forced_fill":meta.get("forced_fill",[]),
-      "killed_head":active_filter.get("killed_head",""),
-      "killed_wave_parity":active_filter.get("killed_wave_parity",[]),
       "head_decision":{
         "killed_head":active_filter.get("killed_head",""),
-        "reason":"前20期0/4头较少者"
+        "reason":"首轮前20期0/4少者；若杀头连续出2期则改杀另一头"
       },
       "ranked49":meta.get("ranked49") or [],
       "rescue28":rescue28,
@@ -5156,7 +5544,9 @@ def _predict27_tenblock(r, profile, target_issue):
       },
       "regime":f"长码段{segment}·变盘{switches}次",
       "audit_regime":audit_regime,
-      "correction_trained":0,"correction_weight_pct":0,"trend_weight_pct":0,
+      "correction_trained":0,
+      "correction_weight_pct":0,
+      "trend_weight_pct":0,
       "pool_weights_pct":{k:(model_stats.get(k,{}).get("weight_pct",20.0)) for k in POOL_MODEL_PROFILES}
     }
 
@@ -5826,11 +6216,11 @@ def record_shadow_predictions(r):
         rescue28=_m27.get("rescue28") or {}
         rescue_codes=[int(rescue28["code"])] if rescue28.get("active") and rescue28.get("code") else []
 
-        records.append((target,TEN27_V3_PROFILE,",".join(str(n) for n in c27),"","",py))
-        records.append((target,TEN27_V3_CORE_PROFILE,",".join(str(n) for n in core23),"","",py))
-        records.append((target,TEN27_V3_MOBILE_PROFILE,",".join(str(n) for n in mobile4),"","",py))
-        records.append((target,TEN27_V3_28_PROFILE,",".join(str(n) for n in rescue_codes),"","",py))
-        _record_strategy_audit(target,TEN27_V3_PROFILE,c27,_m27)
+        records.append((target,TEN27_V4_PROFILE,",".join(str(n) for n in c27),"","",py))
+        records.append((target,TEN27_V4_CORE_PROFILE,",".join(str(n) for n in core23),"","",py))
+        records.append((target,TEN27_V4_MOBILE_PROFILE,",".join(str(n) for n in mobile4),"","",py))
+        records.append((target,TEN27_V4_28_PROFILE,",".join(str(n) for n in rescue_codes),"","",py))
+        _record_strategy_audit(target,TEN27_V4_PROFILE,c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -5993,7 +6383,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v41",
+      "version":"v42",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -6423,9 +6813,9 @@ def build_model():
     c20,meta20=_predict20_hot(r,profile)
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
     stats20=_profile_hit_stats("20码精选",60)
-    stats27=_stats27_v3()
+    stats27=_stats27_v4()
     diag20=_strategy_diagnostics("20码精选",60)
-    diag27=_strategy_diagnostics(TEN27_V3_PROFILE,60)
+    diag27=_strategy_diagnostics(TEN27_V4_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
@@ -6490,7 +6880,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F动态19-23单期 + 27码20期结构长码10期"
+        "mode":"F动态19-23单期 + 27码精确长码10期"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -6645,9 +7035,9 @@ def _build_stats_background():
 def stats_api():
     base=learner_validation_stats()
     base["code20"]=_profile_hit_stats("20码精选",60)
-    base["code27"]=_stats27_v3()
+    base["code27"]=_stats27_v4()
     base["diag20"]=_strategy_diagnostics("20码精选",60)
-    base["diag27"]=_strategy_diagnostics(TEN27_V3_PROFILE,60)
+    base["diag27"]=_strategy_diagnostics(TEN27_V4_PROFILE,60)
     base["correction"]=_correction_status()
     return jsonify(base)
 
@@ -6720,7 +7110,7 @@ def complement_status():
 def strategy_diagnostics_api():
     return jsonify({
       "code20":_strategy_diagnostics("20码精选",60),
-      "code27":_strategy_diagnostics(TEN27_V3_PROFILE,60),
+      "code27":_strategy_diagnostics(TEN27_V4_PROFILE,60),
       "correction":_correction_status()
     })
 
