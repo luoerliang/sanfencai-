@@ -392,6 +392,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
 .compactBalls .ball{height:27px;aspect-ratio:auto;border-radius:7px;font-size:10px}
 .miniInfoRow{display:flex;align-items:center;gap:6px;overflow-x:auto;white-space:nowrap;margin-top:5px;color:#91a0b6;font-size:8.5px;-webkit-overflow-scrolling:touch}
 .miniInfoRow span{background:#101a2a;border:1px solid #26364e;border-radius:999px;padding:3px 5px}
+.miniInfoRow .lifetimeStat{font-weight:850;color:#d7e5ff;border-color:#355078;background:#111d31}
 .comboPredictCard{padding:8px}
 .comboPredictGrid{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(82px,.8fr);gap:7px;align-items:stretch}
 .comboPredictCard .zpairGrid{grid-template-columns:repeat(4,1fr);gap:3px}
@@ -521,6 +522,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       <span id="code20Brief">每期重算</span>
       <span id="code20Fusion">F自纠错</span>
       <span id="code20Record">已开0期 · 中0期 · 错0期</span>
+      <span id="code20Lifetime" class="lifetimeStat">累计实盘 中0 · 错0</span>
     </div>
   </section>
 
@@ -537,6 +539,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       <span id="code27Block"></span>
       <span id="code27Kill"></span>
       <span id="code27Stats"></span>
+      <span id="code27Lifetime" class="lifetimeStat">累计实盘 中0 · 错0</span>
     </div>
   </section>
 
@@ -544,14 +547,16 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">B组27码 · 每期动态</div>
-        <div class="sectionHint">只看最新20期 · 每期开奖后重算 · 不受A组/F/模型池影响</div>
+        <div class="sectionHint">只看最新20期重算号码 · 成绩每20期开奖为一轮，满20期归零重开</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
     <div id="sp27b" class="balls compactBalls"></div>
     <div class="miniInfoRow">
       <span id="code27BWindow">实时窗口 --</span>
-      <span id="code27BRecord">已开0期 · 中0期 · 错0期</span>
+      <span id="code27BRound">本轮20期 · 已开0/20 · 中0 · 错0</span>
+      <span id="code27BRecord">近20期策略实时滚动</span>
+      <span id="code27BCumulative" class="lifetimeStat">累计实盘 中0 · 错0</span>
       <span id="code27BMeta">等待实盘</span>
     </div>
   </section>
@@ -659,7 +664,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v52：模型池前台改为中文“趋势、生肖、冷热、波色、单双、纠错”，波色与单双成为两个独立模型。B组27码彻底独立，只读取官方入库的最新20期开奖，每期开奖后滚动重算；动态杀0/1/2/3/4其中一头，最冷3肖每肖固定2码，其余热肖/中冷肖每肖最多3码。A组与F不影响B组。</div>
+  <div class="foot">v53：B组号码算法不改，仍只读取最新20期开奖并每期重算；新增与F一样的“20期一轮”成绩显示，满20期后下一期本轮中/错自动归零。F、A、B三个号码区各新增“累计实盘”小区域，持续显示当前策略从真实提前锁单开始到现在总共中几期、错几期；轮次重置不会清掉累计成绩。</div>
 </div>
 
 <script>
@@ -770,6 +775,8 @@ async function loadMain(){
     code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 本轮 ${fRange} · 2/6实保 ${cs.protected2_actual_count??0}/${cs.protected2_count??0} · 独救 ${cs.rescue1_actual_count??0}/${cs.rescue1_count??0}`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
+    const fLife=sF.lifetime||{};
+    code20Lifetime.textContent=`累计实盘：中 ${fLife.hits??0}期 · 错 ${fLife.misses??0}期`;
     const fed=d.f_error_diag||{};
     fErrorRescueInfo.textContent=`F错${fed.f_misses??0} · 融合漏${fed.fusion_miss??0} · 全池错${fed.pool_all_miss??0}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
@@ -800,6 +807,8 @@ async function loadMain(){
 
     code27Block.textContent=`本轮 ${roundStart} — ${roundEnd}`;
     code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
+    const aLife=s27.lifetime||{};
+    code27Lifetime.textContent=`累计实盘：中 ${aLife.hits??0}期 · 错 ${aLife.misses??0}期`;
     const feas=(m27.pair_feasibility||{});
     code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖 ${c3pairs} · ${cold6ok?'6/6杀码✓':'冷肖码待补'} · ${feas.safe_ok?'杀头兼容✓':(feas.raw_ok?'杀头有冲突':'组合待检')} · 变盘${m27.trend_switches??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
@@ -807,13 +816,17 @@ async function loadMain(){
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
     const wlast=wb.length?wb[0]:'--';
-    code27BWindow.textContent=`近20期 ${wfirst} — ${wlast} · 实时滚动`;
-    code27BRecord.textContent=`实盘已开 ${s27b.n??0}期 · 中 ${s27b.hits??0}期 · 错 ${s27b.misses??0}期`;
+    code27BWindow.textContent=`分析窗口 ${wfirst} — ${wlast} · 最新20期实时滚动`;
+    const bRoundStart=s27b.start||'--', bRoundEnd=s27b.end||'--';
+    code27BRound.textContent=`本轮 ${bRoundStart}—${bRoundEnd} · 已开 ${s27b.n??0}/20 · 中 ${s27b.hits??0} · 错 ${s27b.misses??0}`;
+    code27BRecord.textContent=`第${s27b.round_no??1}轮 · 满20期自动归零重开`;
+    const bLife=s27b.lifetime||{};
+    code27BCumulative.textContent=`累计实盘：中 ${bLife.hits??0}期 · 错 ${bLife.misses??0}期`;
     const hs=m27b.head_strength||{};
     const bCold=m27b.coldest3||[];
     const bColdCodes=m27b.cold3_codes||{};
     const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
-    code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 冷3肖 ${bColdTxt} · 冷肖各2码 / 其他肖≤3 · 实盘最近20 ${s27b.recent20_hits??0}/${s27b.recent20_n??0}=${s27b.recent20_rate??0}%`;
+    code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 冷3肖 ${bColdTxt} · 冷肖各2码 / 其他肖≤3`;
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
       <div class="zpairName">${p.zodiac}</div>
@@ -5478,7 +5491,8 @@ def _stats27_v7():
       "current":summaries[-1] if summaries else dict(empty),
       "last_complete":next((g for g in reversed(summaries) if g["n"]>=10),None),
       "rounds_completed":sum(1 for g in summaries if g["n"]>=10),
-      "overall":_profile_hit_stats(TEN27_V7_PROFILE,60)
+      "overall":_profile_hit_stats(TEN27_V7_PROFILE,60),
+      "lifetime":_profile_lifetime_stats(TEN27_V7_PROFILE)
     }
 
 
@@ -6878,39 +6892,71 @@ def _predict27_dynamic_b(r, profile):
       "audit_regime":f"B27V52|kill={killed_head}|cold={','.join(cold3)}|conf={head_conf}"
     }
 
-def _stats27b_v52(window=60):
+def _stats27b_v52(target_issue=None):
+    """B组：每20期一轮 + 从v52实盘开始的累计统计。
+
+    B号码仍然每期开奖后按最新20期开奖重算。
+    这里只改变成绩展示：20期开奖为一轮，满20后下一期归零开新轮。
+    """
     with db_lock:
         c=connect()
         try:
-            rows=c.execute("""SELECT hit24 FROM prediction_log
-                              WHERE profile=? AND settled=1
-                              ORDER BY CAST(target_issue AS INTEGER) DESC
-                              LIMIT ?""",(B27_V52_PROFILE,int(window))).fetchall()
+            all_rows=c.execute("""SELECT target_issue,hit24,settled
+                                  FROM prediction_log
+                                  WHERE profile=?
+                                  ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                               (B27_V52_PROFILE,)).fetchall()
             audits=c.execute("""SELECT killed_head,head_kill_success
                                 FROM strategy_audit
                                 WHERE profile=? AND settled=1 AND killed_head<>''
                                 ORDER BY CAST(target_issue AS INTEGER) DESC
-                                LIMIT ?""",(B27_V52_PROFILE,int(window))).fetchall()
+                                LIMIT 60""",(B27_V52_PROFILE,)).fetchall()
         finally:
             c.close()
 
-    n=len(rows)
-    hits=sum(int(x["hit24"] or 0) for x in rows)
-    recent20=list(rows[:20])
-    h20=sum(int(x["hit24"] or 0) for x in recent20)
+    items=[dict(x) for x in all_rows]
+    target=str(target_issue or "")
+    issues=[str(x["target_issue"]) for x in items]
+    total=len(items)
+
+    # Same behavior as F: 20 target issues form one display round.
+    if target and target in issues:
+        idx=issues.index(target)
+        gstart=(idx//20)*20
+        chunk=items[gstart:gstart+20]
+        start_issue=str(chunk[0]["target_issue"]) if chunk else target
+    else:
+        rem=total%20
+        if rem==0:
+            chunk=[]
+            start_issue=target or (_next_issue_id(items[-1]["target_issue"]) if items else "")
+        else:
+            gstart=total-rem
+            chunk=items[gstart:]
+            start_issue=str(chunk[0]["target_issue"])
+
+    settled=[x for x in chunk if int(x.get("settled") or 0)==1]
+    n=len(settled)
+    hits=sum(int(x.get("hit24") or 0) for x in settled)
+    misses=max(0,n-hits)
+
+    lifetime=_profile_lifetime_stats(B27_V52_PROFILE)
+
     hk_n=len(audits)
     hk_ok=sum(int(x["head_kill_success"] or 0) for x in audits)
     baseline=(sum(1.0-float(HEAD_BASE.get(str(x["killed_head"]),10/49)) for x in audits)/hk_n) if hk_n else 0.0
 
     return {
+      "start":start_issue,
+      "end":_issue_add(start_issue,19) if start_issue else "",
       "n":n,
       "hits":hits,
-      "misses":max(0,n-hits),
+      "misses":misses,
       "rate":round(100*hits/n,1) if n else 0.0,
-      "recent20_n":len(recent20),
-      "recent20_hits":h20,
-      "recent20_misses":max(0,len(recent20)-h20),
-      "recent20_rate":round(100*h20/len(recent20),1) if recent20 else 0.0,
+      "round_size":20,
+      "round_complete":bool(n>=20),
+      "round_no":(total//20 + 1) if total%20==0 else (total//20 + 1),
+      "lifetime":lifetime,
       "head_kill_n":hk_n,
       "head_kill_success":hk_ok,
       "head_kill_rate":round(100*hk_ok/hk_n,1) if hk_n else 0.0,
@@ -7281,6 +7327,27 @@ def _profile_hit_stats(profile,window=60):
     return {"n":n,"hits":hits,"rate":round(100*hits/n,1) if n else 0.0}
 
 
+def _profile_lifetime_stats(profile):
+    """All settled pre-draw locks for one live strategy profile."""
+    with db_lock:
+        c=connect()
+        try:
+            row=c.execute("""SELECT
+                                COUNT(*) AS n,
+                                COALESCE(SUM(CASE WHEN hit24=1 THEN 1 ELSE 0 END),0) AS hits
+                              FROM prediction_log
+                              WHERE profile=? AND settled=1""",(profile,)).fetchone()
+        finally:
+            c.close()
+    n=int(row["n"] or 0) if row else 0
+    hits=int(row["hits"] or 0) if row else 0
+    return {
+      "n":n,
+      "hits":hits,
+      "misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0
+    }
+
 def _f_dynamic_current_stats(target_issue=None):
     """F动态每20期为一轮。
 
@@ -7328,6 +7395,7 @@ def _f_dynamic_current_stats(target_issue=None):
     hits=sum(int(x.get("hit24") or 0) for x in settled)
     misses=max(0,n-hits)
 
+    lifetime=_profile_lifetime_stats(F_DYNAMIC_V49_PROFILE)
     return {
       "start":start_issue,
       "end":_issue_add(start_issue,19) if start_issue else "",
@@ -7337,7 +7405,8 @@ def _f_dynamic_current_stats(target_issue=None):
       "rate":round(100*hits/n,1) if n else 0.0,
       "round_size":20,
       "round_complete":bool(n>=20),
-      "round_no":(total//20 + 1) if total%20==0 else (total//20 + 1)
+      "round_no":(total//20 + 1) if total%20==0 else (total//20 + 1),
+      "lifetime":lifetime
     }
 
 def _stats27_blocks():
@@ -8071,7 +8140,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v52",
+      "version":"v53",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8506,7 +8575,7 @@ def build_model():
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_v7()
-    stats27b=_stats27b_v52(60)
+    stats27b=_stats27b_v52(next_issue)
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
     # 10-period round, prediction_log may not contain that new target yet.
@@ -8598,7 +8667,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"中文六模型 + A组27长码10期 + B组纯近20期动态"
+        "mode":"中文六模型 + F20期轮 + A10期轮 + B20期轮 + 三组累计实盘"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
