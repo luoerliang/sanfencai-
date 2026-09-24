@@ -167,8 +167,17 @@ POOL_MODEL_PROFILES = {
     "T":"池T趋势",
     "Z":"池Z生肖",
     "C":"池C冷热",
-    "W":"池W波色单双",
+    "W":"池W波色v52",
+    "P":"池P单双v52",
     "A":"池A纠错",
+}
+POOL_MODEL_DISPLAY = {
+    "T":"趋势",
+    "Z":"生肖",
+    "C":"冷热",
+    "W":"波色",
+    "P":"单双",
+    "A":"纠错",
 }
 POOL_FINAL_PROFILE="池F最终"
 TEN27_PROFILE="27码十期覆盖"
@@ -203,6 +212,7 @@ TEN27_V7_28_PROFILE="27V7第28码"
 TEN27_V7_RAW_PROFILE="27V7原始Top27"
 B27_V50_PROFILE="27B每期动态v50"
 B27_V51_PROFILE="27B动态杀头v51"
+B27_V52_PROFILE="27B纯20期v52"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -367,7 +377,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
 .forecastGrid .strategyMain{font-size:11px;line-height:1.35;height:31px;overflow:hidden}
 .forecastGrid .strategyTitle{font-size:9px}
 .poolCard{padding:8px}
-#modelPoolRows{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+#modelPoolRows{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
 .modelMini{background:#0c1421;border:1px solid #1f2d43;border-radius:9px;padding:5px 3px;text-align:center;min-width:0}
 .modelMiniKey{font-size:13px;font-weight:950;line-height:1}
 .modelMiniWeight{font-size:11px;font-weight:900;margin-top:3px}
@@ -471,7 +481,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">多策略模型池</div>
-        <div class="sectionHint">T趋势 / Z生肖 / C冷热 / W波色单双 / A纠错 · 全部开奖前锁单</div>
+        <div class="sectionHint">趋势 / 生肖 / 冷热 / 波色 / 单双 / 纠错 · 全部开奖前锁单</div>
       </div>
     </div>
     <div id="modelPoolRows"></div>
@@ -492,8 +502,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
     <div class="tableWrap">
       <table class="lockTable">
-        <thead><tr><th>期号</th><th>特码</th><th>T</th><th>Z</th><th>C</th><th>W</th><th>A</th><th>F</th></tr></thead>
-        <tbody id="lockRows"><tr><td colspan="8">等待真实前瞻样本</td></tr></tbody>
+        <thead><tr><th>期号</th><th>特码</th><th>趋势</th><th>生肖</th><th>冷热</th><th>波色</th><th>单双</th><th>纠错</th><th>F</th></tr></thead>
+        <tbody id="lockRows"><tr><td colspan="9">等待真实前瞻样本</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -534,7 +544,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">B组27码 · 每期动态</div>
-        <div class="sectionHint">刚开奖 + 前10期实时窗口 · 每期动态杀0/1/2/3/4其中一头</div>
+        <div class="sectionHint">只看最新20期 · 每期开奖后重算 · 不受A组/F/模型池影响</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
@@ -649,7 +659,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v51：A组继续按10期长码规则运行；B组每期开奖后使用“刚开奖+前10期”实时窗口，并结合T/Z/C/W/A长期学习，动态判断0/1/2/3/4五个头中相对最弱的一头并排除。头数强弱按理论头数基准校正，避免0头因只有9个号码而天然被判弱。A/B全部开奖前锁单，开奖后自动结算。</div>
+  <div class="foot">v52：模型池前台改为中文“趋势、生肖、冷热、波色、单双、纠错”，波色与单双成为两个独立模型。B组27码彻底独立，只读取官方入库的最新20期开奖，每期开奖后滚动重算；动态杀0/1/2/3/4其中一头，最冷3肖每肖固定2码，其余热肖/中冷肖每肖最多3码。A组与F不影响B组。</div>
 </div>
 
 <script>
@@ -731,12 +741,12 @@ async function loadMain(){
     SPECIAL27B=d.special27b||[]; sp27b.innerHTML=balls(SPECIAL27B);
     fDynamicTitle.textContent=d.stale_prediction?'F动态 · 重算中':`F动态 · 当前${SPECIAL20.length||'--'}码`;
     const mp=d.model_pool||{}, ms=mp.stats||{}, stable=d.stable_signals||{};
-    const labels={T:'趋势',Z:'生肖',C:'冷热',W:'波色单双',A:'AI纠错'};
-    modelPoolRows.innerHTML=['T','Z','C','W','A'].map(k=>{
+    const modelNames=['趋势','生肖','冷热','波色','单双','纠错'];
+    modelPoolRows.innerHTML=modelNames.map(k=>{
       const x=ms[k]||{};
       return `<div class="modelMini">
         <div class="modelMiniKey">${k}</div>
-        <div class="modelMiniWeight">${x.weight_pct??20}%</div>
+        <div class="modelMiniWeight">${x.weight_pct??0}%</div>
         <div class="modelMiniMeta">错10:${x.e10??0}<br>错30:${x.e30??0}<br>连错:${x.miss_streak??0}</div>
       </div>`;
     }).join('');
@@ -753,11 +763,11 @@ async function loadMain(){
       streakAlert.style.display='none';
     }
     const recent=mp.recent10||[];
-    lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
+    lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x['趋势'])}</td><td>${hm(x['生肖'])}</td><td>${hm(x['冷热'])}</td><td>${hm(x['波色'])}</td><td>${hm(x['单双'])}</td><td>${hm(x['纠错'])}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="9">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, m27b=d.strategy27b||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{}, s27b=d.stats27b||{};
     const cs=m20.consensus||{};
     const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
-    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 本轮 ${fRange} · 2/5实保 ${cs.protected2_actual_count??0}/${cs.protected2_count??0} · 独救 ${cs.rescue1_actual_count??0}/${cs.rescue1_count??0}`;
+    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 本轮 ${fRange} · 2/6实保 ${cs.protected2_actual_count??0}/${cs.protected2_count??0} · 独救 ${cs.rescue1_actual_count??0}/${cs.rescue1_count??0}`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fed=d.f_error_diag||{};
@@ -797,10 +807,13 @@ async function loadMain(){
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
     const wlast=wb.length?wb[0]:'--';
-    code27BWindow.textContent=`窗口 ${wfirst} — ${wlast} · ${m27b.window??0}期`;
+    code27BWindow.textContent=`近20期 ${wfirst} — ${wlast} · 实时滚动`;
     code27BRecord.textContent=`实盘已开 ${s27b.n??0}期 · 中 ${s27b.hits??0}期 · 错 ${s27b.misses??0}期`;
     const hs=m27b.head_strength||{};
-    code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 杀头验证 ${s27b.head_kill_success??0}/${s27b.head_kill_n??0}=${s27b.head_kill_rate??0}%（基准${s27b.head_kill_baseline??0}%） · 最近20 ${s27b.recent20_hits??0}/${s27b.recent20_n??0}=${s27b.recent20_rate??0}%`;
+    const bCold=m27b.coldest3||[];
+    const bColdCodes=m27b.cold3_codes||{};
+    const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
+    code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 冷3肖 ${bColdTxt} · 冷肖各2码 / 其他肖≤3 · 实盘最近20 ${s27b.recent20_hits??0}/${s27b.recent20_n??0}=${s27b.recent20_rate??0}%`;
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
       <div class="zpairName">${p.zodiac}</div>
@@ -852,7 +865,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · F每期变 · A组10期长码 · B组每期动态`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · F每期变 · A组10期长码 · B组纯近20期动态`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -3186,24 +3199,21 @@ def _trend_only_number_scores(r, profile, strategy="20"):
 
 
 def _specialist_model_scores(r,profile,strategy="20"):
-    """Five deliberately different model personalities.
+    """Six deliberately different specialist models.
 
-    T = structural trend
-    Z = zodiac transition / 7-position structure
-    C = cold-rebound specialist
-    W = wave x parity specialist
-    A = correction AI
+    Visible names:
+      趋势 / 生肖 / 冷热 / 波色 / 单双 / 纠错
 
-    They all output a 01-49 ranking so they can be compared on the same target.
+    波色 and 单双 are intentionally independent in v52.
     """
     nums=list(range(1,50))
     zmap=_number_zodiac_map(r)
 
-    # T: pure-ish trend structure.
+    # 趋势
     t_raw,_zm,_zh,_ctx,_reg=_trend_only_number_scores(r,profile,strategy)
     T=_norm_values(t_raw,nums)
 
-    # Z: zodiac transition is dominant; number-within-zodiac structure is secondary.
+    # 生肖
     zheat=_hot_zodiac_scores(r,profile)
     zheat_n=_norm_values(zheat,ALL_ZODIACS)
     ztrans,_ztm=_zodiac_transition_model(r)
@@ -3220,8 +3230,7 @@ def _specialist_model_scores(r,profile,strategy="20"):
     }
     Z=_norm_values(Z,nums)
 
-    # C: intentionally different from T/Z. During cold-rebound states it prefers
-    # overdue numbers; otherwise it prefers medium-cold rather than the extremes.
+    # 冷热
     num_cold,z_cold,num_gap,_zg=_cold_metrics(r)
     rebound=_nmy_cold_rebound_lift(r)
     gaps=_norm_values(num_gap,nums)
@@ -3236,23 +3245,19 @@ def _specialist_model_scores(r,profile,strategy="20"):
             C[n]=.50*mid+.25*(1.0-abs(zc-.55))+.25*gaps.get(n,.5)
     C=_norm_values(C,nums)
 
-    # W: red/blue/green x odd/even is the main signal, with wave/size/parity support.
     tr=_trend_profiles(r)
-    wp=_norm_values(tr.get("wave_parity",{}),WAVE_PARITY_KEYS)
+
+    # 波色：只研究红/蓝/绿，不再混入单双。
     wv=_norm_values(tr.get("wave",{}),["红","蓝","绿"])
-    sz=_norm_values(tr.get("size",{}),["大","小"])
-    pa=_norm_values(tr.get("parity",{}),["单","双"])
-    W={
-      n:.56*wp.get(wave_parity_of(n),.5)
-        +.18*wv.get(wave_of(n),.5)
-        +.13*sz.get(size_of(n),.5)
-        +.13*pa.get(parity_of(n),.5)
-      for n in nums
-    }
+    W={n:wv.get(wave_of(n),.5) for n in nums}
     W=_norm_values(W,nums)
 
-    # A: correction AI is dominant; base AI prevents tiny correction samples
-    # from becoming too erratic.
+    # 单双：独立模型，只研究单/双走势。
+    pa=_norm_values(tr.get("parity",{}),["单","双"])
+    P={n:pa.get(parity_of(n),.5) for n in nums}
+    P=_norm_values(P,nums)
+
+    # 纠错
     corr=_norm_values(_correction_probs(r,strategy),nums)
     with ai_lock:
         ai_ready=bool(ai_state.get("ready",False))
@@ -3264,7 +3269,7 @@ def _specialist_model_scores(r,profile,strategy="20"):
     A={n:.72*corr.get(n,.5)+.28*base.get(n,.5) for n in nums}
     A=_norm_values(A,nums)
 
-    return {"T":T,"Z":Z,"C":C,"W":W,"A":A}
+    return {"T":T,"Z":Z,"C":C,"W":W,"P":P,"A":A}
 
 def _rows_rate(rows,k):
     part=rows[:int(k)]
@@ -3571,9 +3576,8 @@ def _generic_profile_stats(profile,limit=120):
 
 def _pool_dashboard():
     perf=_pool_performance()
-    stats=perf.get("stats",{})
+    stats_internal=perf.get("stats",{})
 
-    # Unique value: the only specialist that hit that issue.
     profiles=list(POOL_MODEL_PROFILES.values())
     placeholders=",".join("?" for _ in profiles)
     with db_lock:
@@ -3583,7 +3587,7 @@ def _pool_dashboard():
                                FROM prediction_log
                                WHERE profile IN ({placeholders}) AND settled=1
                                ORDER BY CAST(target_issue AS INTEGER) DESC
-                               LIMIT 360""",tuple(profiles)).fetchall()
+                               LIMIT 420""",tuple(profiles)).fetchall()
             frows=c.execute("""SELECT target_issue,hit24,actual_special
                                FROM prediction_log
                                WHERE profile=? AND settled=1
@@ -3605,23 +3609,29 @@ def _pool_dashboard():
         h=[k for k,v in by_issue[issue]["hits"].items() if v]
         if len(h)==1:
             unique[h[0]]+=1
-    for k in stats:
-        stats[k]["unique_hits60"]=unique.get(k,0)
+
+    stats={}
+    for k,v in stats_internal.items():
+        x=dict(v)
+        x["unique_hits60"]=unique.get(k,0)
+        # API/user-facing name is Chinese; internal profile remains compatible.
+        x["name"]=POOL_MODEL_DISPLAY.get(k,k)
+        stats[POOL_MODEL_DISPLAY.get(k,k)]=x
 
     f_by_issue={str(x["target_issue"]):int(x["hit24"] or 0) for x in frows}
     recent=[]
     for issue in sorted(by_issue,key=lambda x:int(x),reverse=True)[:10]:
         d=by_issue[issue]
-        recent.append({
-          "issue":issue,"actual":d.get("actual"),
-          "T":d["hits"].get("T"),"Z":d["hits"].get("Z"),
-          "C":d["hits"].get("C"),"W":d["hits"].get("W"),
-          "A":d["hits"].get("A"),"F":f_by_issue.get(issue)
-        })
+        row={"issue":issue,"actual":d.get("actual"),"F":f_by_issue.get(issue)}
+        for k in POOL_MODEL_PROFILES:
+            row[POOL_MODEL_DISPLAY.get(k,k)]=d["hits"].get(k)
+        recent.append(row)
+
     return {
       "stats":stats,
       "recent10":recent,
       "mature_n":perf.get("mature_n",0),
+      "model_names":[POOL_MODEL_DISPLAY[k] for k in POOL_MODEL_PROFILES],
       "legacy_errors":_legacy_ai_trend_errors()
     }
 
@@ -3670,7 +3680,7 @@ def _pool_04_weakness_decision(r,profile,strategy="27"):
     weaker="0头" if weighted["0头"]<=weighted["4头"] else "4头"
     stronger="4头" if weaker=="0头" else "0头"
     gap=weighted[stronger]-weighted[weaker]
-    vote_support=votes[weaker]/5.0
+    vote_support=votes[weaker]/max(1,len(models))
 
     # Mature real model-pool evidence can lower the activation threshold slightly.
     mature=int(perf.get("mature_n",0))
@@ -3987,8 +3997,8 @@ def _predict20_hot(r, profile):
 
     Rules:
     - Default 20 codes, dynamically 19~23.
-    - 3/5 specialist consensus is protected.
-    - Strong 2/5 consensus is prioritized.
+    - 3+/6 specialist consensus is protected.
+    - Strong 2/6 consensus is prioritized.
     - Cold-zodiac / zodiac quotas become SOFT structure signals and cannot
       delete a protected consensus number.
     - 23-code mode is intentionally frequency-limited.
@@ -4023,7 +4033,7 @@ def _predict20_hot(r, profile):
         )
 
         # Coldest3 is now a SOFT penalty only for low-consensus numbers.
-        # 2/5 and 3/5 consensus numbers are never hard-deleted by zodiac.
+        # 2/6 and 3+/6 consensus numbers are never hard-deleted by zodiac.
         if zmap.get(n) in coldset and support.get(n,0)<=1:
             v-=.075
         elif zmap.get(n) in coldset and support.get(n,0)==2:
@@ -4044,9 +4054,9 @@ def _predict20_hot(r, profile):
       )
     ]
 
-    # v38: strong 2/5 consensus gets at most FOUR protected seats in F.
+    # v38: strong 2/6 consensus gets at most FOUR protected seats in F.
     # Rank them by current model weight support first, then pool strength,
-    # then final F score. 3/5+ consensus remains unlimited/protected.
+    # then final F score. 3+/6 consensus remains unlimited/protected.
     protected2=sorted(
       protected2_candidates,
       key=lambda n:(
@@ -4057,7 +4067,7 @@ def _predict20_hot(r, profile):
       )
     )[:4]
 
-    # v49: reserve up to TWO 1/5 unique-rescue seats.
+    # v49: reserve up to TWO 1/6 unique-rescue seats.
     # Only models with a real unique hit in the last 30 settled issues qualify.
     unique_value=_f_unique_model_value()
     unique_candidates=[]
@@ -4106,7 +4116,7 @@ def _predict20_hot(r, profile):
     )
 
     # v49 seat architecture:
-    #   3/5 core + up to 4 REAL 2/5 seats + up to 2 REAL 1/5 rescue seats.
+    #   3+/6 core + up to 4 REAL 2/6 seats + up to 2 REAL 1/6 rescue seats.
     # Rescue seats are not allowed to be squeezed out by a crowded 3/5 core.
     fixed_rescue=[]
     for n in protected2 + rescue1:
@@ -4128,7 +4138,7 @@ def _predict20_hot(r, profile):
 
     if len(protected3)+len(fixed_rescue)>23:
         count_reasons.append(
-          f"共识拥挤：固定2/5 {len(protected2)}席 + 独家救援 {len(rescue1)}席"
+          f"共识拥挤：固定2/6 {len(protected2)}席 + 独家救援 {len(rescue1)}席"
         )
 
     target_count=max(19,min(23,target_count))
@@ -4432,7 +4442,7 @@ def _ten27_head_decision(score,specialists,perf):
     weak="0头" if horizon["0头"]<=horizon["4头"] else "4头"
     strong="4头" if weak=="0头" else "0头"
     gap=horizon[strong]-horizon[weak]
-    support=votes[weak]/5.0
+    support=votes[weak]/max(1,len(specialists))
 
     # Because a wrong hard kill hurts ten consecutive bets, threshold is strict.
     active=(gap>=.115 and support>=.60)
@@ -4694,7 +4704,7 @@ def _ten27_adjust_mobile4(r,profile,core23,current4,changes_used):
           )
         )
         if active:
-            quality=.55*float(score.get(n,0))+.30*(support/5.0)+.15*(top12/5.0)
+            quality=.55*float(score.get(n,0))+.30*(support/max(1,len(specialists)))+.15*(top12/max(1,len(specialists)))
             candidates.append((quality,n,gain,hrank,support,top12))
 
     if not candidates:
@@ -4735,7 +4745,7 @@ def _ten27_rescue28_v2(r,profile,core23,mobile4):
           or (hrank<=10 and support>=3 and top10>=2 and sc>=.82)
         )
         if active:
-            quality=.58*sc+.27*(support/5.0)+.15*(top10/5.0)
+            quality=.58*sc+.27*(support/max(1,len(specialists)))+.15*(top10/max(1,len(specialists)))
             candidates.append((quality,n,hrank,support,top10,sc))
 
     if not candidates:
@@ -6158,7 +6168,7 @@ def _long27_v4_rescue28(r,profile,base27,filt):
         hrank=ranked.index(n)+1
         sc=float(score.get(n,0))
         if (hrank<=13 and support>=4 and sc>=.78) or (hrank<=10 and support>=3 and top10>=2 and sc>=.82):
-            quality=.58*sc+.27*(support/5.0)+.15*(top10/5.0)
+            quality=.58*sc+.27*(support/max(1,len(specialists)))+.15*(top10/max(1,len(specialists)))
             candidates.append((quality,n,hrank,support,top10,sc))
 
     if not candidates:
@@ -6465,7 +6475,7 @@ def _long27_rescue28(r,profile,base27,filt):
         hrank=ranked.index(n)+1
         sc=float(score.get(n,0))
         if (hrank<=13 and support>=4 and sc>=.78) or (hrank<=10 and support>=3 and top10>=2 and sc>=.82):
-            quality=.58*sc+.27*(support/5.0)+.15*(top10/5.0)
+            quality=.58*sc+.27*(support/max(1,len(specialists)))+.15*(top10/max(1,len(specialists)))
             candidates.append((quality,n,hrank,support,top10,sc))
     if not candidates:
         return {"active":False,"code":None,"message":""}
@@ -6566,7 +6576,7 @@ def _ten27_outside_rescue(r,profile,base27):
           or (hrank<=14 and support>=3 and top12>=2 and sc>=.77)
         )
         if active:
-            quality=.55*sc+.30*(support/5.0)+.15*(top12/5.0)
+            quality=.55*sc+.30*(support/max(1,len(specialists)))+.15*(top12/max(1,len(specialists)))
             candidates.append((quality,n,hrank,support,top12,sc))
 
     if not candidates:
@@ -6622,164 +6632,291 @@ def _tenblock_state(r,target_issue):
 
 
 def _predict27_dynamic_b(r, profile):
-    """B组27码：每期开奖后实时重算，并动态杀0/1/2/3/4其中一头。
+    """B组27码 v52：只使用最新20期开奖，不受F/A组/六模型池影响。
 
-    头数判断不直接看原始出现次数，而按理论基准校正：
-    0头有9码，其余头各10码，避免0头天然因为号码少而总被误判最弱。
+    Every new official draw shifts the 20-draw window by one and the next
+    B-group list is rebuilt from scratch.
+
+    Hard structure:
+      - dynamically kill one of 0/1/2/3/4 heads using only latest20;
+      - coldest 3 zodiacs = exactly 2 codes each;
+      - all other (hot / medium-cold) zodiacs = max 3 each.
     """
     nums=list(range(1,50))
-    recent=list(r[:11])
-    zmap=_number_zodiac_map(r)
+    recent=list(r[:20])
 
-    # 1) 全历史多策略池
-    specialists=_specialist_model_scores(r,profile,"20")
-    perf=_pool_performance()
-    weights=perf.get("weights") or {k:.20 for k in specialists}
-    pool={}
+    # Zodiac mapping inferred ONLY from these 20 draws.
+    # Mark-Six zodiac numbers repeat every 12, so residue mapping fills 01-49.
+    residue=defaultdict(Counter)
+    direct=defaultdict(Counter)
+    for x in recent:
+        for j in range(1,7):
+            n=x[f"n{j}"]; z=normalize_z(x[f"z{j}"] or "")
+            if n and z:
+                residue[(int(n)-1)%12][z]+=1
+                direct[int(n)][z]+=1
+        n=x["special"]; z=normalize_z(x["z7"] or "")
+        if n and z:
+            residue[(int(n)-1)%12][z]+=2
+            direct[int(n)][z]+=2
+
+    residue_z={k:c.most_common(1)[0][0] for k,c in residue.items() if c}
+    zmap={}
     for n in nums:
-        pool[n]=sum(float(weights.get(k,.20))*float(specialists[k].get(n,.5)) for k in specialists)
-    pool=_norm_values(pool,nums)
+        z=residue_z.get((n-1)%12)
+        if not z and direct.get(n):
+            z=direct[n].most_common(1)[0][0]
+        if z:
+            zmap[n]=z
 
-    # 2) 最近11期号码强度
-    rc=Counter()
-    for i,x in enumerate(recent):
-        try:
-            rc[int(x["special"])]+=exp_weight(i,3.8)
-        except Exception:
-            pass
-    recent_num=_norm_values(rc,nums)
+    # --------------------------------------------------------
+    # Recent20 statistics only
+    # --------------------------------------------------------
+    freq=Counter()
+    wave_w=Counter()
+    parity_w=Counter()
+    zodiac_w=Counter()
+    head20=Counter()
+    totalw=0.0
+    gap={n:20 for n in nums}
+    zgap={z:20 for z in ALL_ZODIACS}
+    zraw=Counter()
 
-    # 3) 最近11期结构
-    wp=Counter(); hd11=Counter(); zc=Counter(); total11=0.0
     for i,x in enumerate(recent):
         try:
             n=int(x["special"])
         except Exception:
             continue
-        w=exp_weight(i,4.2)
-        total11+=w
-        wp[wave_parity_of(n)]+=w
-        hd11[head_of(n)]+=w
+        w=exp_weight(i,6.2)
+        totalw+=w
+        freq[n]+=w
+        wave_w[wave_of(n)]+=w
+        parity_w[parity_of(n)]+=w
+        head20[head_of(n)]+=w
         z=normalize_z(x["z7"] or "")
         if z:
-            zc[z]+=w
+            zodiac_w[z]+=w
+            zraw[z]+=1
+            if zgap[z]==20:
+                zgap[z]=i
+        if gap[n]==20:
+            gap[n]=i
 
-    struct={}
+    freq_n=_norm_values(freq,nums)
+    gap_n=_norm_values(gap,nums)
+
+    wave_share={
+      w:(wave_w[w]/totalw if totalw else 1/3)
+      for w in ["红","蓝","绿"]
+    }
+    parity_share={
+      p:(parity_w[p]/totalw if totalw else .5)
+      for p in ["单","双"]
+    }
+    zodiac_share={
+      z:(zodiac_w[z]/totalw if totalw else 1/12)
+      for z in ALL_ZODIACS
+    }
+
+    # Mild acceleration: latest 6 versus previous 14, still within latest20.
+    w6=Counter(); p6=Counter(); z6=Counter()
+    for i,x in enumerate(recent[:6]):
+        try: n=int(x["special"])
+        except Exception: continue
+        ww=exp_weight(i,2.2)
+        w6[wave_of(n)]+=ww
+        p6[parity_of(n)]+=ww
+        z=normalize_z(x["z7"] or "")
+        if z: z6[z]+=ww
+    sw6=sum(w6.values()) or 1.0
+    sp6=sum(p6.values()) or 1.0
+    sz6=sum(z6.values()) or 1.0
+
+    score={}
     for n in nums:
         z=zmap.get(n)
-        wpv=(wp.get(wave_parity_of(n),0.0)/total11) if total11 else 0.0
-        hv=(hd11.get(head_of(n),0.0)/total11) if total11 else 0.0
-        zv=(zc.get(z,0.0)/total11) if (total11 and z) else 0.0
-        struct[n]=.46*wpv+.26*hv+.28*zv
-    struct=_norm_values(struct,nums)
-
-    # 4) 最新一期 -> 下一期历史转移
-    try:
-        ns,_zt,_ht,_wt,_st,_pt,tmeta=_forward_transition_scores(r)
-        trans=_norm_values(ns,nums)
-        trans_samples=int(tmeta.get("samples",0))
-    except Exception:
-        trans={n:.5 for n in nums}
-        trans_samples=0
-
-    # 5) 未杀码综合分
-    score={
-      n:.48*pool.get(n,.5)
-        +.22*recent_num.get(n,.5)
-        +.18*struct.get(n,.5)
-        +.12*trans.get(n,.5)
-      for n in nums
-    }
+        wave_live=.65*wave_share.get(wave_of(n),1/3)+.35*(w6.get(wave_of(n),0)/sw6)
+        parity_live=.65*parity_share.get(parity_of(n),.5)+.35*(p6.get(parity_of(n),0)/sp6)
+        zodiac_live=.70*zodiac_share.get(z,1/12)+.30*(z6.get(z,0)/sz6 if z else 0)
+        score[n]=(
+          .34*freq_n.get(n,.5)
+          +.20*gap_n.get(n,.5)
+          +.16*wave_live
+          +.12*parity_live
+          +.18*zodiac_live
+        )
     score=_norm_values(score,nums)
 
     # --------------------------------------------------------
-    # 动态杀一头：0/1/2/3/4全参与
+    # Dynamic head kill, latest20 ONLY.
+    # Normalize by theoretical head sizes so 0-head is not unfairly weak.
     # --------------------------------------------------------
     heads=["0头","1头","2头","3头","4头"]
 
-    # A. 模型本身对每一头的平均强度（平均而非总和，避免头数大小偏差）
-    model_head={}
-    trans_head={}
-    for h in heads:
-        hn=[n for n in nums if head_of(n)==h]
-        model_head[h]=sum(score.get(n,.5) for n in hn)/max(1,len(hn))
-        trans_head[h]=sum(trans.get(n,.5) for n in hn)/max(1,len(hn))
-
-    # B. 最近11 / 最近30，按理论概率归一化
-    def norm_head_window(block,half):
+    def head_strength(block,half):
         c=Counter(); tw=0.0
         for i,x in enumerate(block):
-            try:
-                n=int(x["special"])
-            except Exception:
-                continue
+            try: n=int(x["special"])
+            except Exception: continue
             w=exp_weight(i,half)
             c[head_of(n)]+=w
             tw+=w
-        out={}
+        raw={}
         for h in heads:
             share=(c[h]/tw) if tw else HEAD_BASE[h]
-            out[h]=share/max(HEAD_BASE[h],1e-9)
-        # normalize around the group so values are comparable
-        mean=sum(out.values())/len(out) if out else 1.0
-        return {h:(out[h]/mean if mean else 1.0) for h in heads}
+            raw[h]=share/max(HEAD_BASE[h],1e-9)
+        m=sum(raw.values())/len(raw) if raw else 1.0
+        return {h:(raw[h]/m if m else 1.0) for h in heads}
 
-    h11=norm_head_window(r[:11],4.2)
-    h30=norm_head_window(r[:30],10.0)
-
-    # C. 综合头强度：越低越弱
-    # model 40% + 近11 30% + 近30 20% + 转移10%
-    # model/trans先做组内均值归一化
-    mm=sum(model_head.values())/len(model_head)
-    tm=sum(trans_head.values())/len(trans_head)
-    head_strength={}
-    for h in heads:
-        m=(model_head[h]/mm) if mm else 1.0
-        t=(trans_head[h]/tm) if tm else 1.0
-        head_strength[h]=.40*m+.30*h11[h]+.20*h30[h]+.10*t
-
-    ordered_heads=sorted(heads,key=lambda h:(head_strength[h],h))
+    h20=head_strength(recent,6.5)
+    h8=head_strength(recent[:8],2.8)
+    hs={h:.68*h20[h]+.32*h8[h] for h in heads}
+    ordered_heads=sorted(heads,key=lambda h:(hs[h],h))
     killed_head=ordered_heads[0]
-    second_head=ordered_heads[1]
-    gap=float(head_strength[second_head]-head_strength[killed_head])
+    gap_head=float(hs[ordered_heads[1]]-hs[killed_head])
+    head_conf="强" if gap_head>=.12 else ("中" if gap_head>=.06 else "弱")
 
-    if gap>=.10:
-        kill_conf="强"
-    elif gap>=.05:
-        kill_conf="中"
-    else:
-        kill_conf="弱"
+    # --------------------------------------------------------
+    # Coldest 3 zodiacs: least frequent special-zodiac in latest20.
+    # Tie -> longer omission first.
+    # --------------------------------------------------------
+    cold3=sorted(
+      ALL_ZODIACS,
+      key=lambda z:(zraw.get(z,0),-zgap.get(z,20),z)
+    )[:3]
+    coldset=set(cold3)
 
     ranked_all=sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
-    ranked=[n for n in ranked_all if head_of(n)!=killed_head]
-    selected=ranked[:27]
+    selected=[]
+    zcount=Counter()
+    cold_codes={}
+    head_override=[]
 
-    # Support explainability
-    support={}
-    model_orders={}
-    for k,sm in specialists.items():
-        order=sorted(nums,key=lambda x:(-sm.get(x,-1e9),x))
-        model_orders[k]=set(order[:20])
-    for n in nums:
-        support[n]=sum(1 for k in specialists if n in model_orders[k])
+    # Exactly 2 per cold zodiac.
+    for z in cold3:
+        safe=[
+          n for n in ranked_all
+          if zmap.get(n)==z and head_of(n)!=killed_head
+        ]
+        picks=safe[:2]
+        # Very rare mapping/kill conflict: same cold zodiac still gets 2.
+        if len(picks)<2:
+            for n in ranked_all:
+                if zmap.get(n)==z and n not in picks:
+                    picks.append(n)
+                    if head_of(n)==killed_head:
+                        head_override.append(n)
+                    if len(picks)>=2:
+                        break
+        cold_codes[z]=picks[:2]
+        for n in picks[:2]:
+            if n not in selected:
+                selected.append(n)
+                zcount[z]+=1
+
+    # Hot / medium-cold zodiacs: max 3 each.
+    for n in ranked_all:
+        if len(selected)>=27:
+            break
+        if n in selected:
+            continue
+        z=zmap.get(n)
+        if not z or z in coldset:
+            continue
+        if head_of(n)==killed_head:
+            continue
+        if zcount[z]>=3:
+            continue
+        selected.append(n)
+        zcount[z]+=1
+
+    # Defensive fill preserving zodiac caps first.
+    if len(selected)<27:
+        for n in ranked_all:
+            if len(selected)>=27:
+                break
+            if n in selected:
+                continue
+            z=zmap.get(n)
+            if not z or z in coldset:
+                continue
+            if zcount[z]>=3:
+                continue
+            selected.append(n)
+            zcount[z]+=1
+            if head_of(n)==killed_head:
+                head_override.append(n)
+
+    selected=selected[:27]
+    counts=dict(Counter(zmap.get(n) for n in selected if zmap.get(n)))
 
     return selected,{
-      "mode":"B组每期动态·最新开奖+前10期·动态杀一头",
+      "mode":"B组纯近20期·每期实时重算",
       "window":len(recent),
       "window_issues":[str(x["issue"]) for x in recent if x["issue"]],
-      "ranked49":ranked_all,
-      "killed_head":killed_head,
-      "head_strength":{h:round(head_strength[h],3) for h in heads},
-      "head_gap":round(gap,3),
-      "head_confidence":kill_conf,
-      "pool_weights_pct":{k:round(100*float(weights.get(k,.20)),1) for k in specialists},
-      "transition_samples":trans_samples,
-      "top_support":{f"{n:02d}":int(support.get(n,0)) for n in selected},
-      "latest_issue":str(r[0]["issue"]) if r else "",
+      "latest_issue":str(recent[0]["issue"]) if recent else "",
       "recalc_each_issue":True,
-      "regime":f"B动态杀{killed_head}·{kill_conf}信号",
-      "audit_regime":f"B27V51|kill={killed_head}|gap={gap:.3f}|conf={kill_conf}"
+      "independent":True,
+      "uses_only_recent20":True,
+      "killed_head":killed_head,
+      "head_strength":{h:round(hs[h],3) for h in heads},
+      "head_gap":round(gap_head,3),
+      "head_confidence":head_conf,
+      "coldest3":cold3,
+      "cold3_codes":cold_codes,
+      "zodiac_counts":counts,
+      "cold_each":2,
+      "other_zodiac_cap":3,
+      "head_override":head_override,
+      "ranked49":ranked_all,
+      "filter20":{
+        "head_counts":{h:round(head20[h],3) for h in heads},
+        "wave_counts":{w:round(wave_w[w],3) for w in ["红","蓝","绿"]},
+        "parity_counts":{p:round(parity_w[p],3) for p in ["单","双"]}
+      },
+      "regime":f"B纯20期·杀{killed_head}·冷3肖各2",
+      "audit_regime":f"B27V52|kill={killed_head}|cold={','.join(cold3)}|conf={head_conf}"
     }
+
+def _stats27b_v52(window=60):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT hit24 FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(B27_V52_PROFILE,int(window))).fetchall()
+            audits=c.execute("""SELECT killed_head,head_kill_success
+                                FROM strategy_audit
+                                WHERE profile=? AND settled=1 AND killed_head<>''
+                                ORDER BY CAST(target_issue AS INTEGER) DESC
+                                LIMIT ?""",(B27_V52_PROFILE,int(window))).fetchall()
+        finally:
+            c.close()
+
+    n=len(rows)
+    hits=sum(int(x["hit24"] or 0) for x in rows)
+    recent20=list(rows[:20])
+    h20=sum(int(x["hit24"] or 0) for x in recent20)
+    hk_n=len(audits)
+    hk_ok=sum(int(x["head_kill_success"] or 0) for x in audits)
+    baseline=(sum(1.0-float(HEAD_BASE.get(str(x["killed_head"]),10/49)) for x in audits)/hk_n) if hk_n else 0.0
+
+    return {
+      "n":n,
+      "hits":hits,
+      "misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0,
+      "recent20_n":len(recent20),
+      "recent20_hits":h20,
+      "recent20_misses":max(0,len(recent20)-h20),
+      "recent20_rate":round(100*h20/len(recent20),1) if recent20 else 0.0,
+      "head_kill_n":hk_n,
+      "head_kill_success":hk_ok,
+      "head_kill_rate":round(100*hk_ok/hk_n,1) if hk_n else 0.0,
+      "head_kill_baseline":round(100*baseline,1) if hk_n else 0.0
+    }
+
 
 def _stats27b_v51(window=60):
     with db_lock:
@@ -7746,11 +7883,11 @@ def record_shadow_predictions(r):
         best_profile,_=_select_profile(r)
         c27b,_m27b=_predict27_dynamic_b(r,best_profile)
         records.append((
-            target,B27_V51_PROFILE,
+            target,B27_V52_PROFILE,
             ",".join(str(n) for n in c27b),
             "","",py
         ))
-        _record_strategy_audit(target,B27_V51_PROFILE,c27b,_m27b)
+        _record_strategy_audit(target,B27_V52_PROFILE,c27b,_m27b)
     except Exception as e:
         print(f"[27B] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -7934,7 +8071,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v51",
+      "version":"v52",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8369,7 +8506,7 @@ def build_model():
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_v7()
-    stats27b=_stats27b_v51(60)
+    stats27b=_stats27b_v52(60)
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
     # 10-period round, prediction_log may not contain that new target yet.
@@ -8461,7 +8598,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F动态19-23 + A组27长码10期 + B组27每期动态杀一头"
+        "mode":"中文六模型 + A组27长码10期 + B组纯近20期动态"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
