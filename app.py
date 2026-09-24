@@ -149,6 +149,10 @@ POOL_MODEL_PROFILES = {
 }
 POOL_FINAL_PROFILE="池F最终"
 TEN27_PROFILE="27码十期覆盖"
+TEN27_V2_PROFILE="27十期23核4机动"
+TEN27_CORE_PROFILE="27核心23"
+TEN27_MOBILE_PROFILE="27机动4"
+TEN27_28_PROFILE="27第28码"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -457,8 +461,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">27码 · 未来10期覆盖</div>
-        <div id="code27Hint" class="sectionHint">基础27码打一轮10期 · 轮内不换 · 强外码才补28</div>
+        <div class="sectionTitle">27码 · 23核+4机动</div>
+        <div id="code27Hint" class="sectionHint">核心23固定10期 · 机动4最多调整2次 · 强外码才补28</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -568,12 +572,12 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="rescueBox">
       <div class="rescueTitle">⚠️ 28码补位提醒</div>
       <div id="rescueModalCode" class="rescueCode">--</div>
-      <div id="rescueModalText" class="rescueText">未来10期模型发现基础27码之外的强覆盖号码。</div>
+      <div id="rescueModalText" class="rescueText">未来10期模型发现核心23+机动4之外的强覆盖号码。</div>
       <button class="rescueClose" onclick="closeRescueModal()">知道了</button>
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v39会在F功能区标题直接显示本期实际码数，例如“F动态 · 当前20码 / 21码 / 22码”，不再只显示19–23范围。3/5及以上共识继续保护，强2/5最多4个；27码继续使用未来10期累计覆盖模型。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v40把27码拆成23个核心码+4个机动码：核心23整轮10期不动，机动4整轮最多调整2次，第28码只在极强外码出现时临时加入。页面单独统计核心23中几、机动4救回几次、第28码救回几次、整轮最终10中几。F同时新增错因诊断：区分“模型池有人抓到但F漏掉”和“模型池全部没抓到”。</div>
 </div>
 
 <script>
@@ -668,13 +672,13 @@ async function loadMain(){
     const cs=m20.consensus||{};
     code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码 · 2/5保 ${cs.protected2_count??0}/4`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
-    fErrorRescueInfo.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 23档非连续`;
-    code27Block.textContent=`第${m27.round_position??0}/10期 · 基础27固定`;
-    const hd=m27.head_decision||{};
-    code27Kill.textContent=m27.killed_head?`10期弱头排${m27.killed_head}`:`10期不杀头`;
+    const fed=d.f_error_diag||{};
+    fErrorRescueInfo.textContent=`F错${fed.f_misses??0} · 融合漏${fed.fusion_miss??0} · 全池错${fed.pool_all_miss??0}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
-    const r28=m27.rescue28||{}, th=m27.ten_horizon||{};
-    code27Stats.textContent=`本轮 ${cur27.hits??0}/${cur27.n??0} · 模型窗${th.model_windows??0}${r28.active?' · +28':''}`;
+    const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, ma=m27.mobile_adjust||{};
+    code27Block.textContent=`第${m27.round_position??0}/10 · 核23 ${cur27.core23_hits??0}/${cur27.n??0}`;
+    code27Kill.textContent=`机救${cur27.mobile4_rescues??0} · 28救${cur27.rescue28??0} · 机动变${cur27.mobile_changes??m27.mobile_changes??0}/2`;
+    code27Stats.textContent=`总${cur27.final_hits??0}/${cur27.n??0} · 模型窗${th.model_windows??0}${r28.active?' · 本期+28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -4304,6 +4308,352 @@ def _ten27_round_context(target_issue):
       "base_codes":[]
     }
 
+
+def _ten27_v2_round_context(target_issue):
+    """23 core + 4 mobile round context.
+
+    A fresh V2 profile is used so old fixed-27 results remain intact and the
+    new rescue counters are honest forward records.
+    """
+    with db_lock:
+        c=connect()
+        try:
+            full=c.execute("""SELECT target_issue,special24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (TEN27_V2_PROFILE,)).fetchall()
+            core_rows=c.execute("""SELECT target_issue,special24
+                                   FROM prediction_log
+                                   WHERE profile=?
+                                   ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                                (TEN27_CORE_PROFILE,)).fetchall()
+            mobile_rows=c.execute("""SELECT target_issue,special24
+                                     FROM prediction_log
+                                     WHERE profile=?
+                                     ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                                  (TEN27_MOBILE_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    target=str(target_issue)
+    issues=[str(x["target_issue"]) for x in full]
+
+    # Determine current sequential group of ten.
+    if target in issues:
+        idx=issues.index(target)
+        gstart=(idx//10)*10
+        pos=idx-gstart+1
+    else:
+        n=len(full)
+        rem=n%10
+        if rem:
+            gstart=n-rem
+            pos=rem+1
+        else:
+            return {
+              "new_round":True,"position":1,
+              "start_issue":target,
+              "end_issue":str(int(target)+9) if target.isdigit() else "",
+              "core23":[],"mobile4":[],
+              "mobile_changes":0
+            }
+
+    round_issues=issues[gstart:gstart+10]
+    if not round_issues:
+        return {
+          "new_round":True,"position":1,
+          "start_issue":target,
+          "end_issue":str(int(target)+9) if target.isdigit() else "",
+          "core23":[],"mobile4":[],"mobile_changes":0
+        }
+
+    start_issue=round_issues[0]
+    round_set=set(round_issues)
+    core_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in core_rows if str(x["target_issue"]) in round_set}
+    mobile_map={str(x["target_issue"]):_csv_nums(x["special24"]) for x in mobile_rows if str(x["target_issue"]) in round_set}
+
+    core23=list(core_map.get(start_issue) or [])
+    if not core23:
+        # Safe fallback from the first full V2 row.
+        first=full[gstart]
+        core23=_csv_nums(first["special24"])[:23]
+
+    # Latest mobile set is the current mobile warehouse.
+    mobile4=[]
+    ordered_mobile=[]
+    for issue in round_issues:
+        m=list(mobile_map.get(issue) or [])
+        if m:
+            mobile4=m[:4]
+            ordered_mobile.append(tuple(sorted(m[:4])))
+
+    if not mobile4:
+        first_full=_csv_nums(full[gstart]["special24"])
+        mobile4=first_full[23:27]
+
+    changes=0
+    prev=None
+    for m in ordered_mobile:
+        if prev is not None and m!=prev:
+            changes+=1
+        prev=m
+
+    return {
+      "new_round":False,
+      "position":pos,
+      "start_issue":start_issue,
+      "end_issue":str(int(start_issue)+9) if start_issue.isdigit() else "",
+      "core23":core23[:23],
+      "mobile4":mobile4[:4],
+      "mobile_changes":changes
+    }
+
+def _ten27_specialist_support(specialists):
+    ranks={}
+    for k,sm in specialists.items():
+        order=sorted(range(1,50),key=lambda n:(-sm.get(n,-1e9),n))
+        ranks[k]={n:i+1 for i,n in enumerate(order)}
+    return ranks
+
+def _ten27_adjust_mobile4(r,profile,core23,current4,changes_used):
+    """At most two mobile-warehouse changes in one 10-period round.
+
+    Only one slot can change on a single issue, and only if the new candidate
+    is materially stronger for the future-10 objective.
+    """
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranks=_ten27_specialist_support(specialists)
+
+    cur=list(current4)[:4]
+    if len(cur)<4:
+        ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+        for n in ranked:
+            if n in core23 or n in cur:
+                continue
+            cur.append(n)
+            if len(cur)>=4:
+                break
+
+    if changes_used>=2 or not cur:
+        return cur,{"changed":False,"changes_used":changes_used,"reason":"本轮机动调整次数已用完" if changes_used>=2 else "保持"}
+
+    weakest=min(cur,key=lambda n:score.get(n,0))
+    weakest_score=float(score.get(weakest,0))
+
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    candidates=[]
+    for n in ranked:
+        if n in core23 or n in cur:
+            continue
+        support=sum(1 for k in specialists if ranks[k].get(n,99)<=20)
+        top12=sum(1 for k in specialists if ranks[k].get(n,99)<=12)
+        gain=float(score.get(n,0))-weakest_score
+        hrank=ranked.index(n)+1
+        active=(
+          gain>=.115
+          and hrank<=18
+          and (
+            support>=4
+            or (support>=3 and top12>=2 and float(score.get(n,0))>=.76)
+          )
+        )
+        if active:
+            quality=.55*float(score.get(n,0))+.30*(support/5.0)+.15*(top12/5.0)
+            candidates.append((quality,n,gain,hrank,support,top12))
+
+    if not candidates:
+        return cur,{"changed":False,"changes_used":changes_used,"reason":"没有足够强的新机动码"}
+
+    _q,newn,gain,hrank,support,top12=max(candidates,key=lambda x:(x[0],-x[3],-x[1]))
+    new4=[x for x in cur if x!=weakest]+[newn]
+    return new4[:4],{
+      "changed":True,
+      "out":weakest,
+      "in":newn,
+      "gain":round(gain,3),
+      "rank":hrank,
+      "support_models":support,
+      "top12_models":top12,
+      "changes_used":changes_used+1,
+      "reason":f"机动位 {weakest:02d}→{newn:02d}"
+    }
+
+def _ten27_rescue28_v2(r,profile,core23,mobile4):
+    """28th code is emergency insurance, never a replacement."""
+    score,specialists,perf,meta=_ten27_horizon_score(r,profile)
+    ranks=_ten27_specialist_support(specialists)
+    occupied=set(core23)|set(mobile4)
+    ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+
+    candidates=[]
+    for n in ranked:
+        if n in occupied:
+            continue
+        support=sum(1 for k in specialists if ranks[k].get(n,99)<=18)
+        top10=sum(1 for k in specialists if ranks[k].get(n,99)<=10)
+        hrank=ranked.index(n)+1
+        sc=float(score.get(n,0))
+        # Strict: 28th seat should be rare.
+        active=(
+          (hrank<=13 and support>=4 and sc>=.78)
+          or (hrank<=10 and support>=3 and top10>=2 and sc>=.82)
+        )
+        if active:
+            quality=.58*sc+.27*(support/5.0)+.15*(top10/5.0)
+            candidates.append((quality,n,hrank,support,top10,sc))
+
+    if not candidates:
+        return {"active":False,"code":None,"message":""},meta
+
+    _q,n,hrank,support,top10,sc=max(candidates,key=lambda x:(x[0],-x[2],-x[1]))
+    return {
+      "active":True,
+      "code":n,
+      "rank":hrank,
+      "support_models":support,
+      "top10_models":top10,
+      "ensemble_score":round(sc,3),
+      "message":f"未来10期模型发现核心23+机动4之外强覆盖码 {n:02d}，本期临时补为第28码"
+    },meta
+
+def _stats27_core_mobile():
+    """Current/last round: core23 hits, mobile rescue, 28 rescue, final hits."""
+    profiles=[TEN27_V2_PROFILE,TEN27_CORE_PROFILE,TEN27_MOBILE_PROFILE,TEN27_28_PROFILE]
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24,settled,special24
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders})
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           tuple(profiles)).fetchall()
+        finally:
+            c.close()
+
+    by_issue={}
+    for x in rows:
+        issue=str(x["target_issue"])
+        by_issue.setdefault(issue,{})[str(x["profile"])]=x
+
+    issues=sorted([i for i,d in by_issue.items() if TEN27_V2_PROFILE in d],key=lambda x:int(x))
+    groups=[]
+    for i in range(0,len(issues),10):
+        chunk=issues[i:i+10]
+        if not chunk:
+            continue
+        settled_issues=[issue for issue in chunk if int(by_issue[issue][TEN27_V2_PROFILE]["settled"] or 0)==1]
+        core_hits=mobile_rescues=rescue28=final_hits=0
+        mobile_sets=[]
+        for issue in chunk:
+            d=by_issue[issue]
+            mrow=d.get(TEN27_MOBILE_PROFILE)
+            if mrow:
+                ms=tuple(sorted(_csv_nums(mrow["special24"])))
+                if ms:
+                    mobile_sets.append(ms)
+
+        mobile_changes=0
+        prev=None
+        for ms in mobile_sets:
+            if prev is not None and ms!=prev:
+                mobile_changes+=1
+            prev=ms
+
+        for issue in settled_issues:
+            d=by_issue[issue]
+            ch=int((d.get(TEN27_CORE_PROFILE) or {}).get("hit24",0) or 0)
+            mh=int((d.get(TEN27_MOBILE_PROFILE) or {}).get("hit24",0) or 0)
+            rh=int((d.get(TEN27_28_PROFILE) or {}).get("hit24",0) or 0)
+            fh=int((d.get(TEN27_V2_PROFILE) or {}).get("hit24",0) or 0)
+            core_hits+=ch
+            if mh and not ch:
+                mobile_rescues+=1
+            if rh and not ch and not mh:
+                rescue28+=1
+            final_hits+=fh
+
+        start=chunk[0]
+        groups.append({
+          "start":start,
+          "end":str(int(start)+9) if start.isdigit() else "",
+          "n":len(settled_issues),
+          "core23_hits":core_hits,
+          "mobile4_rescues":mobile_rescues,
+          "rescue28":rescue28,
+          "final_hits":final_hits,
+          "mobile_changes":mobile_changes
+        })
+
+    empty={"start":0,"end":0,"n":0,"core23_hits":0,"mobile4_rescues":0,"rescue28":0,"final_hits":0,"mobile_changes":0}
+    current=groups[-1] if groups else dict(empty)
+    complete=next((g for g in reversed(groups) if g["n"]>=10),None)
+    return {
+      "current":current,
+      "last_complete":complete,
+      "rounds_completed":sum(1 for g in groups if g["n"]>=10),
+      "overall":_profile_hit_stats(TEN27_V2_PROFILE,60)
+    }
+
+def _f_failure_attribution(window=60):
+    """Why did F miss: fusion loss vs whole model-pool miss?"""
+    profiles=list(POOL_MODEL_PROFILES.values())+[POOL_FINAL_PROFILE]
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24,actual_special
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) DESC""",
+                           tuple(profiles)).fetchall()
+        finally:
+            c.close()
+
+    p2k={v:k for k,v in POOL_MODEL_PROFILES.items()}
+    by={}
+    for x in rows:
+        issue=str(x["target_issue"])
+        d=by.setdefault(issue,{"hits":{},"F":None})
+        if str(x["profile"])==POOL_FINAL_PROFILE:
+            d["F"]=int(x["hit24"] or 0)
+        else:
+            k=p2k.get(str(x["profile"]))
+            if k:
+                d["hits"][k]=int(x["hit24"] or 0)
+
+    fusion_miss=pool_all_miss=consensus3_lost=two_model_lost=0
+    total_f_miss=0
+    used=0
+    for issue in sorted(by,key=lambda x:int(x),reverse=True):
+        d=by[issue]
+        if d["F"] is None or len(d["hits"])<3:
+            continue
+        used+=1
+        if d["F"]==0:
+            total_f_miss+=1
+            hit_count=sum(d["hits"].values())
+            if hit_count==0:
+                pool_all_miss+=1
+            else:
+                fusion_miss+=1
+                if hit_count>=3:
+                    consensus3_lost+=1
+                elif hit_count==2:
+                    two_model_lost+=1
+        if used>=window:
+            break
+
+    return {
+      "n":used,
+      "f_misses":total_f_miss,
+      "fusion_miss":fusion_miss,
+      "pool_all_miss":pool_all_miss,
+      "consensus3_lost":consensus3_lost,
+      "two_model_lost":two_model_lost
+    }
+
 def _ten27_outside_rescue(r,profile,base27):
     """During the round, only ADD one 28th code; never replace the base 27."""
     score,specialists,perf,meta=_ten27_horizon_score(r,profile)
@@ -4386,48 +4736,50 @@ def _tenblock_state(r,target_issue):
     return r,start,end
 
 def _predict27_tenblock(r, profile, target_issue):
-    """27码 now optimizes one full future-10 round.
+    """23 core fixed for 10 + 4 mobile seats + rare 28th rescue."""
+    rc=_ten27_v2_round_context(target_issue)
 
-    Base 27 is fixed at the start of a 10-prediction round.
-    During the round the software keeps analyzing, but it NEVER replaces the
-    base 27. A strong outsider may be appended as a temporary 28th code.
-    """
-    rc=_ten27_round_context(target_issue)
-
-    if rc.get("new_round") or not rc.get("base_codes"):
+    if rc.get("new_round") or not rc.get("core23"):
         base27,base_score,specialists,base_meta=_build_27_ten_horizon_base(r,profile)
+        core23=list(base27[:23])
+        mobile4=list(base27[23:27])
+        mobile_meta={"changed":False,"changes_used":0,"reason":"新轮初始4机动码"}
     else:
-        base27=list(rc.get("base_codes") or [])[:27]
-        _score,_specialists,_perf,base_meta=_ten27_horizon_score(r,profile)
-        # Current analysis is only diagnostic; the round base remains unchanged.
-        current_head=_ten27_head_decision(_score,_specialists,_perf)
+        core23=list(rc.get("core23") or [])[:23]
+        current4=list(rc.get("mobile4") or [])[:4]
+        mobile4,mobile_meta=_ten27_adjust_mobile4(
+          r,profile,core23,current4,int(rc.get("mobile_changes") or 0)
+        )
+        _score,_spec,_perf,_hmeta=_ten27_horizon_score(r,profile)
         base_meta={
-          "analog_samples":base_meta.get("analog_samples",0),
+          "analog_samples":_hmeta.get("analog_samples",0),
           "model10":_perf,
-          "head_decision":current_head,
-          "killed_head":"",
+          "head_decision":_ten27_head_decision(_score,_spec,_perf),
           "ranked49":sorted(range(1,50),key=lambda n:(-_score.get(n,-1e9),n))
         }
 
-    rescue28,rescue_meta=_ten27_outside_rescue(r,profile,base27)
-    selected=list(base27)
+    rescue28,rescue_meta=_ten27_rescue28_v2(r,profile,core23,mobile4)
+    selected=list(core23)+list(mobile4)
     if rescue28.get("active") and rescue28.get("code") not in selected:
         selected.append(int(rescue28["code"]))
 
     model10=(base_meta.get("model10") or rescue_meta.get("model10") or {})
     model_stats=model10.get("stats",{}) if isinstance(model10,dict) else {}
+    head=base_meta.get("head_decision") or {}
 
     return selected,{
       "block_start":rc.get("start_issue") or str(target_issue),
       "block_end":rc.get("end_issue") or "",
       "round_position":int(rc.get("position") or 1),
-      "round_mode":"未来10期覆盖·基础27固定",
-      "base_locked":not bool(rc.get("new_round")),
-      "base_codes":base27,
+      "round_mode":"23核心固定10期 + 4机动",
+      "core23":core23,
+      "mobile4":mobile4,
+      "mobile_adjust":mobile_meta,
+      "mobile_changes":int(mobile_meta.get("changes_used",rc.get("mobile_changes",0)) or 0),
       "code_count":len(selected),
-      "killed_head":(base_meta.get("head_decision") or {}).get("killed_head",""),
-      "weak_head":(base_meta.get("head_decision") or {}).get("weak_head",""),
-      "head_decision":base_meta.get("head_decision") or {},
+      "killed_head":head.get("killed_head",""),
+      "weak_head":head.get("weak_head",""),
+      "head_decision":head,
       "ranked49":base_meta.get("ranked49") or [],
       "rescue28":rescue28,
       "ten_horizon":{
@@ -4440,7 +4792,7 @@ def _predict27_tenblock(r, profile, target_issue):
           k:(model_stats.get(k,{}).get("avg_hits10",0.0)) for k in POOL_MODEL_PROFILES
         }
       },
-      "regime":"10期覆盖",
+      "regime":"10期覆盖·23核4机动",
       "correction_trained":0,
       "correction_weight_pct":0,
       "trend_weight_pct":0,
@@ -5110,12 +5462,32 @@ def record_shadow_predictions(r):
     try:
         best_profile,_=_select_profile(r)
         c27,_m27=_predict27_tenblock(r,best_profile,target)
+        core23=list(_m27.get("core23") or [])[:23]
+        mobile4=list(_m27.get("mobile4") or [])[:4]
+        rescue28=_m27.get("rescue28") or {}
+        rescue_codes=[int(rescue28["code"])] if rescue28.get("active") and rescue28.get("code") else []
+
         records.append((
-            target,TEN27_PROFILE,
+            target,TEN27_V2_PROFILE,
             ",".join(str(n) for n in c27),
             "","",py
         ))
-        _record_strategy_audit(target,TEN27_PROFILE,c27,_m27)
+        records.append((
+            target,TEN27_CORE_PROFILE,
+            ",".join(str(n) for n in core23),
+            "","",py
+        ))
+        records.append((
+            target,TEN27_MOBILE_PROFILE,
+            ",".join(str(n) for n in mobile4),
+            "","",py
+        ))
+        records.append((
+            target,TEN27_28_PROFILE,
+            ",".join(str(n) for n in rescue_codes),
+            "","",py
+        ))
+        _record_strategy_audit(target,TEN27_V2_PROFILE,c27,_m27)
     except Exception as e:
         print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -5278,7 +5650,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v39",
+      "version":"v40",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -5708,12 +6080,13 @@ def build_model():
     c20,meta20=_predict20_hot(r,profile)
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
     stats20=_profile_hit_stats("20码精选",60)
-    stats27=_stats27_blocks()
+    stats27=_stats27_core_mobile()
     diag20=_strategy_diagnostics("20码精选",60)
-    diag27=_strategy_diagnostics(TEN27_PROFILE,60)
+    diag27=_strategy_diagnostics(TEN27_V2_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
+    f_error_diag=_f_failure_attribution(60)
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -5731,6 +6104,7 @@ def build_model():
       "correction":correction,
       "model_pool":model_pool,
       "stable_signals":stable_signals,
+      "f_error_diag":f_error_diag,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -5773,7 +6147,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F动态19-23单期 + 27码未来10期覆盖模型"
+        "mode":"F动态19-23单期 + 27码23核4机动十期覆盖"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -5887,9 +6261,9 @@ def _build_stats_background():
 def stats_api():
     base=learner_validation_stats()
     base["code20"]=_profile_hit_stats("20码精选",60)
-    base["code27"]=_stats27_blocks()
+    base["code27"]=_stats27_core_mobile()
     base["diag20"]=_strategy_diagnostics("20码精选",60)
-    base["diag27"]=_strategy_diagnostics(TEN27_PROFILE,60)
+    base["diag27"]=_strategy_diagnostics(TEN27_V2_PROFILE,60)
     base["correction"]=_correction_status()
     return jsonify(base)
 
@@ -5962,7 +6336,7 @@ def complement_status():
 def strategy_diagnostics_api():
     return jsonify({
       "code20":_strategy_diagnostics("20码精选",60),
-      "code27":_strategy_diagnostics(TEN27_PROFILE,60),
+      "code27":_strategy_diagnostics(TEN27_V2_PROFILE,60),
       "correction":_correction_status()
     })
 
