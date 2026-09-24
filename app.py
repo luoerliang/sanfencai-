@@ -301,6 +301,45 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   .trendGrid{grid-template-columns:repeat(4,1fr)}
   .grid2{gap:5px}.metric{font-size:16px}.metricLabel{font-size:9px}
 }
+
+/* v35 stable + denser layout */
+.forecastCard{padding:11px}
+.forecastCard .sectionTitle{font-size:15px}
+.forecastGrid{grid-template-columns:repeat(2,1fr);align-items:stretch}
+.forecastGrid .strategyBox{height:64px;min-height:64px;display:flex;flex-direction:column;justify-content:flex-start}
+.forecastGrid .strategyMain{font-size:11px;line-height:1.35;height:31px;overflow:hidden}
+.forecastGrid .strategyTitle{font-size:9px}
+.poolCard{padding:8px}
+#modelPoolRows{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.modelMini{background:#0c1421;border:1px solid #1f2d43;border-radius:9px;padding:5px 3px;text-align:center;min-width:0}
+.modelMiniKey{font-size:13px;font-weight:950;line-height:1}
+.modelMiniWeight{font-size:11px;font-weight:900;margin-top:3px}
+.modelMiniMeta{font-size:7.5px;color:#8f9cb0;line-height:1.25;margin-top:3px}
+.poolSummary{margin-top:5px!important}
+.poolSummary .pill{font-size:8px;padding:3px 5px}
+.numberCard{padding:8px}
+.numberCard .sectionHead{margin-bottom:5px}
+.numberCard .sectionTitle{font-size:14px}
+.numberCard .sectionHint{font-size:8.5px}
+.compactBalls{grid-template-columns:repeat(10,1fr);gap:3px}
+.compactBalls .ball{height:27px;aspect-ratio:auto;border-radius:7px;font-size:10px}
+.miniInfoRow{display:flex;align-items:center;gap:6px;overflow-x:auto;white-space:nowrap;margin-top:5px;color:#91a0b6;font-size:8.5px;-webkit-overflow-scrolling:touch}
+.miniInfoRow span{background:#101a2a;border:1px solid #26364e;border-radius:999px;padding:3px 5px}
+.comboPredictCard{padding:8px}
+.comboPredictGrid{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(82px,.8fr);gap:7px;align-items:stretch}
+.comboPredictCard .zpairGrid{grid-template-columns:repeat(4,1fr);gap:3px}
+.comboPredictCard .zpair{padding:5px 2px;border-radius:8px}
+.comboPredictCard .zpairName{font-size:11px;margin-bottom:3px}
+.comboPredictCard .microball{width:19px;height:19px;font-size:8px}
+.miniLabel{font-size:8px;color:#8f9cb0;margin-bottom:4px}
+.pingteCompact{background:#0c1421;border:1px solid #223149;border-radius:9px;padding:6px;text-align:center;display:flex;flex-direction:column;justify-content:center}
+.pingteValue{font-size:24px;font-weight:950;line-height:1.05}
+#pingteSamples{margin-top:4px!important;font-size:7.5px}
+@media(max-width:430px){
+  .forecastGrid .strategyBox{height:66px;min-height:66px}
+  .forecastGrid .strategyMain{font-size:10.5px}
+  .compactBalls .ball{height:26px;font-size:9.5px}
+}
 </style>
 </head>
 <body>
@@ -334,12 +373,12 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </section>
 
-  <section class="card">
+  <section class="card forecastCard">
     <div class="sectionHead">
       <div class="sectionTitle">下一期预测状态</div>
       <div class="sectionHint">不是把刚开奖号追进去</div>
     </div>
-    <div class="strategyGrid">
+    <div class="strategyGrid forecastGrid">
       <div class="strategyBox"><div class="strategyTitle">预测目标</div><div id="forecastTarget" class="strategyMain">--</div></div>
       <div class="strategyBox"><div class="strategyTitle">前瞻模型</div><div id="forecastMode" class="strategyMain">--</div></div>
       <div class="strategyBox"><div class="strategyTitle">AI持续学习</div><div id="learningState" class="strategyMain">--</div></div>
@@ -366,7 +405,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
 
   <div id="streakAlert" class="streakAlert"></div>
 
-  <section class="card">
+  <section class="card poolCard">
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">多策略模型池</div>
@@ -374,9 +413,11 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       </div>
     </div>
     <div id="modelPoolRows"></div>
-    <div class="pillrow" style="margin-top:10px">
+    <div class="pillrow poolSummary">
       <span id="stableSummary" class="pill"></span>
       <span id="poolMaturity" class="pill"></span>
+      <span id="legacyErrorInfo" class="pill"></span>
+      <span id="fErrorRescueInfo" class="pill"></span>
     </div>
   </section>
 
@@ -395,7 +436,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </section>
 
-  <section class="card">
+  <section class="card numberCard">
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">20码 · 每期精选</div>
@@ -403,16 +444,14 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
-    <div id="sp" class="balls"></div>
-    <div class="pillrow" style="margin-top:10px">
-      <span class="pill">趋势主攻 · AI纠错边缘救援</span>
-      <span class="pill">冷肖先反转复审 · 最终冷3肖不取</span>
-      <span class="pill">20码不硬杀0/4头</span>
-      <span class="pill">红蓝绿×单双共同评分</span>
+    <div id="sp" class="balls compactBalls"></div>
+    <div class="miniInfoRow">
+      <span id="code20Brief">每期重算</span>
+      <span id="code20Fusion">F自纠错</span>
     </div>
   </section>
 
-  <section class="card">
+  <section class="card numberCard">
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">27码 · 10期一轮</div>
@@ -420,30 +459,29 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
-    <div id="sp27" class="balls"></div>
-    <div class="pillrow" style="margin-top:10px">
-      <span id="code27Block" class="pill"></span>
-      <span id="code27Kill" class="pill"></span>
-      <span id="code27Stats" class="pill"></span>
+    <div id="sp27" class="balls compactBalls"></div>
+    <div class="miniInfoRow">
+      <span id="code27Block"></span>
+      <span id="code27Kill"></span>
+      <span id="code27Stats"></span>
     </div>
   </section>
 
-  <section class="card">
+  <section class="card comboPredictCard">
     <div class="sectionHead">
-      <div class="sectionTitle">4肖 · 一肖一码</div>
-      <div class="sectionHint">每期重算 · 4肖与4码严格一一对应</div>
+      <div class="sectionTitle">4肖4码 · 平特一肖</div>
+      <div class="sectionHint">每期重算</div>
     </div>
-    <div id="zpair" class="zpairGrid"></div>
-  </section>
-
-  <section class="card">
-    <div class="sectionHead">
-      <div class="sectionTitle">平特一肖</div>
-      <div class="sectionHint">预测下一期7个号码中至少出现1次的生肖</div>
-    </div>
-    <div class="comboBox" style="text-align:center">
-      <div id="pingteOne" style="font-size:36px;font-weight:900;letter-spacing:2px">--</div>
-      <div id="pingteSamples" class="sectionHint" style="margin-top:8px">--</div>
+    <div class="comboPredictGrid">
+      <div>
+        <div class="miniLabel">4肖 · 一肖一码</div>
+        <div id="zpair" class="zpairGrid"></div>
+      </div>
+      <div class="pingteCompact">
+        <div class="miniLabel">平特一肖</div>
+        <div id="pingteOne" class="pingteValue">--</div>
+        <div id="pingteSamples" class="sectionHint">--</div>
+      </div>
     </div>
   </section>
 
@@ -532,7 +570,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v34采用紧凑界面。20码不再硬杀0/4头；27码按10期一轮统计，但轮内每期重新计算。T/Z/C/W/A多策略共同判断0头/4头强弱，只有弱势证据充分才排除；若27码之外出现强共识号码，会弹出提醒并自动补为第28码。所有成绩只来自开奖前锁单，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v35进一步压缩20码、27码和模型池，并固定“下一期预测状态”高度避免刷新跳动。T/Z/C/W/A、旧AI和趋势的错期会持续分析；最近错期会轻微调整模型权重，并生成盲点修正分，最终只以小比例融合进F=20码，避免一次短期失误把模型带偏。所有成绩只来自开奖前锁单，不代表未来概率。</div>
 </div>
 
 <script>
@@ -602,11 +640,15 @@ async function loadMain(){
     const labels={T:'趋势',Z:'生肖',C:'冷热',W:'波色单双',A:'AI纠错'};
     modelPoolRows.innerHTML=['T','Z','C','W','A'].map(k=>{
       const x=ms[k]||{};
-      return `<div class="modelRow"><div class="modelKey">${k}</div>
-        <div><div>${labels[k]}</div><div class="modelMeta">10 ${x.h10??0}/${x.n10??0} · 30 ${x.h30??0}/${x.n30??0} · 60 ${x.h60??0}/${x.n60??0} · 独${x.unique_hits60??0}</div></div>
-        <div class="modelWeight">${x.weight_pct??20}%</div></div>`;
+      return `<div class="modelMini">
+        <div class="modelMiniKey">${k}</div>
+        <div class="modelMiniWeight">${x.weight_pct??20}%</div>
+        <div class="modelMiniMeta">错10:${x.e10??0}<br>错30:${x.e30??0}<br>连错:${x.miss_streak??0}</div>
+      </div>`;
     }).join('');
-    poolMaturity.textContent=`动态权重样本 ${mp.mature_n??0}/30`;
+    poolMaturity.textContent=`样本 ${mp.mature_n??0}/30`;
+    const le=mp.legacy_errors||{}, lai=le.AI||{}, ltr=le.Trend||{};
+    legacyErrorInfo.textContent=`旧AI错 ${(lai['60']||{}).misses??0}/${(lai['60']||{}).n??0} · ${le.trend_profile||'趋势'}错 ${(ltr['60']||{}).misses??0}/${(ltr['60']||{}).n??0}`;
     const si=(stable.items||{});
     stableSummary.textContent=`双波连中 ${(si['双波']||{}).current_streak??0} · 7肖连中 ${(si['7肖']||{}).current_streak??0}`;
     const warns=stable.warnings||[];
@@ -619,12 +661,15 @@ async function loadMain(){
     const recent=mp.recent10||[];
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
-    code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} · 本轮第${m27.round_position??0}/10期 · 每期重算`;
+    code20Brief.textContent=`冷3肖 ${(m20.coldest3||[]).join('、')||'--'} · 边缘救援 ${(m20.edge_rescue_swaps||[]).length}码`;
+    code20Fusion.textContent=`模型池 ${m20.pool_mix_pct??0}% · 错题修正 ${m20.error_rescue_pct??0}%`;
+    fErrorRescueInfo.textContent=`F错题自修 ${m20.error_rescue_pct??0}%`;
+    code27Block.textContent=`第${m27.round_position??0}/10期 · ${m27.code_count??27}码`;
     const hd=m27.head_decision||{};
-    code27Kill.textContent=m27.killed_head?`弱头排除：${m27.killed_head} · 多策略支持 ${hd.vote_support_pct??0}%`:`不强杀 · ${m27.weak_head||'--'}略弱`;
+    code27Kill.textContent=m27.killed_head?`排${m27.killed_head} ${hd.vote_support_pct??0}%`:`不杀 · ${m27.weak_head||'--'}弱`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{};
-    code27Stats.textContent=`${last27?`上轮10中${last27.hits??0}`:`本轮${cur27.hits??0}/${cur27.n??0}`} · 当前${m27.code_count??27}码${r28.active?' · 已补28码':''}`;
+    code27Stats.textContent=`本轮${cur27.hits??0}/${cur27.n??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -643,12 +688,12 @@ async function loadMain(){
     profileInfo.textContent=`当前模型 ${d.profile||'--'} · 校准${d.calibration_n??0}期 · 得分 ${ps[d.profile]??0}%`;
     const fc=d.forecast||{};
     forecastTarget.textContent=fc.target_issue?`预测 ${fc.target_issue} 期`:'--';
-    forecastMode.innerHTML=`${fc.mode||'前瞻预测'}<br>转移样本 ${fc.transition_samples??0} · 全历史 ${fc.long_prior_ready?'已缓存':'后台加载'}`;
+    forecastMode.innerHTML=`多策略前瞻<br>转移 ${fc.transition_samples??0} · 长期 ${fc.long_prior_ready?'✓':'…'}`;
     const lr=d.learning||{};
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`趋势主模型 + AI纠错模型<br>基础AI继续学结构，纠错AI只学趋势漏掉的期`;
+    learningState.innerHTML=`T/Z/C/W/A并行<br>错题自动修正→F20`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -708,7 +753,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`趋势主模型 + AI纠错模型<br>AI不再和趋势做同一件事`;
+    learningState.innerHTML=`T/Z/C/W/A并行<br>错题自动修正→F20`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -3138,6 +3183,141 @@ def _normalize_capped_weights(raw,lo=.10,hi=.35):
     total=sum(w.values()) or 1.0
     return {k:w[k]/total for k in keys}
 
+
+def _current_miss_streak(rows):
+    """Rows newest -> oldest."""
+    run=0
+    for x in rows:
+        if int(x["hit24"] or 0)==0:
+            run+=1
+        else:
+            break
+    return run
+
+def _profile_error_stats(profile,limit=60):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24,actual_special,actual_zodiac
+                              FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(limit))).fetchall()
+        finally:
+            c.close()
+    def window(k):
+        p=rows[:k]
+        n=len(p)
+        misses=sum(1 for x in p if int(x["hit24"] or 0)==0)
+        return {"n":n,"misses":misses,"rate":round(100*misses/n,1) if n else 0.0}
+    return {
+      "10":window(10),
+      "30":window(30),
+      "60":window(60),
+      "miss_streak":_current_miss_streak(rows)
+    }
+
+def _legacy_ai_trend_errors():
+    fusion=get_dynamic_ai_mix()
+    trend_profile=fusion.get("benchmark_profile") or learner_cache.get("best_profile","趋势快")
+    return {
+      "AI":_profile_error_stats("AI在线",60),
+      "Trend":_profile_error_stats(trend_profile,60),
+      "trend_profile":trend_profile
+    }
+
+def _miss_pattern_score_for_profile(r,profile,limit=60):
+    """Learn a SMALL blind-spot correction from the categories of real misses.
+
+    This is not a new prediction model. It only detects repeated blind spots
+    (zodiac/head/wave-parity/number) in locked pre-draw misses and produces a
+    capped rescue score for F=20.
+    """
+    zmap=_number_zodiac_map(r)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24,actual_special,actual_zodiac
+                              FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(limit))).fetchall()
+        finally:
+            c.close()
+
+    misses=[x for x in rows if int(x["hit24"] or 0)==0 and x["actual_special"] is not None]
+    if len(misses)<5:
+        return {n:.5 for n in range(1,50)},{"n":len(misses),"ready":False}
+
+    zc=Counter(); hc=Counter(); wc=Counter(); nc=Counter()
+    # newer mistakes count more, but old mistakes still matter
+    for i,x in enumerate(misses):
+        n=int(x["actual_special"])
+        z=normalize_z(x["actual_zodiac"] or "") or zmap.get(n)
+        w=exp_weight(i,22)
+        if z: zc[z]+=w
+        hc[head_of(n)]+=w
+        wc[wave_parity_of(n)]+=w
+        nc[n]+=w
+
+    zn=_norm_values(zc,ALL_ZODIACS)
+    hn=_norm_values(hc,list(HEAD_BASE))
+    wn=_norm_values(wc,WAVE_PARITY_KEYS)
+    nn=_norm_values(nc,range(1,50))
+
+    score={}
+    for n in range(1,50):
+        score[n]=(
+          .42*zn.get(zmap.get(n),.5)
+          +.25*hn.get(head_of(n),.5)
+          +.23*wn.get(wave_parity_of(n),.5)
+          +.10*nn.get(n,.5)
+        )
+    return _norm_values(score,range(1,50)),{
+      "n":len(misses),
+      "ready":True,
+      "top_zodiacs":[x[0] for x in zc.most_common(3)],
+      "top_heads":[x[0] for x in hc.most_common(2)],
+      "top_wave_parity":[x[0] for x in wc.most_common(3)]
+    }
+
+def _pool_error_rescue_score(r,profile):
+    """Combine T/Z/C/W/A + legacy AI/trend blind spots for F=20 only."""
+    perf=_pool_performance()
+    pweights=perf.get("weights") or {k:.20 for k in POOL_MODEL_PROFILES}
+    pieces=[]
+    meta={"models":{}}
+
+    for key,prof in POOL_MODEL_PROFILES.items():
+        sc,mm=_miss_pattern_score_for_profile(r,prof,60)
+        if mm.get("ready"):
+            pieces.append((float(pweights.get(key,.20)),sc))
+        meta["models"][key]=mm
+
+    # Legacy AI and best trend are included with smaller influence because
+    # their candidate-list sizes differ from the 20-code pool.
+    legacy=_legacy_ai_trend_errors()
+    trend_prof=legacy.get("trend_profile") or profile
+    for key,prof,w in (("AI","AI在线",.10),("Trend",trend_prof,.10)):
+        sc,mm=_miss_pattern_score_for_profile(r,prof,60)
+        if mm.get("ready"):
+            pieces.append((w,sc))
+        meta["models"][key]=mm
+
+    if not pieces:
+        return {n:.5 for n in range(1,50)},dict(meta,ready=False,total_misses=0)
+
+    total=sum(w for w,_ in pieces) or 1.0
+    rescue={
+      n:sum(w*sc.get(n,.5) for w,sc in pieces)/total
+      for n in range(1,50)
+    }
+    rescue=_norm_values(rescue,range(1,50))
+    total_misses=sum(int((m or {}).get("n",0)) for m in meta["models"].values())
+    meta["ready"]=True
+    meta["total_misses"]=total_misses
+    return rescue,meta
+
 def _pool_performance(force=False):
     """Real pre-draw results determine model weights.
 
@@ -3169,13 +3349,21 @@ def _pool_performance(force=False):
             return (h+6*baseline)/(n+6)
         composite=.30*smooth(h10,n10)+.35*smooth(h30,n30)+.35*smooth(h60,n60)
         cur,best=_streak_from_rows(rows)
+        miss_streak=_current_miss_streak(rows)
+        # Small penalty only: a short losing streak should adapt weight,
+        # but must not make the model disappear because random streaks happen.
+        adjusted=max(0.0,composite-.008*min(4,miss_streak))
         stats[key]={
           "profile":prof,
           "n10":n10,"h10":h10,"r10":round(100*r10,1) if n10 else 0.0,
+          "e10":max(0,n10-h10),
           "n30":n30,"h30":h30,"r30":round(100*r30,1) if n30 else 0.0,
+          "e30":max(0,n30-h30),
           "n60":n60,"h60":h60,"r60":round(100*r60,1) if n60 else 0.0,
+          "e60":max(0,n60-h60),
           "current_streak":cur,"max_streak":best,
-          "composite":composite
+          "miss_streak":miss_streak,
+          "composite":adjusted
         }
 
     mature=max((v["n60"] for v in stats.values()),default=0)
@@ -3298,7 +3486,12 @@ def _pool_dashboard():
           "C":d["hits"].get("C"),"W":d["hits"].get("W"),
           "A":d["hits"].get("A"),"F":f_by_issue.get(issue)
         })
-    return {"stats":stats,"recent10":recent,"mature_n":perf.get("mature_n",0)}
+    return {
+      "stats":stats,
+      "recent10":recent,
+      "mature_n":perf.get("mature_n",0),
+      "legacy_errors":_legacy_ai_trend_errors()
+    }
 
 def _stable_dashboard():
     items={}
@@ -3438,6 +3631,18 @@ def _selection_number_scores(r, profile, strategy="20"):
       for n in range(1,50)
     }
 
+    # v35: only F=20 receives the blind-spot self-correction layer.
+    error_mix=0.0
+    error_meta={"ready":False,"total_misses":0}
+    if str(strategy)=="20":
+        rescue,error_meta=_pool_error_rescue_score(r,profile)
+        mature_err=min(1.0,float(error_meta.get("total_misses",0))/45.0)
+        error_mix=.05+.07*mature_err if error_meta.get("ready") else 0.0
+        score={
+          n:(1.0-error_mix)*score.get(n,.5)+error_mix*rescue.get(n,.5)
+          for n in range(1,50)
+        }
+
     ctx=dict(ctx)
     ctx["regime"]=regime
     ctx["correction_trained"]=corr_trained
@@ -3448,6 +3653,8 @@ def _selection_number_scores(r, profile, strategy="20"):
     ctx["pool_weights_pct"]={
       k:round(100*v,1) for k,v in (pool_perf.get("weights") or {}).items()
     }
+    ctx["error_rescue_pct"]=round(error_mix*100,1)
+    ctx["error_rescue_meta"]=error_meta
     return score,zmap,zheat,ctx
 
 def _trend_diagnostics(r,profile,strategy="20"):
@@ -3761,7 +3968,9 @@ def _predict27_tenblock(r, profile, target_issue):
       "correction_trained":ctx.get("correction_trained",0),
       "correction_weight_pct":ctx.get("correction_weight_pct",0),
       "trend_weight_pct":ctx.get("trend_weight_pct",0),
-      "pool_weights_pct":ctx.get("pool_weights_pct",{})
+      "pool_weights_pct":ctx.get("pool_weights_pct",{}),
+      "error_rescue_pct":ctx.get("error_rescue_pct",0),
+      "error_rescue_meta":ctx.get("error_rescue_meta",{})
     }
 
 def _record_strategy_audit(target_issue,profile,selected,meta):
@@ -4580,7 +4789,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v34",
+      "version":"v35",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
