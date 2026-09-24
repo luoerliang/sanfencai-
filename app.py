@@ -288,6 +288,23 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
 
   <section class="card">
     <div class="sectionHead">
+      <div class="sectionTitle">AI × 趋势互补</div>
+      <div class="sectionHint">真实前瞻记录 · 不倒推开奖结果</div>
+    </div>
+    <div class="strategyGrid">
+      <div class="strategyBox"><div class="strategyTitle">双方都中</div><div id="compBoth" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">AI独中</div><div id="compAIOnly" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">趋势独中</div><div id="compTrendOnly" class="strategyMain">--</div></div>
+      <div class="strategyBox"><div class="strategyTitle">双方都错</div><div id="compMiss" class="strategyMain">--</div></div>
+    </div>
+    <div class="pillrow">
+      <span id="compSlots" class="pill"></span>
+      <span id="compFinal" class="pill"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
       <div>
         <div class="sectionTitle">24个动态特码</div>
         <div class="sectionHint">12肖×2码 · 每期重算 · 升序</div>
@@ -296,10 +313,10 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
     </div>
     <div id="sp" class="balls"></div>
     <div class="pillrow" style="margin-top:10px">
-      <span class="pill">12肖分层覆盖</span>
-      <span class="pill">趋势加速度</span>
-      <span class="pill">每肖固定2码</span>
-      <span class="pill">自动校准模型</span>
+      <span class="pill">每肖1个共识码</span>
+      <span class="pill">每肖1个互补码</span>
+      <span class="pill">AI/趋势独立席位</span>
+      <span class="pill">自动校准互补贡献</span>
     </div>
   </section>
 
@@ -379,7 +396,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   </section>
 
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。新版把波色、生肖、大小、单双作为近期统计特征参与动态评分；特码使用集成前瞻模型：状态转移、遗漏风险、尾数转移、波色/大小/单双/头数共同评分；平特一肖预测的是下一期7个号码里至少出现一次的生肖。所有命中率均为历史滚动验证，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。新版把波色、生肖、大小、单双作为近期统计特征参与动态评分；特码使用AI×趋势互补前瞻：每肖先取共识码，再按真实独中贡献分配AI/趋势补位；状态转移、遗漏风险、尾数转移、波色/大小/单双/头数共同评分；平特一肖预测的是下一期7个号码里至少出现一次的生肖。所有命中率均为历史滚动验证，不代表未来概率。</div>
 </div>
 
 <script>
@@ -436,6 +453,13 @@ async function loadMain(){
     const fu=lr.fusion||{};
     learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${lr.ai_mix_pct??0}%<br>特码/四肖/平特一肖/波色/大小/单双/头数/冷热共同训练`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
+    const cp=d.complement||{};
+    compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
+    compAIOnly.textContent=`${cp.ai_only??0}/${cp.n??0}`;
+    compTrendOnly.textContent=`${cp.trend_only??0}/${cp.n??0}`;
+    compMiss.textContent=`${cp.both_miss??0}/${cp.n??0}`;
+    compSlots.textContent=`第二码席位：AI ${cp.ai_second_slots??6} · 趋势 ${cp.trend_second_slots??6}`;
+    compFinal.textContent=(cp.final_n??0)>0?`互补在线 ${cp.final_hits??0}/${cp.final_n} = ${cp.final_rate??0}%`:'互补在线：从本版开始独立验证';
     const sg=d.strategy||{};
     coldSignal.innerHTML=sg.cold_rebound_now?'冷反弹信号：启用<br>24码允许热+冷防守':'冷反弹信号：普通<br>仍以热码为主';
     coldZodiac.innerHTML=(sg.cold_zodiacs||[]).length?`偏冷：${sg.cold_zodiacs.join('、')}`:'暂无';
@@ -2069,6 +2093,210 @@ def get_dynamic_ai_mix():
         return refresh_dynamic_ai_mix()
     return cached
 
+def complement_matrix(window=60, benchmark_profile=None):
+    """Measure how AI在线 and the trend benchmark complement each other.
+
+    This uses ONLY settled, pre-draw prediction_log rows.
+    Existing historical rows are not rewritten, so the accumulated validation
+    remains honest across upgrades.
+    """
+    fusion=get_dynamic_ai_mix()
+    benchmark_profile=benchmark_profile or fusion.get("benchmark_profile") or learner_cache.get("best_profile","趋势快")
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""
+                SELECT a.target_issue,
+                       a.hit24 AS ai_hit,
+                       b.hit24 AS trend_hit
+                FROM prediction_log a
+                JOIN prediction_log b
+                  ON a.target_issue=b.target_issue
+                WHERE a.profile='AI在线'
+                  AND b.profile=?
+                  AND a.settled=1 AND b.settled=1
+                ORDER BY CAST(a.target_issue AS INTEGER) DESC
+                LIMIT ?
+            """,(benchmark_profile,int(window))).fetchall()
+            final_rows=c.execute("""
+                SELECT hit24
+                FROM prediction_log
+                WHERE profile='互补在线' AND settled=1
+                ORDER BY CAST(target_issue AS INTEGER) DESC
+                LIMIT ?
+            """,(int(window),)).fetchall()
+        finally:
+            c.close()
+
+    both=ai_only=trend_only=miss=0
+    for x in rows:
+        ah=int(x["ai_hit"] or 0)
+        th=int(x["trend_hit"] or 0)
+        if ah and th: both+=1
+        elif ah: ai_only+=1
+        elif th: trend_only+=1
+        else: miss+=1
+
+    n=len(rows)
+    # Smoothed allocation of the 12 "second slots" in 12肖×2码.
+    # Neither side may monopolize the complementary seats.
+    unique_total=ai_only+trend_only
+    ai_share=(ai_only+2.0)/(unique_total+4.0) if unique_total>=0 else 0.5
+    ai_share=max(0.35,min(0.65,ai_share))
+    if n < 8:
+        ai_share=0.50
+    ai_slots=max(4,min(8,round(12*ai_share)))
+    trend_slots=12-ai_slots
+
+    final_n=len(final_rows)
+    final_hits=sum(int(x["hit24"] or 0) for x in final_rows)
+    return {
+      "n":n,
+      "window":int(window),
+      "benchmark_profile":benchmark_profile,
+      "both_hit":both,
+      "ai_only":ai_only,
+      "trend_only":trend_only,
+      "both_miss":miss,
+      "union_hit":both+ai_only+trend_only,
+      "union_rate":round(100*(both+ai_only+trend_only)/n,1) if n else 0.0,
+      "ai_unique_rate":round(100*ai_only/n,1) if n else 0.0,
+      "trend_unique_rate":round(100*trend_only/n,1) if n else 0.0,
+      "ai_second_slots":ai_slots,
+      "trend_second_slots":trend_slots,
+      "ai_side_share":round(ai_share*100,1),
+      "trend_side_share":round((1-ai_share)*100,1),
+      "final_n":final_n,
+      "final_hits":final_hits,
+      "final_rate":round(100*final_hits/final_n,1) if final_n else 0.0
+    }
+
+def _candidate24_complement_by_zodiac(r, profile):
+    """12肖×2码 complement mode.
+
+    Slot A in every zodiac = consensus/stability slot.
+    Slot B = a deliberately independent AI-side or trend-side seat.
+    The number of AI-side vs trend-side second seats is learned from honest
+    AI-only vs trend-only forward hits instead of a simple global percentage.
+    """
+    zmap=_number_zodiac_map(r)
+    ctx=_strategy_context(r)
+    ns,transition_meta,ztrans=_predictive_number_scores(r,profile,ctx)
+    pair_bonus=_within_zodiac_pair_bonus(r,zmap)
+
+    with ai_lock:
+        ai_ready=bool(ai_state.get("ready",False))
+        ai_trained=int(ai_state.get("trained",0))
+    if ai_ready:
+        _X,_lg,ai_probs=_ai_logits_and_probs(r)
+        ai_norm=_normalize_ai_probs(ai_probs)
+    else:
+        ai_norm={n:.5 for n in range(1,50)}
+
+    comp=complement_matrix(60, profile)
+    target_ai_slots=int(comp.get("ai_second_slots",6))
+
+    pools={z:[] for z in ALL_ZODIACS}
+    for n in range(1,50):
+        z=zmap.get(n)
+        if z in pools:
+            pools[z].append(n)
+
+    prepared=[]
+    for z in ALL_ZODIACS:
+        pool=pools[z]
+        trend_norm=_norm_pool(ns,pool)
+        pair_norm=_norm_pool(pair_bonus,pool)
+
+        trend_side={}
+        ai_side={}
+        consensus={}
+        for n in pool:
+            cold=.06*ctx["num_cold"].get(n,0) if ctx["cold_rebound_now"] else 0.0
+            t=.70*trend_norm.get(n,.5)+.30*pair_norm.get(n,.5)+cold
+            a=.82*ai_norm.get(n,.5)+.18*pair_norm.get(n,.5)+cold
+            agree=max(0.0,1.0-abs(t-a))
+            c=.44*t+.44*a+.12*pair_norm.get(n,.5)+.08*agree
+            trend_side[n]=t
+            ai_side[n]=a
+            consensus[n]=c
+
+        stable=max(pool,key=lambda n:(consensus.get(n,-1e9),trend_side.get(n,-1e9),-n))
+        rem=[n for n in pool if n!=stable]
+        if rem:
+            ai_pick=max(rem,key=lambda n:(ai_side.get(n,-1e9), ai_side.get(n,0)-trend_side.get(n,0), -n))
+            trend_pick=max(rem,key=lambda n:(trend_side.get(n,-1e9), trend_side.get(n,0)-ai_side.get(n,0), -n))
+        else:
+            ai_pick=trend_pick=stable
+
+        ai_value=ai_side.get(ai_pick,0.0)+.32*max(0.0,ai_side.get(ai_pick,0.0)-trend_side.get(ai_pick,0.0))
+        trend_value=trend_side.get(trend_pick,0.0)+.32*max(0.0,trend_side.get(trend_pick,0.0)-ai_side.get(trend_pick,0.0))
+        prepared.append({
+          "zodiac":z,"stable":stable,
+          "ai_pick":ai_pick,"trend_pick":trend_pick,
+          "margin":ai_value-trend_value,
+          "consensus":consensus,
+          "trend_side":trend_side,
+          "ai_side":ai_side
+        })
+
+    # Allocate independent seats globally, so neither model silently swallows the other.
+    differing=[x for x in prepared if x["ai_pick"]!=x["trend_pick"]]
+    differing_sorted=sorted(differing,key=lambda x:(-x["margin"],x["zodiac"]))
+    ai_zodiacs={x["zodiac"] for x in differing_sorted[:min(target_ai_slots,len(differing_sorted))]}
+
+    groups=[]; selected=[]; used=set()
+    actual_ai_slots=0; actual_trend_slots=0; shared_slots=0
+    for x in prepared:
+        z=x["zodiac"]; stable=x["stable"]
+        if x["ai_pick"]==x["trend_pick"]:
+            second=x["ai_pick"]; slot_type="共识补位"; shared_slots+=1
+        elif z in ai_zodiacs:
+            second=x["ai_pick"]; slot_type="AI补位"; actual_ai_slots+=1
+        else:
+            second=x["trend_pick"]; slot_type="趋势补位"; actual_trend_slots+=1
+
+        codes=[stable]
+        if second!=stable:
+            codes.append(second)
+        # Extremely defensive fallback for a malformed zodiac pool.
+        if len(codes)<2:
+            for n in pools[z]:
+                if n not in codes:
+                    codes.append(n)
+                if len(codes)>=2: break
+
+        groups.append({"zodiac":z,"codes":codes[:2],"stable":stable,"second_type":slot_type})
+        for n in codes[:2]:
+            if n not in used:
+                selected.append(n); used.add(n)
+
+    if len(selected)<24:
+        global_rank=sorted(range(1,50),key=lambda n:(-ns.get(n,-1e9),n))
+        for n in global_rank:
+            if n not in used:
+                selected.append(n); used.add(n)
+            if len(selected)>=24: break
+
+    meta=dict(transition_meta)
+    meta.update({
+      "ai_ready":ai_ready,
+      "ai_trained":ai_trained,
+      "complement":comp,
+      "actual_ai_second_slots":actual_ai_slots,
+      "actual_trend_second_slots":actual_trend_slots,
+      "shared_second_slots":shared_slots
+    })
+    return selected[:24],groups,ns,_zodiac_scores_profile(r,profile),ctx,meta,ztrans
+
+def _predict_complement_with_profile(r, profile):
+    cand24,groups,ns,zs,ctx,tmeta,ztrans=_candidate24_complement_by_zodiac(r,profile)
+    # Keep 4肖 selection logic, but its code is now selected from the two
+    # complement-aware codes of that zodiac.
+    z4,zpairs=_dynamic_zodiac4_one_code(r,profile,groups,ns,zs,ctx,ztrans)
+    main4=[p["code"] for p in zpairs]
+    return cand24,main4,z4,groups,zpairs
+
 def _candidate24_by_zodiac(r, profile):
     """Exactly 24 = 12 zodiacs × 2 codes.
     Hybrid ranking: statistical forecast + stabilized zodiac pair history + online AI."""
@@ -2391,7 +2619,8 @@ def record_shadow_predictions(r):
         except Exception as e:
             print(f"[LEARN] shadow {profile} failed: {type(e).__name__}: {e}",flush=True)
 
-    # Also lock the actual AI-hybrid forecast for honest future validation.
+    # Keep the legacy AI-hybrid forecast exactly as before so the existing
+    # 41+ real validation samples remain comparable.
     try:
         best_profile,_=_select_profile(r)
         c24,m4,z4,_,_=_predict_with_profile(r,best_profile)
@@ -2404,6 +2633,21 @@ def record_shadow_predictions(r):
         ))
     except Exception as e:
         print(f"[AI] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+
+    # New final complement forecast gets its own profile and starts honest
+    # forward validation from this version onward. Old samples are never faked.
+    try:
+        best_profile,_=_select_profile(r)
+        c24,m4,z4,_,_=_predict_complement_with_profile(r,best_profile)
+        records.append((
+            target,"互补在线",
+            ",".join(str(n) for n in c24),
+            ",".join(str(n) for n in m4),
+            ",".join(z4),
+            py
+        ))
+    except Exception as e:
+        print(f"[COMP] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
     if records:
         with db_lock:
@@ -2872,7 +3116,8 @@ def build_model():
     if not r:
         return {"issue":None,"count":0,"special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],"telegram":bool(BOT_TOKEN),"recalculating":False}
     profile,profile_scores=_select_profile(r)
-    c24,m4,z4,groups,zpairs=_predict_with_profile(r,profile)
+    c24,m4,z4,groups,zpairs=_predict_complement_with_profile(r,profile)
+    comp=complement_matrix(60,profile)
     pingte_one,pingte_meta=_predict_pingte_yixiao(r)
     trend=_trend_profiles(r)
     strategy=_strategy_context(r)
@@ -2894,6 +3139,7 @@ def build_model():
       "pingte_samples":pingte_meta.get("samples",0),
       "profile":profile,
       "profile_scores":profile_scores,
+      "complement":comp,
       "calibration_n":model_state.get("calibration_n",0),
       "learning":{
         "enabled":True,
@@ -2928,7 +3174,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"极速混合：近1200期实时 + 全历史先验缓存"
+        "mode":"双模型互补：共识码 + AI独立补位 + 趋势独立补位"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -3091,6 +3337,7 @@ def auto_status():
       "model_settled":settled,
       "model_best":best,
       "model_rate24":(profiles.get(best,{}) or {}).get("rate24",0.0),
+      "complement":complement_matrix(60, fusion.get("benchmark_profile") or best),
       "persistent":PERSISTENT_MODE,
       "remote_backup_enabled":REMOTE_BACKUP_ENABLED,
       "remote_backup_at":auto_state.get("remote_backup_at",""),
@@ -3099,6 +3346,11 @@ def auto_status():
       "checkpoint_at":auto_state.get("checkpoint_at",""),
       "checkpoint_error":auto_state.get("checkpoint_error","")
     })
+
+@app.get("/api/complement-status")
+def complement_status():
+    fusion=get_dynamic_ai_mix()
+    return jsonify(complement_matrix(60, fusion.get("benchmark_profile") or learner_cache.get("best_profile","趋势快")))
 
 @app.get("/api/backup-status")
 def backup_status():
