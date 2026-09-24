@@ -442,7 +442,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">F动态 · 19–23码</div>
+        <div id="fDynamicTitle" class="sectionTitle">F动态 · 当前--码</div>
         <div class="sectionHint">默认20码 · 多模型共识优先 · 19–23动态伸缩</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
@@ -573,7 +573,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v37把27码与F彻底分开：F动态19–23只优化下一期；27码专门优化未来一整轮10期的累计覆盖。27码在每轮开始时锁定基础27码，连续使用10期，轮内不会因为单期开奖随意换码；系统仍持续分析，只有出现27码外的强10期覆盖信号时才弹窗并临时补为第28码。27码新逻辑使用独立实盘profile统计，不与旧27码成绩混算。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。v39会在F功能区标题直接显示本期实际码数，例如“F动态 · 当前20码 / 21码 / 22码”，不再只显示19–23范围。3/5及以上共识继续保护，强2/5最多4个；27码继续使用未来10期累计覆盖模型。</div>
 </div>
 
 <script>
@@ -639,6 +639,7 @@ async function loadMain(){
     if(latestNums.lastElementChild) latestNums.lastElementChild.classList.add('special');
     SPECIAL20=d.special20||d.special24||[]; sp.innerHTML=balls(SPECIAL20);
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
+    fDynamicTitle.textContent=`F动态 · 当前${SPECIAL20.length||'--'}码`;
     const mp=d.model_pool||{}, ms=mp.stats||{}, stable=d.stable_signals||{};
     const labels={T:'趋势',Z:'生肖',C:'冷热',W:'波色单双',A:'AI纠错'};
     modelPoolRows.innerHTML=['T','Z','C','W','A'].map(k=>{
@@ -665,7 +666,7 @@ async function loadMain(){
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
     const cs=m20.consensus||{};
-    code20Brief.textContent=`当前${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码`;
+    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码 · 2/5保 ${cs.protected2_count??0}/4`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
     fErrorRescueInfo.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 23档非连续`;
     code27Block.textContent=`第${m27.round_position??0}/10期 · 基础27固定`;
@@ -3858,7 +3859,7 @@ def _predict20_hot(r, profile):
     ranked49=sorted(range(1,50),key=lambda n:(-final_score.get(n,-1e9),n))
 
     protected3=[n for n in ranked49 if support.get(n,0)>=3]
-    protected2=[
+    protected2_candidates=[
       n for n in ranked49
       if support.get(n,0)==2
       and (
@@ -3867,6 +3868,19 @@ def _predict20_hot(r, profile):
         or pool_score.get(n,0)>=.78
       )
     ]
+
+    # v38: strong 2/5 consensus gets at most FOUR protected seats in F.
+    # Rank them by current model weight support first, then pool strength,
+    # then final F score. 3/5+ consensus remains unlimited/protected.
+    protected2=sorted(
+      protected2_candidates,
+      key=lambda n:(
+        -weighted.get(n,0),
+        -pool_score.get(n,0),
+        -final_score.get(n,0),
+        ranked49.index(n)
+      )
+    )[:4]
 
     target_count,count_reasons,edge_candidates=_choose_f_dynamic_count(
       ranked49,final_score,pool_score,support,weighted,protected3
@@ -3915,6 +3929,8 @@ def _predict20_hot(r, profile):
       "protected3_count":len(protected3),
       "protected3":[f"{n:02d}" for n in protected3[:12]],
       "protected2_count":len(protected2),
+      "protected2_cap":4,
+      "protected2":[f"{n:02d}" for n in protected2],
       "pool_primary_pct":round(pool_w*100,1),
       "aux_ai_trend_pct":round(aux_w*100,1),
       "blind_rescue_pct":round(blind_w*100,1),
@@ -5262,7 +5278,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v37",
+      "version":"v39",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
