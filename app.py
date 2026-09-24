@@ -488,7 +488,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div id="fDynamicTitle" class="sectionTitle">F动态 · 当前--码</div>
-        <div class="sectionHint">默认20码 · 多模型共识优先 · 19–23动态伸缩</div>
+        <div class="sectionHint">每期重算号码 · 每20期开奖为一轮，满20期统计自动清零重开</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -712,9 +712,10 @@ async function loadMain(){
     lockRows.innerHTML=recent.length?recent.map(x=>`<tr><td>${x.issue}</td><td>${x.actual??'--'}</td><td>${hm(x.T)}</td><td>${hm(x.Z)}</td><td>${hm(x.C)}</td><td>${hm(x.W)}</td><td>${hm(x.A)}</td><td>${hm(x.F)}</td></tr>`).join(''):'<tr><td colspan="8">等待真实前瞻样本</td></tr>';
     const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{};
     const cs=m20.consensus||{};
-    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 3/5保护 ${cs.protected3_count??0}码 · 2/5保 ${cs.protected2_count??0}/4`;
+    const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
+    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 本轮 ${fRange} · 2/5保 ${cs.protected2_count??0}/4`;
     code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
-    code20Record.textContent=`已开 ${sF.n??0}期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
+    code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fed=d.f_error_diag||{};
     fErrorRescueInfo.textContent=`F错${fed.f_misses??0} · 融合漏${fed.fusion_miss??0} · 全池错${fed.pool_all_miss??0}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
@@ -6078,24 +6079,63 @@ def _profile_hit_stats(profile,window=60):
     return {"n":n,"hits":hits,"rate":round(100*hits/n,1) if n else 0.0}
 
 
-def _f_dynamic_current_stats():
-    """Honest forward stats for the current F-dynamic version only."""
+def _f_dynamic_current_stats(target_issue=None):
+    """F动态每20期为一轮。
+
+    - 继续使用 v45 开始的真实前瞻锁单，不丢掉已经累计的本轮样本。
+    - 每满20个目标期，下一目标期自动开启新一轮。
+    - 新一轮显示已开0/20、中0、错0。
+    - F号码本身仍然每期开奖后重算；20期边界额外作为统计/校准轮次边界。
+    """
     with db_lock:
         c=connect()
         try:
-            rows=c.execute("""SELECT hit24 FROM prediction_log
-                              WHERE profile=? AND settled=1
+            rows=c.execute("""SELECT target_issue,hit24,settled
+                              FROM prediction_log
+                              WHERE profile=?
                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
                            (F_DYNAMIC_V45_PROFILE,)).fetchall()
         finally:
             c.close()
-    n=len(rows)
-    hits=sum(int(x["hit24"] or 0) for x in rows)
+
+    items=[dict(x) for x in rows]
+    target=str(target_issue or "")
+    total=len(items)
+
+    # Find which 20-period block the live target belongs to.
+    issues=[str(x["target_issue"]) for x in items]
+    if target and target in issues:
+        idx=issues.index(target)
+        gstart=(idx//20)*20
+        chunk=items[gstart:gstart+20]
+        start_issue=str(chunk[0]["target_issue"]) if chunk else target
+    else:
+        rem=total%20
+        if rem==0:
+            # Exactly completed a 20-period round. The next live target begins
+            # a fresh round even before its shadow row is persisted.
+            chunk=[]
+            start_issue=target or (_next_issue_id(items[-1]["target_issue"]) if items else "")
+        else:
+            gstart=total-rem
+            chunk=items[gstart:]
+            start_issue=str(chunk[0]["target_issue"])
+
+    settled=[x for x in chunk if int(x.get("settled") or 0)==1]
+    n=len(settled)
+    hits=sum(int(x.get("hit24") or 0) for x in settled)
+    misses=max(0,n-hits)
+
     return {
+      "start":start_issue,
+      "end":_issue_add(start_issue,19) if start_issue else "",
       "n":n,
       "hits":hits,
-      "misses":max(0,n-hits),
-      "rate":round(100*hits/n,1) if n else 0.0
+      "misses":misses,
+      "rate":round(100*hits/n,1) if n else 0.0,
+      "round_size":20,
+      "round_complete":bool(n>=20),
+      "round_no":(total//20 + 1) if total%20==0 else (total//20 + 1)
     }
 
 def _stats27_blocks():
@@ -6814,7 +6854,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v46",
+      "version":"v47",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -7244,7 +7284,7 @@ def build_model():
     c20,meta20=_predict20_hot(r,profile)
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
     stats20=_profile_hit_stats("20码精选",60)
-    statsF=_f_dynamic_current_stats()
+    statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_v5()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
