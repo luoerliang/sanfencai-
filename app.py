@@ -378,6 +378,11 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   .forecastGrid .strategyMain{font-size:10.5px}
   .compactBalls .ball{height:26px;font-size:9.5px}
 }
+
+/* v44: 27码状态只显示轮次范围 + 中错 */
+#code27Block,#code27Kill,#code27Stats{font-size:9px}
+#code27Block{font-weight:850;color:#dce7fa}
+#code27Kill{font-weight:850;color:#9fe4c4}
 </style>
 </head>
 <body>
@@ -493,7 +498,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">27码 · 10期长码</div>
-        <div id="code27Hint" class="sectionHint">前20期杀两弱波色单双+弱0/4头 · 每肖≤3 · 冷3肖防守2码</div>
+        <div id="code27Hint" class="sectionHint">一组打10期 · 当前轮次和中错直接看下面</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -708,10 +713,16 @@ async function loadMain(){
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, f20=m27.filter20||{}, trg=m27.trend_trigger||{};
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
-    const cd=(m27.cold_defense2||[]).map(fmt).join(',')||'--';
-    code27Block.textContent=`第${m27.round_position??0}/10 · 核23 ${cur27.core23_hits??0}/${cur27.n??0} · 总${cur27.final_hits??0}/${cur27.n??0}`;
-    code27Kill.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 杀头连出${m27.head_streak??0}`;
-    code27Stats.textContent=`冷3肖防守 ${cd} · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
+    const c3=m27.cold3_codes||{};
+    const c3txt=(m27.coldest3||[]).map(z=>`${z}${(c3[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
+    const roundStart=(cur27.start && String(cur27.start)!=='0')?cur27.start:(m27.block_start||'--');
+    const roundEnd=(cur27.end && String(cur27.end)!=='0')?cur27.end:(m27.block_end||'--');
+    const opened=Number(cur27.n??0);
+    const hits=Number(cur27.final_hits??0);
+    const misses=Math.max(0,opened-hits);
+    code27Block.textContent=`本轮 ${roundStart} — ${roundEnd}`;
+    code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
+    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖各2码 · 变盘${cur27.trend_switches??m27.trend_switches??0}${r28.active?' · +28':''}`;
     maybeShowRescue28(m27,d.next_issue);
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
@@ -4852,13 +4863,22 @@ def _long27_v4_cold3(r,profile):
     return sorted(ALL_ZODIACS,key=lambda z:(zheat.get(z,0.0),z))[:3]
 
 def _build_long27_v4_codes(r,profile,filt):
-    """Build exactly 27 according to clarified rule.
+    """Build exactly 27 according to clarified cold-zodiac rule.
 
-    - Reserve exactly 2 defensive seats from the coldest 3 zodiacs.
-    - Those 2 defensive seats MUST belong to the killed wave-parity groups.
-    - They MUST NOT belong to the killed 0/4 head.
-    - Every zodiac max 3 total codes.
-    - All other seats exclude killed wave-parity + killed head.
+    Coldest 3 zodiacs:
+      - EXACTLY 2 codes EACH (total 6).
+      - Prefer codes belonging to the two killed wave×parity groups.
+      - Always obey the killed 0/4 head.
+      - If a cold zodiac has fewer than 2 eligible killed-wave codes,
+        fill the missing seat(s) from the same zodiac by score, still avoiding
+        the killed head.
+
+    Other 9 zodiacs:
+      - max 3 codes each.
+
+    Main non-cold pool:
+      - normally avoids killed wave×parity and killed head.
+      - if structurally short, relax only the wave×parity kill, never the head.
     """
     score,specialists,perf,meta=_ten27_horizon_score(r,profile)
     ranked=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
@@ -4867,88 +4887,134 @@ def _build_long27_v4_codes(r,profile,filt):
     killed_wp=set(filt.get("killed_wave_parity") or [])
     killed_head=str(filt.get("killed_head") or "")
     cold3=_long27_v4_cold3(r,profile)
+    coldset=set(cold3)
 
-    # 2 cold-zodiac defensive exceptions from the killed wave-parity groups.
-    defense_candidates=[
-      n for n in ranked
-      if zmap.get(n) in set(cold3)
-      and wave_parity_of(n) in killed_wp
-      and (not killed_head or head_of(n)!=killed_head)
-    ]
-
-    defense=[]
+    # --------------------------------------------------------
+    # A) Coldest 3: exactly 2 codes per zodiac
+    # --------------------------------------------------------
+    cold_codes={}
+    selected=[]
     zcount=Counter()
-    for n in defense_candidates:
-        z=zmap.get(n)
-        if zcount[z]>=3:
-            continue
-        defense.append(n)
-        zcount[z]+=1
-        if len(defense)>=2:
-            break
 
-    # Main 25 seats strictly avoid the killed wave-parity groups and killed head.
-    main=[]
+    for z in cold3:
+        # First choice: this cold zodiac + killed wave×parity + not killed head.
+        preferred=[
+          n for n in ranked
+          if zmap.get(n)==z
+          and wave_parity_of(n) in killed_wp
+          and (not killed_head or head_of(n)!=killed_head)
+        ]
+
+        picks=[]
+        for n in preferred:
+            if n not in picks:
+                picks.append(n)
+            if len(picks)>=2:
+                break
+
+        # Fallback: same cold zodiac, any wave×parity, still never killed head.
+        if len(picks)<2:
+            fallback=[
+              n for n in ranked
+              if zmap.get(n)==z
+              and n not in picks
+              and (not killed_head or head_of(n)!=killed_head)
+            ]
+            for n in fallback:
+                picks.append(n)
+                if len(picks)>=2:
+                    break
+
+        # Final defensive fallback only if the killed head removes too many
+        # numbers from this zodiac. Keep same zodiac first; do not exceed 2.
+        if len(picks)<2:
+            fallback2=[n for n in ranked if zmap.get(n)==z and n not in picks]
+            for n in fallback2:
+                picks.append(n)
+                if len(picks)>=2:
+                    break
+
+        picks=picks[:2]
+        cold_codes[z]=picks
+        for n in picks:
+            if n not in selected:
+                selected.append(n)
+                zcount[z]+=1
+
+    # --------------------------------------------------------
+    # B) Other zodiacs: max 3 each, normal structural kills
+    # --------------------------------------------------------
     for n in ranked:
-        if n in defense:
+        if len(selected)>=27:
+            break
+        if n in selected:
             continue
+        z=zmap.get(n)
+        if z in coldset:
+            continue  # cold zodiac is hard-capped at exactly 2
         if killed_head and head_of(n)==killed_head:
             continue
         if wave_parity_of(n) in killed_wp:
             continue
-        z=zmap.get(n)
         if z and zcount[z]>=3:
             continue
-        main.append(n)
-        if z: zcount[z]+=1
-        if len(main)>=25:
-            break
+        selected.append(n)
+        if z:
+            zcount[z]+=1
 
-    # If max-3 + structural kills leave us short, first relax ONLY the wave-parity
-    # restriction, never the killed head; still respect max 3 per zodiac.
+    # --------------------------------------------------------
+    # C) If short, relax only wave×parity, not zodiac cap / head kill
+    # --------------------------------------------------------
     forced_fill=[]
-    if len(main)+len(defense)<27:
-        for n in ranked:
-            if n in main or n in defense:
-                continue
-            if killed_head and head_of(n)==killed_head:
-                continue
-            z=zmap.get(n)
-            if z and zcount[z]>=3:
-                continue
-            main.append(n)
-            forced_fill.append(n)
-            if z: zcount[z]+=1
-            if len(main)+len(defense)>=27:
-                break
-
-    selected=(main+defense)[:27]
-
-    # Last-resort head-safe fill if still short; keep max3 if possible.
     if len(selected)<27:
         for n in ranked:
+            if len(selected)>=27:
+                break
             if n in selected:
                 continue
+            z=zmap.get(n)
+            if z in coldset:
+                continue  # still exactly 2 for each cold zodiac
             if killed_head and head_of(n)==killed_head:
                 continue
-            z=zmap.get(n)
-            if z and sum(1 for x in selected if zmap.get(x)==z)>=3:
+            if z and zcount[z]>=3:
                 continue
             selected.append(n)
             forced_fill.append(n)
+            if z:
+                zcount[z]+=1
+
+    # Absolute last-resort: preserve cold-zodiac exact-2 and other-zodiac max3.
+    # This branch should almost never be needed.
+    if len(selected)<27:
+        for n in ranked:
             if len(selected)>=27:
                 break
+            if n in selected:
+                continue
+            z=zmap.get(n)
+            if z in coldset:
+                continue
+            if z and zcount[z]>=3:
+                continue
+            selected.append(n)
+            forced_fill.append(n)
+            if z:
+                zcount[z]+=1
+
+    selected=selected[:27]
 
     meta=dict(meta)
     meta.update({
       "ranked49":ranked,
       "filter20":filt,
       "coldest3":cold3,
-      "cold_defense2":defense[:2],
+      "cold3_codes":cold_codes,
+      "cold_defense6":[n for z in cold3 for n in cold_codes.get(z,[])],
       "forced_fill":forced_fill,
       "zodiac_counts":dict(Counter(zmap.get(n) for n in selected if zmap.get(n)))
     })
-    return selected[:27],score,specialists,perf,meta
+    return selected,score,specialists,perf,meta
 
 def _long27_v4_rescue28(r,profile,base27,filt):
     """Rare 28th rescue; still obey killed head and max-3 zodiac."""
@@ -5497,7 +5563,8 @@ def _predict27_tenblock(r, profile, target_issue):
           "analog_samples":_hm.get("analog_samples",0),
           "ranked49":sorted(range(1,50),key=lambda n:(-_score.get(n,-1e9),n)),
           "coldest3":_long27_v4_cold3(r,profile),
-          "cold_defense2":[],
+          "cold3_codes":{},
+          "cold_defense6":[],
           "forced_fill":[]
         }
 
@@ -5529,7 +5596,8 @@ def _predict27_tenblock(r, profile, target_issue):
       "trend_segment":segment,
       "trend_switches":switches,
       "coldest3":meta.get("coldest3",[]),
-      "cold_defense2":meta.get("cold_defense2",[]),
+      "cold3_codes":meta.get("cold3_codes",{}),
+      "cold_defense6":meta.get("cold_defense6",[]),
       "forced_fill":meta.get("forced_fill",[]),
       "head_decision":{
         "killed_head":active_filter.get("killed_head",""),
@@ -6383,7 +6451,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v42",
+      "version":"v44",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
