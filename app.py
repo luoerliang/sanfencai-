@@ -240,6 +240,52 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   .rate{font-size:20px}
   .historyItem{grid-template-columns:104px 1fr}
 }
+
+/* Compact mobile layout: keep live data readable without card movement. */
+.wrap{max-width:760px;padding:calc(env(safe-area-inset-top) + 8px) 8px 22px}
+.topbar{gap:8px;margin:1px 1px 8px}
+.livebox{gap:5px;font-size:10px;padding:5px 7px}
+.dot{width:6px;height:6px;box-shadow:0 0 0 3px #2fdb9120;animation:none}
+.title{font-size:21px;letter-spacing:-.4px}
+.subtitle{font-size:10px;margin-top:3px}
+.card{border-radius:14px;padding:10px;box-shadow:0 5px 16px #00000020;margin-bottom:7px}
+.grid2{gap:6px}
+.metricLabel{font-size:9px}
+.metric{font-size:17px;margin-top:3px}
+.sectionHead{gap:6px;margin-bottom:8px}
+.sectionTitle{font-size:14px}
+.sectionHint{font-size:9px}
+.copyBtn{padding:5px 7px;border-radius:8px;font-size:10px}
+.balls{gap:4px}
+.ball{border-radius:8px;font-size:12px;box-shadow:inset 0 1px 0 #ffffff20,0 2px 5px #00000018}
+.smallball{width:25px;height:25px;font-size:10px}
+.latestRow{gap:4px}
+.combo{gap:6px}
+.comboBox{border-radius:11px;padding:8px}
+.comboTitle{font-size:11px;margin-bottom:6px}
+.zpairGrid{gap:5px}
+.zpair{border-radius:10px;padding:7px 4px}
+.zpairName{font-size:14px;margin-bottom:4px}
+.microball{width:21px;height:21px;font-size:9px}
+.trendGrid,.strategyGrid{gap:5px}
+.strategyBox,.trendBox{border-radius:10px;padding:7px}
+.strategyTitle,.trendTitle{font-size:9px;margin-bottom:3px}
+.strategyMain,.trendMain{font-size:11px;line-height:1.35;min-height:2.7em;overflow:hidden}
+.stats{gap:5px}
+.stat{border-radius:10px;padding:7px}
+.statName{font-size:9px}.rate{font-size:18px;margin-top:3px}.err{font-size:9px;margin-top:2px}
+.historyCard{padding-bottom:7px}
+.historyScroll{height:300px;padding-right:2px}
+.historyItem{grid-template-columns:88px 1fr;gap:6px;padding:7px 1px}
+.historyIssue{font-size:10px}.historyNums{gap:3px}.historyMeta{font-size:9px;margin-top:2px}
+.pillrow{gap:4px;margin-top:6px}
+.pill{font-size:9px;padding:4px 6px}
+.foot{font-size:9px;line-height:1.4;padding-top:2px}
+@media(max-width:520px){
+  .title{font-size:20px}
+  .ball{border-radius:7px;font-size:11px}
+  .historyItem{grid-template-columns:82px 1fr}
+}
 </style>
 </head>
 <body>
@@ -307,16 +353,16 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">24个动态特码</div>
-        <div class="sectionHint">12肖×2码 · 每期重算 · 升序</div>
+        <div class="sectionHint">重点肖3码 · 防守肖1码 · 其余肖2码</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
     <div id="sp" class="balls"></div>
     <div class="pillrow" style="margin-top:10px">
-      <span class="pill">每肖1个共识码</span>
-      <span class="pill">每肖1个互补码</span>
-      <span class="pill">AI/趋势独立席位</span>
-      <span class="pill">自动校准互补贡献</span>
+      <span id="zodiac24Info" class="pill"></span>
+      <span class="pill">重点肖加1码</span>
+      <span class="pill">防守肖减1码</span>
+      <span class="pill">AI/趋势补位</span>
     </div>
   </section>
 
@@ -396,7 +442,7 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   </section>
 
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。新版把波色、生肖、大小、单双作为近期统计特征参与动态评分；特码使用AI×趋势互补前瞻：每肖先取共识码，再按真实独中贡献分配AI/趋势补位；状态转移、遗漏风险、尾数转移、波色/大小/单双/头数共同评分；平特一肖预测的是下一期7个号码里至少出现一次的生肖。所有命中率均为历史滚动验证，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。新版把波色、生肖、大小、单双作为近期统计特征参与动态评分；特码使用AI×趋势互补前瞻：重点生肖3码、防守生肖1码，其余生肖保留共识码与AI/趋势补位；状态转移、遗漏风险、尾数转移、波色/大小/单双/头数共同评分；平特一肖预测的是下一期7个号码里至少出现一次的生肖。所有命中率均为历史滚动验证，不代表未来概率。</div>
 </div>
 
 <script>
@@ -404,6 +450,10 @@ const RED=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
 const BLUE=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
 function cls(n){n=Number(n);return RED.has(n)?'red':(BLUE.has(n)?'blue':'green')}
 let SPECIAL24=[];
+let lastMainKey='';
+let lastStatsKey='';
+let lastAutoKey='';
+let lastHistoryKey='';
 function fmt(n){return String(n).padStart(2,'0')}
 async function copySpecial(){
   const text=SPECIAL24.join(' ');
@@ -425,6 +475,15 @@ async function loadMain(){
   try{
     const r=await fetch('/api/prediction?_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
+    const mainKey=JSON.stringify([
+      d.issue,d.next_issue,d.latest_numbers,d.special24,d.zodiac_pairs,
+      d.zodiac24_focus,d.zodiac24_light,d.pingte_yixiao,d.pingte_samples,
+      d.trend,d.profile,d.forecast?.target_issue,d.forecast?.transition_samples,
+      d.learning?.ai_mix_pct,d.learning?.fusion?.reason,d.complement,d.strategy,
+      d.latest_special_zodiac,d.latest_created_at,d.telegram,d.recalculating
+    ]);
+    if(mainKey===lastMainKey) return;
+    lastMainKey=mainKey;
     issue.textContent=d.issue||'暂无';
     nextIssue.textContent=d.next_issue||'--';
     latestNums.innerHTML=balls(d.latest_numbers||[]);
@@ -468,7 +527,13 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · 每肖2码 · 4肖1码`;
+    const focus24=d.zodiac24_focus||'--';
+    const light24=d.zodiac24_light||'--';
+    const zplan=d.zodiac24_plan||[];
+    const focusCodes=(zplan.find(x=>x.zodiac===focus24)||{}).codes||[];
+    const lightCodes=(zplan.find(x=>x.zodiac===light24)||{}).codes||[];
+    zodiac24Info.textContent=`重点肖 ${focus24}×3(${focusCodes.join('、')}) · 防守肖 ${light24}×1(${lightCodes.join('、')})`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · 24码动态配额 · 4肖1码`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -478,6 +543,9 @@ async function loadStats(){
   try{
     const r=await fetch('/api/stats?_='+Date.now(),{cache:'no-store'});
     const st=await r.json();
+    const statsKey=JSON.stringify([st.n,st.building,st.hit24,st.err24,st.hitMain,st.errMain,st.hitZ,st.errZ,st.hitPingte,st.errPingte]);
+    if(statsKey===lastStatsKey) return;
+    lastStatsKey=statsKey;
     statsHint.textContent=`持续学习实盘验证 ${st.n??0}/60 期 · 只统计开奖前保存的预测`;
     if(st.building){
       hit22.textContent='计算中'; err22.textContent='';
@@ -498,6 +566,9 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
+    const autoKey=JSON.stringify([a.ai_mix_pct,f.reason,f.ai_rate60,f.stat_rate60,a.remote_backup_enabled,a.persistent]);
+    if(autoKey===lastAutoKey) return;
+    lastAutoKey=autoKey;
     learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${a.ai_mix_pct??0}%<br>AI实盘 ${f.ai_rate60??n.hit24??0}% · 对比${f.benchmark_profile||'统计'} ${f.stat_rate60??0}%`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
@@ -506,19 +577,28 @@ async function loadHistory(){
   try{
     const r=await fetch('/api/history?limit=200&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
-    historyCount.textContent=`共 ${Number(d.total||0).toLocaleString()} 期 · 显示最近 ${d.items.length} 期`;
-    historyScroll.innerHTML=d.items.map(x=>`
+    const items=d.items||[];
+    const historyKey=JSON.stringify([d.total,items]);
+    if(historyKey===lastHistoryKey) return;
+    const initialHistory=!lastHistoryKey;
+    lastHistoryKey=historyKey;
+    const oldTop=historyScroll.scrollTop;
+    const wasBottom=!initialHistory && historyScroll.scrollTop+historyScroll.clientHeight>=historyScroll.scrollHeight-8;
+    historyCount.textContent=`共 ${Number(d.total||0).toLocaleString()} 期 · 显示最近 ${items.length} 期`;
+    historyScroll.innerHTML=items.map(x=>`
       <div class="historyItem">
         <div><div class="historyIssue">${x.issue}</div><div class="historyMeta">${x.zodiac||''}</div></div>
         <div class="historyNums">${balls(x.numbers,true)}</div>
       </div>`).join('');
+    if(wasBottom) historyScroll.scrollTop=historyScroll.scrollHeight;
+    else historyScroll.scrollTop=oldTop;
   }catch(e){}
 }
 loadMain(); loadStats(); loadAutoStatus(); loadHistory();
-setInterval(loadMain,500);
-setInterval(loadAutoStatus,1000);
-setInterval(loadStats,10000);
-setInterval(loadHistory,5000);
+setInterval(loadMain,1500);
+setInterval(loadAutoStatus,3000);
+setInterval(loadStats,15000);
+setInterval(loadHistory,10000);
 </script>
 </body>
 </html>"""
@@ -1563,7 +1643,7 @@ def _predictive_number_scores(r, profile, ctx=None):
     return score,meta,z_t
 
 def _within_zodiac_pair_bonus(r, zmap):
-    """Stabilized within-zodiac ranking for the 2-of-each-zodiac rule.
+    """Stabilized within-zodiac ranking for ordinary 2-code allocations.
     Uses only past draws before the latest issue and Bayesian smoothing so one
     short streak cannot dominate the two selected numbers."""
     hist=r[1:] if len(r)>1 else r
@@ -1603,6 +1683,63 @@ def _norm_pool(values, pool):
     if hi-lo<1e-9:
         return {n:.5 for n in pool}
     return {n:(values.get(n,0.0)-lo)/(hi-lo) for n in pool}
+
+
+def _dynamic_zodiac24_allocation(groups, pools, priority_scores):
+    """Keep 24 codes while allowing one focus zodiac to take three codes.
+
+    The normal layout is two codes per zodiac. When the current zodiac model
+    has an ordering, the strongest zodiac gets a third code and the weakest
+    zodiac gives up one code. This keeps the total at 24. Four-zodiac/one-code
+    selection remains a separate step.
+    """
+    if not groups:
+        return [], [], "", "", []
+
+    names=[g["zodiac"] for g in groups]
+    focus=max(names,key=lambda z:(priority_scores.get(z,0.0),-names.index(z)))
+    remaining=[z for z in names if z!=focus]
+    light=min(remaining,key=lambda z:(priority_scores.get(z,0.0),names.index(z))) if remaining else focus
+
+    plan=[]
+    selected=[]
+    updated=[]
+    for g in groups:
+        z=g["zodiac"]
+        quota=3 if z==focus else (1 if z==light else 2)
+        base_codes=list(g.get("codes") or [])
+        ranked=list(g.get("ranking") or base_codes)
+        for n in pools.get(z,[]):
+            if n not in ranked:
+                ranked.append(n)
+        codes=[]
+        # Preserve the model-specific stable/AI/trend choices first. The
+        # third slot for the focus zodiac is then filled from the full ranking.
+        for n in base_codes+ranked:
+            if n not in codes:
+                codes.append(n)
+            if len(codes)>=quota:
+                break
+        if not codes:
+            codes=list(pools.get(z,[]))[:quota]
+        row=dict(g)
+        row["codes"]=codes[:quota]
+        row["quota"]=quota
+        row.pop("ranking",None)
+        row.pop("scores",None)
+        updated.append(row)
+        for n in codes[:quota]:
+            if n not in selected:
+                selected.append(n)
+        plan.append({"zodiac":z,"quota":quota,"codes":codes[:quota]})
+
+    if len(selected)<24:
+        for n in range(1,50):
+            if n not in selected:
+                selected.append(n)
+            if len(selected)>=24:
+                break
+    return selected[:24], updated, focus, light, plan
 
 
 def load_ai_state():
@@ -2138,7 +2275,7 @@ def complement_matrix(window=60, benchmark_profile=None):
         else: miss+=1
 
     n=len(rows)
-    # Smoothed allocation of the 12 "second slots" in 12肖×2码.
+    # Smoothed allocation of the ordinary zodiacs' second slots.
     # Neither side may monopolize the complementary seats.
     unique_total=ai_only+trend_only
     ai_share=(ai_only+2.0)/(unique_total+4.0) if unique_total>=0 else 0.5
@@ -2172,10 +2309,11 @@ def complement_matrix(window=60, benchmark_profile=None):
     }
 
 def _candidate24_complement_by_zodiac(r, profile):
-    """12肖×2码 complement mode.
+    """24-code complement mode with a dynamic 3/1 zodiac quota.
 
-    Slot A in every zodiac = consensus/stability slot.
-    Slot B = a deliberately independent AI-side or trend-side seat.
+    Ordinary zodiacs keep a consensus/stability slot and an independent
+    AI-side or trend-side seat. The strongest zodiac receives a third code;
+    the weakest gives up one code so the total remains 24.
     The number of AI-side vs trend-side second seats is learned from honest
     AI-only vs trend-only forward hits instead of a simple global percentage.
     """
@@ -2231,13 +2369,27 @@ def _candidate24_complement_by_zodiac(r, profile):
 
         ai_value=ai_side.get(ai_pick,0.0)+.32*max(0.0,ai_side.get(ai_pick,0.0)-trend_side.get(ai_pick,0.0))
         trend_value=trend_side.get(trend_pick,0.0)+.32*max(0.0,trend_side.get(trend_pick,0.0)-ai_side.get(trend_pick,0.0))
+        ranking=sorted(
+            pool,
+            key=lambda n:(
+                -(.52*consensus.get(n,0.0)+.24*ai_side.get(n,0.0)+.24*trend_side.get(n,0.0)),
+                -consensus.get(n,-1e9),
+                n
+            )
+        )
+        combined_side={
+            n:.52*consensus.get(n,0.0)+.24*ai_side.get(n,0.0)+.24*trend_side.get(n,0.0)
+            for n in pool
+        }
         prepared.append({
           "zodiac":z,"stable":stable,
           "ai_pick":ai_pick,"trend_pick":trend_pick,
           "margin":ai_value-trend_value,
           "consensus":consensus,
           "trend_side":trend_side,
-          "ai_side":ai_side
+          "ai_side":ai_side,
+          "ranking":ranking,
+          "scores":combined_side
         })
 
     # Allocate independent seats globally, so neither model silently swallows the other.
@@ -2245,7 +2397,7 @@ def _candidate24_complement_by_zodiac(r, profile):
     differing_sorted=sorted(differing,key=lambda x:(-x["margin"],x["zodiac"]))
     ai_zodiacs={x["zodiac"] for x in differing_sorted[:min(target_ai_slots,len(differing_sorted))]}
 
-    groups=[]; selected=[]; used=set()
+    groups=[]
     actual_ai_slots=0; actual_trend_slots=0; shared_slots=0
     for x in prepared:
         z=x["zodiac"]; stable=x["stable"]
@@ -2259,24 +2411,33 @@ def _candidate24_complement_by_zodiac(r, profile):
         codes=[stable]
         if second!=stable:
             codes.append(second)
-        # Extremely defensive fallback for a malformed zodiac pool.
         if len(codes)<2:
             for n in pools[z]:
                 if n not in codes:
                     codes.append(n)
                 if len(codes)>=2: break
 
-        groups.append({"zodiac":z,"codes":codes[:2],"stable":stable,"second_type":slot_type})
-        for n in codes[:2]:
-            if n not in used:
-                selected.append(n); used.add(n)
+        groups.append({
+            "zodiac":z,
+            "codes":codes[:2],
+            "stable":stable,
+            "second_type":slot_type,
+            "ranking":x["ranking"],
+            "scores":x["scores"]
+        })
 
-    if len(selected)<24:
-        global_rank=sorted(range(1,50),key=lambda n:(-ns.get(n,-1e9),n))
-        for n in global_rank:
-            if n not in used:
-                selected.append(n); used.add(n)
-            if len(selected)>=24: break
+    zodiac_scores=_zodiac_scores_profile(r,profile)
+    priority_scores={
+        x["zodiac"]:(
+            zodiac_scores.get(x["zodiac"],0.0)
+            +.45*ztrans.get(x["zodiac"],0.0)
+            +.20*max(x["scores"].values() or [0.0])
+        )
+        for x in prepared
+    }
+    selected,groups,focus_z,light_z,plan=_dynamic_zodiac24_allocation(
+        groups,pools,priority_scores
+    )
 
     meta=dict(transition_meta)
     meta.update({
@@ -2285,9 +2446,13 @@ def _candidate24_complement_by_zodiac(r, profile):
       "complement":comp,
       "actual_ai_second_slots":actual_ai_slots,
       "actual_trend_second_slots":actual_trend_slots,
-      "shared_second_slots":shared_slots
+      "shared_second_slots":shared_slots,
+      "zodiac24_focus":focus_z,
+      "zodiac24_light":light_z,
+      "zodiac24_plan":plan,
+      "zodiac24_mode":"重点肖3码 / 防守肖1码 / 其余肖2码"
     })
-    return selected[:24],groups,ns,_zodiac_scores_profile(r,profile),ctx,meta,ztrans
+    return selected[:24],groups,ns,zodiac_scores,ctx,meta,ztrans
 
 def _predict_complement_with_profile(r, profile):
     cand24,groups,ns,zs,ctx,tmeta,ztrans=_candidate24_complement_by_zodiac(r,profile)
@@ -2298,7 +2463,7 @@ def _predict_complement_with_profile(r, profile):
     return cand24,main4,z4,groups,zpairs
 
 def _candidate24_by_zodiac(r, profile):
-    """Exactly 24 = 12 zodiacs × 2 codes.
+    """Exactly 24 codes with a dynamic focus-zodiac 3/1 quota.
     Hybrid ranking: statistical forecast + stabilized zodiac pair history + online AI."""
     zmap=_number_zodiac_map(r)
     ctx=_strategy_context(r)
@@ -2323,7 +2488,7 @@ def _candidate24_by_zodiac(r, profile):
         if z in pools:
             pools[z].append(n)
 
-    groups=[]; selected=[]; used=set()
+    groups=[]
     for z in ALL_ZODIACS:
         pool=pools[z]
         ns_norm=_norm_pool(ns,pool)
@@ -2336,25 +2501,30 @@ def _candidate24_by_zodiac(r, profile):
                 combined[n]+=.06*ctx["num_cold"].get(n,0)
 
         ranked=sorted(pool,key=lambda n:(-combined.get(n,-1e9),-ns.get(n,-1e9),n))
-        codes=ranked[:2]
-        groups.append({"zodiac":z,"codes":codes})
-        for n in codes:
-            if n not in used:
-                selected.append(n); used.add(n)
+        groups.append({"zodiac":z,"codes":ranked[:2],"ranking":ranked,"scores":combined})
 
-    if len(selected)<24:
-        for n in sorted(range(1,50),key=lambda n:(-ns[n],n)):
-            if n not in used:
-                selected.append(n); used.add(n)
-            if len(selected)>=24:
-                break
+    zodiac_scores=_zodiac_scores_profile(r,profile)
+    priority_scores={
+        g["zodiac"]:(
+            zodiac_scores.get(g["zodiac"],0.0)
+            +.20*max(g.get("scores",{}).values() or [0.0])
+        )
+        for g in groups
+    }
+    selected,groups,focus_z,light_z,plan=_dynamic_zodiac24_allocation(
+        groups,pools,priority_scores
+    )
 
     transition_meta=dict(transition_meta)
     transition_meta["ai_ready"]=ai_ready
     transition_meta["ai_trained"]=ai_trained
     transition_meta["ai_mix_pct"]=round(ai_mix*100,1)
+    transition_meta["zodiac24_focus"]=focus_z
+    transition_meta["zodiac24_light"]=light_z
+    transition_meta["zodiac24_plan"]=plan
+    transition_meta["zodiac24_mode"]="重点肖3码 / 防守肖1码 / 其余肖2码"
 
-    return selected[:24],groups,ns,_zodiac_scores_profile(r,profile),ctx,transition_meta,ztrans
+    return selected[:24],groups,ns,zodiac_scores,ctx,transition_meta,ztrans
 
 def _dynamic_zodiac4_one_code(r, profile, groups, ns, zs, ctx, ztrans):
     """Predict 4 zodiacs for the NEXT issue using transition + trend, one code each."""
@@ -3087,6 +3257,7 @@ def initialize_quick_live_cache():
           "latest_special_zodiac":normalize_z(latest["z7"] or ""),
           "latest_created_at":latest["created_at"] or "",
           "special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
+          "zodiac24_focus":"","zodiac24_light":"","zodiac24_plan":[],
           "pingte_yixiao":"",
           "pingte_samples":0,
           "profile":model_state.get("profile") or "平衡",
@@ -3114,7 +3285,9 @@ def build_model():
     model_state["recalc_started_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
     r=recent_rows(1200)
     if not r:
-        return {"issue":None,"count":0,"special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],"telegram":bool(BOT_TOKEN),"recalculating":False}
+        return {"issue":None,"count":0,"special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
+                "zodiac24_focus":"","zodiac24_light":"","zodiac24_plan":[],
+                "telegram":bool(BOT_TOKEN),"recalculating":False}
     profile,profile_scores=_select_profile(r)
     c24,m4,z4,groups,zpairs=_predict_complement_with_profile(r,profile)
     comp=complement_matrix(60,profile)
@@ -3126,6 +3299,13 @@ def build_model():
     latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
     try: next_issue=str(int(latest["issue"])+1)
     except Exception: next_issue=""
+    zodiac24_plan=[
+        {"zodiac":g.get("zodiac",""),"quota":int(g.get("quota",len(g.get("codes",[])) or 2)),
+         "codes":[f"{int(n):02d}" for n in g.get("codes",[])]}
+        for g in groups
+    ]
+    zodiac24_focus=next((x["zodiac"] for x in zodiac24_plan if x["quota"]==3),"")
+    zodiac24_light=next((x["zodiac"] for x in zodiac24_plan if x["quota"]==1),"")
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -3135,6 +3315,9 @@ def build_model():
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
+      "zodiac24_focus":zodiac24_focus,
+      "zodiac24_light":zodiac24_light,
+      "zodiac24_plan":zodiac24_plan,
       "pingte_yixiao":pingte_one,
       "pingte_samples":pingte_meta.get("samples",0),
       "profile":profile,
@@ -3608,3 +3791,4 @@ boot()
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=PORT)
+
