@@ -97,7 +97,8 @@ learner_cache = {
 AI_FEATURES = [
     "bias","sp6","sp12","sp24","sp60","all12","all36","gap",
     "transition","tail","longprior","wave","size","parity","head",
-    "cold","repeat","zodiac_pair"
+    "cold","repeat","zodiac_pair",
+    "wave_parity_8","wave_parity_16","wave_parity_36","wave_parity_80"
 ]
 ai_lock = threading.RLock()
 ai_state = {
@@ -240,55 +241,6 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   .rate{font-size:20px}
   .historyItem{grid-template-columns:104px 1fr}
 }
-
-/* Compact mobile layout: keep live data readable without card movement. */
-.pickBalls{display:grid;grid-template-columns:repeat(10,25px);gap:3px;justify-content:start}
-.pickBalls .ball{width:25px;height:25px;aspect-ratio:auto;border-radius:7px;font-size:10px}
-@media(max-width:320px){.pickBalls{grid-template-columns:repeat(9,25px)}}
-.wrap{max-width:760px;padding:calc(env(safe-area-inset-top) + 8px) 8px 22px}
-.topbar{gap:8px;margin:1px 1px 8px}
-.livebox{gap:5px;font-size:10px;padding:5px 7px}
-.dot{width:6px;height:6px;box-shadow:0 0 0 3px #2fdb9120;animation:none}
-.title{font-size:21px;letter-spacing:-.4px}
-.subtitle{font-size:10px;margin-top:3px}
-.card{border-radius:14px;padding:10px;box-shadow:0 5px 16px #00000020;margin-bottom:7px}
-.grid2{gap:6px}
-.metricLabel{font-size:9px}
-.metric{font-size:17px;margin-top:3px}
-.sectionHead{gap:6px;margin-bottom:8px}
-.sectionTitle{font-size:14px}
-.sectionHint{font-size:9px}
-.copyBtn{padding:5px 7px;border-radius:8px;font-size:10px}
-.balls{gap:4px}
-.ball{border-radius:8px;font-size:12px;box-shadow:inset 0 1px 0 #ffffff20,0 2px 5px #00000018}
-.smallball{width:25px;height:25px;font-size:10px}
-.latestRow{gap:4px}
-.combo{gap:6px}
-.comboBox{border-radius:11px;padding:8px}
-.comboTitle{font-size:11px;margin-bottom:6px}
-.zpairGrid{gap:5px}
-.zpair{border-radius:10px;padding:7px 4px}
-.zpairName{font-size:14px;margin-bottom:4px}
-.microball{width:21px;height:21px;font-size:9px}
-.trendGrid,.strategyGrid{gap:5px}
-.strategyBox,.trendBox{border-radius:10px;padding:7px}
-.strategyTitle,.trendTitle{font-size:9px;margin-bottom:3px}
-.strategyMain,.trendMain{font-size:11px;line-height:1.35;min-height:2.7em;overflow:hidden}
-.stats{gap:5px}
-.stat{border-radius:10px;padding:7px}
-.statName{font-size:9px}.rate{font-size:18px;margin-top:3px}.err{font-size:9px;margin-top:2px}
-.historyCard{padding-bottom:7px}
-.historyScroll{height:300px;padding-right:2px}
-.historyItem{grid-template-columns:88px 1fr;gap:6px;padding:7px 1px}
-.historyIssue{font-size:10px}.historyNums{gap:3px}.historyMeta{font-size:9px;margin-top:2px}
-.pillrow{gap:4px;margin-top:6px}
-.pill{font-size:9px;padding:4px 6px}
-.foot{font-size:9px;line-height:1.4;padding-top:2px}
-@media(max-width:520px){
-  .title{font-size:20px}
-  .ball{border-radius:7px;font-size:11px}
-  .historyItem{grid-template-columns:82px 1fr}
-}
 </style>
 </head>
 <body>
@@ -355,25 +307,34 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">A组 · 24码</div>
-        <div class="sectionHint">每期更新 · 两个最冷肖0码 · 第三冷肖1码</div>
+        <div class="sectionTitle">20码 · 每期精选</div>
+        <div class="sectionHint">最冷3肖不取 · 前3热肖最多3码 · 每期重算</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
-    <div id="sp" class="balls pickBalls"></div>
-    <div class="pillrow"><span id="zodiac24Info" class="pill"></span></div>
+    <div id="sp" class="balls"></div>
+    <div class="pillrow" style="margin-top:10px">
+      <span class="pill">AI+趋势共识优先</span>
+      <span class="pill">最冷3肖彻底不取</span>
+      <span class="pill">0/4弱头可直接杀</span>
+      <span class="pill">红蓝绿×单双共同评分</span>
+    </div>
   </section>
 
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">B组 · 27码</div>
-        <div class="sectionHint">每10期更新 · 三个冷肖各2码</div>
+        <div class="sectionTitle">27码 · 十期一换</div>
+        <div id="code27Hint" class="sectionHint">AI+趋势必杀0/4其中一头</div>
       </div>
-      <button class="copyBtn" onclick="copyGroup(SPECIAL27)">一键复制</button>
+      <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
-    <div id="sp27" class="balls pickBalls"></div>
-    <div class="pillrow"><span id="bPeriod" class="pill"></span></div>
+    <div id="sp27" class="balls"></div>
+    <div class="pillrow" style="margin-top:10px">
+      <span id="code27Block" class="pill"></span>
+      <span id="code27Kill" class="pill"></span>
+      <span id="code27Stats" class="pill"></span>
+    </div>
   </section>
 
   <section class="card">
@@ -390,21 +351,21 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
       <div class="sectionHint">预测下一期7个号码中至少出现1次的生肖</div>
     </div>
     <div class="comboBox" style="text-align:center">
-      <div id="pingteOne" style="font-size:27px;font-weight:900;letter-spacing:2px">--</div>
-      <div id="pingteSamples" class="sectionHint" style="margin-top:5px">--</div>
-      <div id="pingteReason" class="sectionHint" style="margin-top:3px">--</div>
+      <div id="pingteOne" style="font-size:36px;font-weight:900;letter-spacing:2px">--</div>
+      <div id="pingteSamples" class="sectionHint" style="margin-top:8px">--</div>
     </div>
   </section>
 
   <section class="card">
     <div class="sectionHead">
       <div class="sectionTitle">走势指数</div>
-      <div class="sectionHint">波色 / 大小 / 单双</div>
+      <div class="sectionHint">波色 / 大小 / 单双 / 红蓝绿×单双</div>
     </div>
     <div class="trendGrid">
       <div class="trendBox"><div class="trendTitle">波色走势</div><div id="waveTrend" class="trendMain">--</div></div>
       <div class="trendBox"><div class="trendTitle">大小指数</div><div id="sizeTrend" class="trendMain">--</div></div>
       <div class="trendBox"><div class="trendTitle">单双走势</div><div id="parityTrend" class="trendMain">--</div></div>
+      <div class="trendBox"><div class="trendTitle">波色×单双</div><div id="waveParityTrend" class="trendMain">--</div></div>
     </div>
     <div class="pillrow"><span id="profileInfo" class="pill"></span></div>
   </section>
@@ -437,12 +398,10 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   <section class="card">
     <div class="sectionHead"><div class="sectionTitle">滚动验证（后台更新）</div><div id="statsHint" class="sectionHint">等待样本</div></div>
     <div class="stats">
-      <div class="stat"><div class="statName">旧版24码</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
+      <div class="stat"><div class="statName">20码精选</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
       <div class="stat"><div class="statName">4肖1码</div><div id="hit4" class="rate">--</div><div id="err4" class="err"></div></div>
       <div class="stat"><div class="statName">4肖</div><div id="hitZ" class="rate">--</div><div id="errZ" class="err"></div></div>
       <div class="stat"><div class="statName">平特一肖</div><div id="hitPingte" class="rate">--</div><div id="errPingte" class="err"></div></div>
-      <div class="stat"><div class="statName">A组24码</div><div id="hitA" class="rate">--</div><div id="countA" class="err"></div></div>
-      <div class="stat"><div class="statName">B组27码</div><div id="hitB" class="rate">--</div><div id="countB" class="err"></div></div>
     </div>
   </section>
 
@@ -455,22 +414,18 @@ box-shadow:0 12px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-inde
   </section>
 
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。新版把波色、生肖、大小、单双作为近期统计特征参与动态评分；特码使用AI×趋势互补前瞻：A组排除两个最冷肖、第三冷肖留1码；B组三冷肖各留2码，均结合AI/趋势互补；状态转移、遗漏风险、尾数转移、波色/大小/单双/头数共同评分；平特一肖预测的是下一期7个号码里至少出现一次的生肖。所有命中率均为历史滚动验证，不代表未来概率。</div>
+  <div class="foot">号码颜色按红 / 蓝 / 绿波显示。20码每期重算：最冷3肖不取，AI+趋势共识优先，弱0/4头可直接杀；27码每10期固定一组，AI+趋势必杀0头/4头其中一头。AI与趋势同时学习/跟踪红单、红双、蓝单、蓝双、绿单、绿双。所有命中率只统计开奖前已锁定预测，不代表未来概率。</div>
 </div>
 
 <script>
 const RED=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
 const BLUE=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
 function cls(n){n=Number(n);return RED.has(n)?'red':(BLUE.has(n)?'blue':'green')}
-let SPECIAL24=[];
+let SPECIAL20=[];
 let SPECIAL27=[];
-let lastMainKey='';
-let lastStatsKey='';
-let lastAutoKey='';
-let lastHistoryKey='';
 function fmt(n){return String(n).padStart(2,'0')}
-async function copyGroup(nums){
-  const text=nums.join(' ');
+async function copySpecial(){
+  const text=SPECIAL20.join(' ');
   try{
     await navigator.clipboard.writeText(text);
   }catch(e){
@@ -482,7 +437,18 @@ async function copyGroup(nums){
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),1800);
 }
-function copySpecial(){return copyGroup(SPECIAL24)}
+async function copy27(){
+  const text=SPECIAL27.join(' ');
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+  const t=document.getElementById('toast');
+  t.textContent='已复制27码：'+text;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
 function balls(nums,small=false){
   return (nums||[]).map((n,i)=>`<span class="${small?'smallball':'ball'} ${cls(n)} ${small&&i===6?'special':''}">${fmt(n)}</span>`).join('')
 }
@@ -490,22 +456,17 @@ async function loadMain(){
   try{
     const r=await fetch('/api/prediction?_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
-    const mainKey=JSON.stringify([
-      d.issue,d.next_issue,d.latest_numbers,d.special24,d.special27,d.b_end_issue,d.zodiac_pairs,
-      d.zodiac24_focus,d.zodiac24_light,d.pingte_yixiao,d.pingte_samples,d.pingte_reason,
-      d.trend,d.profile,d.forecast?.target_issue,d.forecast?.transition_samples,
-      d.learning?.ai_mix_pct,d.learning?.fusion?.reason,d.complement,d.group_live_stats,d.strategy,
-      d.latest_special_zodiac,d.latest_created_at,d.telegram,d.recalculating
-    ]);
-    if(mainKey===lastMainKey) return;
-    lastMainKey=mainKey;
     issue.textContent=d.issue||'暂无';
     nextIssue.textContent=d.next_issue||'--';
     latestNums.innerHTML=balls(d.latest_numbers||[]);
     if(latestNums.lastElementChild) latestNums.lastElementChild.classList.add('special');
-    SPECIAL24=d.special24||[]; sp.innerHTML=balls(SPECIAL24);
+    SPECIAL20=d.special20||d.special24||[]; sp.innerHTML=balls(SPECIAL20);
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
-    bPeriod.textContent=d.b_end_issue?`本组保持至 ${d.b_end_issue} 期 · 冷肖 ${(d.b_cold_zodiacs||[]).join('、')}`:'等待B组生成';
+    const m20=d.strategy20||{}, m27=d.strategy27||{}, s20=d.stats20||{}, s27=d.stats27||{};
+    code27Block.textContent=`${m27.block_start||'--'}-${m27.block_end||'--'} 十期固定`;
+    code27Kill.textContent=`本轮必杀：${m27.killed_head||'--'}`;
+    const cur27=s27.current||{}, last27=s27.last_complete||null;
+    code27Stats.textContent=last27?`上一完整轮：10中${last27.hits??0}`:`本轮：${cur27.hits??0}中${cur27.n??0}/10`;
     const pairs=d.zodiac_pairs||[];
     zpair.innerHTML=pairs.map(p=>`<div class="zpair">
       <div class="zpairName">${p.zodiac}</div>
@@ -513,12 +474,12 @@ async function loadMain(){
     </div>`).join('');
     pingteOne.textContent=d.pingte_yixiao||'--';
     pingteSamples.textContent=`转移样本 ${d.pingte_samples??0}`;
-    pingteReason.textContent=d.pingte_reason||'按当期评分首选';
     const tr=d.trend||{};
-    const w=tr.wave||{}, sz=tr.size||{}, pa=tr.parity||{};
+    const w=tr.wave||{}, sz=tr.size||{}, pa=tr.parity||{}, wp=tr.wave_parity||{};
     waveTrend.innerHTML=`红 ${w['红']??0}%<br>蓝 ${w['蓝']??0}%<br>绿 ${w['绿']??0}%`;
     sizeTrend.innerHTML=`大 ${sz['大']??0}%<br>小 ${sz['小']??0}%`;
     parityTrend.innerHTML=`单 ${pa['单']??0}%<br>双 ${pa['双']??0}%`;
+    waveParityTrend.innerHTML=`红单 ${wp['红单']??0}% · 红双 ${wp['红双']??0}%<br>蓝单 ${wp['蓝单']??0}% · 蓝双 ${wp['蓝双']??0}%<br>绿单 ${wp['绿单']??0}% · 绿双 ${wp['绿双']??0}%`;
     const ps=d.profile_scores||{};
     profileInfo.textContent=`当前模型 ${d.profile||'--'} · 校准${d.calibration_n??0}期 · 得分 ${ps[d.profile]??0}%`;
     const fc=d.forecast||{};
@@ -528,13 +489,8 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${lr.ai_mix_pct??0}%<br>特码/四肖/平特一肖/波色/大小/单双/头数/冷热共同训练`;
+    learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${lr.ai_mix_pct??0}%<br>特码/四肖/平特一肖/波色/大小/单双/头数/冷热/红蓝绿×单双共同训练`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
-    const gs=d.group_live_stats||{};
-    hitA.textContent=gs.A?.n?`${gs.A.rate}%`:'待验证';
-    hitB.textContent=gs.B?.n?`${gs.B.rate}%`:'待验证';
-    countA.textContent=`${gs.A?.hits??0}/${gs.A?.n??0}期`;
-    countB.textContent=`${gs.B?.hits??0}/${gs.B?.n??0}期`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
     compAIOnly.textContent=`${cp.ai_only??0}/${cp.n??0}`;
@@ -543,21 +499,14 @@ async function loadMain(){
     compSlots.textContent=`第二码席位：AI ${cp.ai_second_slots??6} · 趋势 ${cp.trend_second_slots??6}`;
     compFinal.textContent=(cp.final_n??0)>0?`互补在线 ${cp.final_hits??0}/${cp.final_n} = ${cp.final_rate??0}%`:'互补在线：从本版开始独立验证';
     const sg=d.strategy||{};
-    coldSignal.innerHTML=sg.cold_rebound_now?'冷反弹信号：启用<br>B组保留冷码':'冷反弹信号：普通<br>B组保留冷码';
+    coldSignal.innerHTML=sg.cold_rebound_now?'冷反弹信号：启用':'冷反弹信号：普通';
     coldZodiac.innerHTML=(sg.cold_zodiacs||[]).length?`偏冷：${sg.cold_zodiacs.join('、')}`:'暂无';
     headSignal.innerHTML=sg.head_advice||'暂无';
     nmySignal.innerHTML=`样本 ${sg.nmy_samples??0}<br>条件 ${sg.nmy_conditional_pct??0}% / 基准 ${sg.nmy_baseline_pct??0}%`;
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    const focus24=d.zodiac24_focus||'--';
-    const light24=d.zodiac24_light||'--';
-    const zplan=d.zodiac24_plan||[];
-    const focusCodes=(zplan.find(x=>x.zodiac===focus24)||{}).codes||[];
-    const lightCodes=(zplan.find(x=>x.zodiac===light24)||{}).codes||[];
-    const removed=zplan.filter(x=>x.quota===0).map(x=>x.zodiac);
-    zodiac24Info.textContent=`排除 ${removed.join('、')} · ${light24}留1码 · ${zplan.filter(x=>x.quota===3).map(x=>x.zodiac).join('、')}各3码`;
-    adaptiveInfo.textContent=`前瞻 ${d.next_issue||'--'}期 · A每期更新 · B每10期更新`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · 20码每期变 · 27码十期一换`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -567,17 +516,15 @@ async function loadStats(){
   try{
     const r=await fetch('/api/stats?_='+Date.now(),{cache:'no-store'});
     const st=await r.json();
-    const statsKey=JSON.stringify([st.n,st.building,st.hit24,st.err24,st.hitMain,st.errMain,st.hitZ,st.errZ,st.hitPingte,st.errPingte]);
-    if(statsKey===lastStatsKey) return;
-    lastStatsKey=statsKey;
-    statsHint.textContent=`持续学习实盘验证 ${st.n??0}/60 期 · 只统计开奖前保存的预测`;
+    const c20=st.code20||{}, c27=st.code27||{}, ov27=c27.overall||{};
+    statsHint.textContent=`20码实盘 ${c20.hits??0}/${c20.n??0} · 27码实盘 ${ov27.hits??0}/${ov27.n??0}`;
     if(st.building){
       hit22.textContent='计算中'; err22.textContent='';
       hit4.textContent='计算中'; err4.textContent='';
       hitZ.textContent='计算中'; errZ.textContent='';
       hitPingte.textContent='计算中'; errPingte.textContent='';
     }else{
-      hit22.textContent=(st.hit24??0).toFixed(1)+'%'; err22.textContent='错误 '+(st.err24??0).toFixed(1)+'%';
+      hit22.textContent=(c20.rate??0).toFixed(1)+'%'; err22.textContent=`${c20.hits??0}中${c20.n??0}`;
       hit4.textContent=(st.hitMain??0).toFixed(1)+'%'; err4.textContent='错误 '+(st.errMain??0).toFixed(1)+'%';
       hitZ.textContent=(st.hitZ??0).toFixed(1)+'%'; errZ.textContent='错误 '+(st.errZ??0).toFixed(1)+'%';
       hitPingte.textContent=(st.hitPingte??0).toFixed(1)+'%'; errPingte.textContent='错误 '+(st.errPingte??0).toFixed(1)+'%';
@@ -590,9 +537,6 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    const autoKey=JSON.stringify([a.ai_mix_pct,f.reason,f.ai_rate60,f.stat_rate60,a.remote_backup_enabled,a.persistent]);
-    if(autoKey===lastAutoKey) return;
-    lastAutoKey=autoKey;
     learningState.innerHTML=`多任务AI 100期滚动 · 动态融合 ${a.ai_mix_pct??0}%<br>AI实盘 ${f.ai_rate60??n.hit24??0}% · 对比${f.benchmark_profile||'统计'} ${f.stat_rate60??0}%`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
@@ -601,28 +545,19 @@ async function loadHistory(){
   try{
     const r=await fetch('/api/history?limit=200&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
-    const items=d.items||[];
-    const historyKey=JSON.stringify([d.total,items]);
-    if(historyKey===lastHistoryKey) return;
-    const initialHistory=!lastHistoryKey;
-    lastHistoryKey=historyKey;
-    const oldTop=historyScroll.scrollTop;
-    const wasBottom=!initialHistory && historyScroll.scrollTop+historyScroll.clientHeight>=historyScroll.scrollHeight-8;
-    historyCount.textContent=`共 ${Number(d.total||0).toLocaleString()} 期 · 显示最近 ${items.length} 期`;
-    historyScroll.innerHTML=items.map(x=>`
+    historyCount.textContent=`共 ${Number(d.total||0).toLocaleString()} 期 · 显示最近 ${d.items.length} 期`;
+    historyScroll.innerHTML=d.items.map(x=>`
       <div class="historyItem">
         <div><div class="historyIssue">${x.issue}</div><div class="historyMeta">${x.zodiac||''}</div></div>
         <div class="historyNums">${balls(x.numbers,true)}</div>
       </div>`).join('');
-    if(wasBottom) historyScroll.scrollTop=historyScroll.scrollHeight;
-    else historyScroll.scrollTop=oldTop;
   }catch(e){}
 }
 loadMain(); loadStats(); loadAutoStatus(); loadHistory();
-setInterval(loadMain,1500);
-setInterval(loadAutoStatus,3000);
-setInterval(loadStats,15000);
-setInterval(loadHistory,10000);
+setInterval(loadMain,500);
+setInterval(loadAutoStatus,1000);
+setInterval(loadStats,10000);
+setInterval(loadHistory,5000);
 </script>
 </body>
 </html>"""
@@ -682,10 +617,6 @@ def init_db():
           actual_zodiac TEXT,
           PRIMARY KEY(target_issue,profile)
         )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS b_group_lock(
-          start_issue TEXT PRIMARY KEY, end_issue TEXT NOT NULL,
-          numbers TEXT NOT NULL, cold_zodiacs TEXT NOT NULL,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
         c.execute("""CREATE TABLE IF NOT EXISTS learner_scores(
           profile TEXT PRIMARY KEY,
           weight REAL DEFAULT 1.0,
@@ -1196,10 +1127,20 @@ def _trend_profiles(r):
         z=sum(raw.values())
         return {k:raw[k]/z for k in keys}
 
+    wp_keys=["红单","红双","蓝单","蓝双","绿单","绿双"]
+    wp_mapper=lambda n: f"{wave_of(n)}{parity_of(n)}"
+    wp=defaultdict(float)
+    for h,half,c in cfg:
+        for k,v in _weighted_category(sp,wp_mapper,h,half).items():
+            wp[k]+=c*v
+    for k in list(wp):
+        wp[k]/=totalcoef
+
     return {
       "wave":blend(wave,accel(wave_of,["红","蓝","绿"]),["红","蓝","绿"]),
       "size":blend(size,accel(size_of,["大","小"]),["大","小"]),
-      "parity":blend(parity,accel(parity_of,["单","双"]),["单","双"])
+      "parity":blend(parity,accel(parity_of,["单","双"]),["单","双"]),
+      "wave_parity":blend(wp,accel(wp_mapper,wp_keys),wp_keys)
     }
 
 def _number_zodiac_map(r):
@@ -1274,6 +1215,7 @@ def _number_scores_profile(r, profile):
         score[n]+=1.12*p["wave"]*(trend["wave"].get(wave_of(n),0)-1/3)
         score[n]+=.82*p["size"]*(trend["size"].get(size_of(n),0)-1/2)
         score[n]+=.76*p["parity"]*(trend["parity"].get(parity_of(n),0)-1/2)
+        score[n]+=.88*p["wave"]*(trend["wave_parity"].get(f"{wave_of(n)}{parity_of(n)}",0)-1/6)
         z=zmap.get(n)
         if z:
             score[n]+=.012*p["zodiac"]*zscore.get(z,0)
@@ -1563,6 +1505,7 @@ def _base_hot_score_without_latest(r, profile):
         score[n] += .28*p["wave"]*trend["wave"].get(wave_of(n),0)
         score[n] += .17*p["size"]*trend["size"].get(size_of(n),0)
         score[n] += .16*p["parity"]*trend["parity"].get(parity_of(n),0)
+        score[n] += .30*p["wave"]*trend["wave_parity"].get(f"{wave_of(n)}{parity_of(n)}",0)
     return score
 
 def _gap_hazard_profile(r):
@@ -1671,7 +1614,7 @@ def _predictive_number_scores(r, profile, ctx=None):
     return score,meta,z_t
 
 def _within_zodiac_pair_bonus(r, zmap):
-    """Stabilized within-zodiac ranking for ordinary 2-code allocations.
+    """Stabilized within-zodiac ranking for the 2-of-each-zodiac rule.
     Uses only past draws before the latest issue and Bayesian smoothing so one
     short streak cannot dominate the two selected numbers."""
     hist=r[1:] if len(r)>1 else r
@@ -1713,80 +1656,6 @@ def _norm_pool(values, pool):
     return {n:(values.get(n,0.0)-lo)/(hi-lo) for n in pool}
 
 
-def _allocate_zodiac_groups(groups, pools, priority, cold_zodiacs, total, num_cold=None):
-    """Allocate A (24) or B (27) using the same consensus/complement ranking."""
-    cold=list(cold_zodiacs)  # ordered from coldest to less cold by omission metrics
-    # A excludes the two coldest, retains one code in the third cold zodiac.
-    # B retains two in all three cold zodiacs, including one cold number.
-    quotas={g["zodiac"]:2 for g in groups}
-    if total==24:
-        for z in cold[:2]: quotas[z]=0
-        if len(cold)>2: quotas[cold[2]]=1
-    candidates=[g for g in groups if g["zodiac"] not in cold]
-    # Prefer the strong middle rather than concentrate all extras in the hottest zodiac.
-    candidates.sort(key=lambda g:(-priority.get(g["zodiac"],0),g["zodiac"]))
-    choices=(candidates[1:6] if total==24 else candidates[:3])
-    needed=total-sum(quotas.values())
-    if len(choices)<needed: choices=candidates
-    for g in choices:
-        if needed<=0: break
-        z=g["zodiac"]
-        if len(pools.get(z,[]))>=3:
-            quotas[z]=3; needed-=1
-    if needed:
-        for g in candidates[6:]+choices:
-            z=g["zodiac"]
-            if needed<=0: break
-            if quotas[z]<min(3,len(pools.get(z,[]))):
-                quotas[z]+=1; needed-=1
-    if needed: raise ValueError("insufficient zodiac codes for requested group")
-    selected=[]; updated=[]
-    for g in groups:
-        z=g["zodiac"]; quota=quotas[z]
-        ranked=list(g.get("ranking") or g.get("codes") or [])
-        base=list(g.get("codes") or [])
-        order=list(dict.fromkeys(base+ranked+pools.get(z,[])))
-        if total==27 and z in cold and num_cold:
-            cold_pick=max(pools[z],key=lambda n:(num_cold.get(n,0),g.get("scores",{}).get(n,0),-n))
-            order=list(dict.fromkeys(base[:1]+[cold_pick]+base[1:]+ranked+pools[z]))
-        codes=order[:quota]
-        row={k:v for k,v in g.items() if k not in ("ranking","scores")}
-        row.update(codes=codes,quota=quota)
-        updated.append(row)
-        selected.extend(codes)
-    if len(selected)!=total or len(set(selected))!=total:
-        raise ValueError("invalid zodiac allocation")
-    return selected,updated
-
-
-def _b_period(target_issue):
-    """Ten draws per day: 001-010, 011-020, etc."""
-    issue=str(target_issue)
-    serial=int(issue[-3:]); day=issue[:-3]
-    start=((serial-1)//10)*10+1
-    return f"{day}{start:03d}", f"{day}{start+9:03d}"
-
-
-def locked_b_group(target_issue, candidate=None, cold=None):
-    """Persist B between draws and restarts; never revise an existing block."""
-    start,end=_b_period(target_issue)
-    with db_lock:
-        c=connect()
-        try:
-            row=c.execute("SELECT * FROM b_group_lock WHERE start_issue=?",(start,)).fetchone()
-            if row is None and candidate is not None:
-                c.execute("INSERT OR IGNORE INTO b_group_lock(start_issue,end_issue,numbers,cold_zodiacs) VALUES (?,?,?,?)",
-                          (start,end,",".join(map(str,sorted(candidate))),",".join(cold or [])))
-                c.commit()
-                row=c.execute("SELECT * FROM b_group_lock WHERE start_issue=?",(start,)).fetchone()
-            if row is None: return None
-            nums=[int(x) for x in row["numbers"].split(",") if x]
-            if len(nums)!=27 or len(set(nums))!=27: raise ValueError("invalid saved B group")
-            return {"numbers":nums,"start":row["start_issue"],"end":row["end_issue"],
-                    "cold_zodiacs":row["cold_zodiacs"].split(",") if row["cold_zodiacs"] else []}
-        finally: c.close()
-
-
 def load_ai_state():
     with db_lock:
         c=connect()
@@ -1798,8 +1667,10 @@ def load_ai_state():
         return
     try:
         w=json.loads(row["weights"] or "[]")
-        if len(w)!=len(AI_FEATURES):
-            w=[0.0]*len(AI_FEATURES)
+        if len(w)<len(AI_FEATURES):
+            w=list(w)+[0.0]*(len(AI_FEATURES)-len(w))
+        elif len(w)>len(AI_FEATURES):
+            w=list(w)[:len(AI_FEATURES)]
     except Exception:
         w=[0.0]*len(AI_FEATURES)
     with ai_lock:
@@ -1845,6 +1716,35 @@ def save_ai_state():
 def _safe_ratio(v, denom):
     return float(v)/float(denom) if denom else 0.0
 
+
+WAVE_PARITY_KEYS=["红单","红双","蓝单","蓝双","绿单","绿双"]
+
+def wave_parity_of(n):
+    return f"{wave_of(n)}{parity_of(n)}"
+
+def _wave_parity_feature_maps(r):
+    out={}
+    base=Counter(wave_parity_of(n) for n in range(1,50))
+    for horizon,half in [(8,3),(16,5),(36,11),(80,25)]:
+        raw=defaultdict(float)
+        totalw=0.0
+        for i,x in enumerate(r[:min(horizon,len(r))]):
+            w=exp_weight(i,half)
+            raw[wave_parity_of(x["special"])]+=w
+            totalw+=w
+        strength={}
+        for k in WAVE_PARITY_KEYS:
+            share=raw[k]/totalw if totalw else 0.0
+            baseline=base[k]/49.0
+            strength[k]=share/max(baseline,1e-9)
+        vals=list(strength.values())
+        lo=min(vals); hi=max(vals)
+        if hi-lo<1e-9:
+            out[horizon]={k:.5 for k in WAVE_PARITY_KEYS}
+        else:
+            out[horizon]={k:(strength[k]-lo)/(hi-lo) for k in WAVE_PARITY_KEYS}
+    return out
+
 def _ai_feature_matrix(r):
     """49 candidate feature vectors built only from information available before target draw."""
     if not r:
@@ -1885,10 +1785,12 @@ def _ai_feature_matrix(r):
 
     latest=r[0]["special"]
     head_strength=head_ctx.get("strength",{})
+    wp_maps=_wave_parity_feature_maps(r)
 
     X={}
     for n in range(1,50):
         gap=min(num_gap.get(n,0),60)/60.0
+        wp=wave_parity_of(n)
         X[n]=[
           1.0,
           _safe_ratio(spc[6][n],6),
@@ -1907,7 +1809,11 @@ def _ai_feature_matrix(r):
           float(head_strength.get(head_of(n),1.0)/2.0),
           float(num_cold.get(n,0.0)),
           1.0 if n==latest else 0.0,
-          float(pair_norm.get(n,.5))
+          float(pair_norm.get(n,.5)),
+          float(wp_maps[8].get(wp,.5)),
+          float(wp_maps[16].get(wp,.5)),
+          float(wp_maps[36].get(wp,.5)),
+          float(wp_maps[80].get(wp,.5))
         ]
     return X
 
@@ -2036,6 +1942,7 @@ def _multitask_target_distribution(state_rows, outcome_row):
     wave_d=_uniform_over_numbers([n for n in range(1,50) if wave_of(n)==actual_wave])
     size_d=_uniform_over_numbers([n for n in range(1,50) if size_of(n)==actual_size])
     parity_d=_uniform_over_numbers([n for n in range(1,50) if parity_of(n)==actual_parity])
+    combo_d=_uniform_over_numbers([n for n in range(1,50) if wave_parity_of(n)==wave_parity_of(y)])
     head_d=_uniform_over_numbers([n for n in range(1,50) if head_of(n)==actual_head])
 
     num_cold,_zc,_gap,_zg=_cold_metrics(state_rows)
@@ -2044,14 +1951,15 @@ def _multitask_target_distribution(state_rows, outcome_row):
     cold_d=_normalize_distribution(cold_raw)
 
     parts=[
-      (.58,exact),       # 特码
+      (.56,exact),       # 特码
       (.10,special_z),   # 四肖/特码生肖
-      (.07,pingte_z),    # 平特一肖（7个位置）
-      (.06,wave_d),      # 波色
-      (.04,size_d),      # 大小
-      (.04,parity_d),    # 单双
-      (.05,head_d),      # 头数
-      (.06,cold_d)       # 冷热状态
+      (.06,pingte_z),    # 平特一肖
+      (.10,combo_d),     # 红单/红双/蓝单/蓝双/绿单/绿双
+      (.04,wave_d),      # 波色
+      (.03,size_d),      # 大小
+      (.02,parity_d),    # 单双
+      (.04,head_d),      # 头数
+      (.05,cold_d)       # 冷热
     ]
     q={n:0.0 for n in range(1,50)}
     for weight,dist in parts:
@@ -2320,7 +2228,7 @@ def complement_matrix(window=60, benchmark_profile=None):
         else: miss+=1
 
     n=len(rows)
-    # Smoothed allocation of the ordinary zodiacs' second slots.
+    # Smoothed allocation of the 12 "second slots" in 12肖×2码.
     # Neither side may monopolize the complementary seats.
     unique_total=ai_only+trend_only
     ai_share=(ai_only+2.0)/(unique_total+4.0) if unique_total>=0 else 0.5
@@ -2353,27 +2261,330 @@ def complement_matrix(window=60, benchmark_profile=None):
       "final_rate":round(100*final_hits/final_n,1) if final_n else 0.0
     }
 
-def group_live_stats(window=60):
-    """Only settled, pre-draw A/B rows count toward displayed validation."""
-    out={}
+
+def _norm_values(d, keys):
+    vals=[float(d.get(k,0.0)) for k in keys]
+    lo=min(vals) if vals else 0.0
+    hi=max(vals) if vals else 1.0
+    if hi-lo<1e-9:
+        return {k:.5 for k in keys}
+    return {k:(float(d.get(k,0.0))-lo)/(hi-lo) for k in keys}
+
+def _hot_zodiac_scores(r, profile):
+    trend_z=_zodiac_scores_profile(r,profile)
+    trend_n=_norm_values(trend_z,ALL_ZODIACS)
+    ai_z=_ai_zodiac_mass(r)
+    ai_n=_norm_values(ai_z,ALL_ZODIACS)
+    _nc,z_cold,_ng,_zg=_cold_metrics(r)
+
+    recent=Counter()
+    for i,x in enumerate(r[:24]):
+        w=exp_weight(i,8)
+        z=normalize_z(x["z7"] or "")
+        if z:
+            recent[z]+=1.8*w
+        for k in range(1,7):
+            zz=normalize_z(x[f"z{k}"] or "")
+            if zz:
+                recent[zz]+=.24*w
+    recent_n=_norm_values(recent,ALL_ZODIACS)
+
+    return {
+      z:.46*trend_n.get(z,.5)
+        +.28*ai_n.get(z,.5)
+        +.18*recent_n.get(z,.5)
+        +.08*(1.0-float(z_cold.get(z,.5)))
+      for z in ALL_ZODIACS
+    }
+
+def _ai_head_strength(r):
+    with ai_lock:
+        ready=bool(ai_state.get("ready",False))
+    if not ready:
+        return {h:1.0 for h in HEAD_BASE}
+    _X,_lg,probs=_ai_logits_and_probs(r)
+    mass={h:0.0 for h in HEAD_BASE}
+    for n,p in probs.items():
+        mass[head_of(n)]+=float(p)
+    return {h:mass[h]/max(HEAD_BASE[h],1e-9) for h in HEAD_BASE}
+
+def _combined_04_head_decision(r, force=False):
+    """AI + trend jointly choose the weaker of 0头/4头."""
+    trend_raw=_head_trend(r).get("strength",{})
+    ai_raw=_ai_head_strength(r)
+
+    tn=_norm_values(trend_raw,list(HEAD_BASE))
+    an=_norm_values(ai_raw,list(HEAD_BASE))
+    combined={h:.58*tn.get(h,.5)+.42*an.get(h,.5) for h in HEAD_BASE}
+
+    h0=combined["0头"]; h4=combined["4头"]
+    killed="0头" if h0<=h4 else "4头"
+    spread=abs(h0-h4)
+
+    # 27码 always kills one. 20码 only kills when one side is meaningfully weaker
+    # or the old head-trend engine already flagged a weak 0/4 head.
+    active = force or spread>=.08 or bool(_head_trend(r).get("active_04"))
+    return {
+      "killed_head":killed if active else "",
+      "forced":bool(force),
+      "spread":round(spread,3),
+      "combined":{"0头":round(h0,3),"4头":round(h4,3)},
+      "trend":{"0头":round(float(trend_raw.get("0头",0)),3),"4头":round(float(trend_raw.get("4头",0)),3)},
+      "ai":{"0头":round(float(ai_raw.get("0头",0)),3),"4头":round(float(ai_raw.get("4头",0)),3)}
+    }
+
+def _selection_number_scores(r, profile):
+    """Agreement-first ranking.
+
+    Old complement mode could over-reward disagreement. This one rewards
+    AI/trend agreement first, then uses zodiac heat, structure, and the six
+    红/蓝/绿 × 单/双 trend states.
+    """
+    zmap=_number_zodiac_map(r)
+    ctx=_strategy_context(r)
+    trend_score,_meta,_zt=_predictive_number_scores(r,profile,ctx)
+    trend_n=_norm_values(trend_score,range(1,50))
+
+    pair=_within_zodiac_pair_bonus(r,zmap)
+    pair_n={}
+    for z in ALL_ZODIACS:
+        pool=[n for n in range(1,50) if zmap.get(n)==z]
+        pair_n.update(_norm_pool(pair,pool))
+
+    with ai_lock:
+        ready=bool(ai_state.get("ready",False))
+    if ready:
+        _X,_lg,probs=_ai_logits_and_probs(r)
+        ai_n=_normalize_ai_probs(probs)
+    else:
+        ai_n={n:.5 for n in range(1,50)}
+
+    trend=_trend_profiles(r)
+    combo=trend.get("wave_parity",{})
+    combo_n=_norm_values(combo,WAVE_PARITY_KEYS)
+    zheat=_hot_zodiac_scores(r,profile)
+    zheat_n=_norm_values(zheat,ALL_ZODIACS)
+
+    fusion=get_dynamic_ai_mix()
+    raw_ai=float(fusion.get("mix_pct",35.0))/100.0
+    ai_w=max(.28,min(.52,raw_ai))
+    trend_w=1.0-ai_w
+
+    score={}
+    for n in range(1,50):
+        z=zmap.get(n)
+        a=float(ai_n.get(n,.5))
+        t=float(trend_n.get(n,.5))
+        agreement=1.0-abs(a-t)
+        score[n]=(
+          .48*(trend_w*t+ai_w*a)
+          +.18*agreement
+          +.13*float(pair_n.get(n,.5))
+          +.12*float(combo_n.get(wave_parity_of(n),.5))
+          +.09*float(zheat_n.get(z,.5))
+        )
+        if ctx["cold_rebound_now"]:
+            score[n]+=.04*ctx["num_cold"].get(n,0.0)
+    return score,zmap,zheat,ctx
+
+def _predict20_hot(r, profile):
+    """20码：每期一换。
+
+    - 最冷3肖彻底不取
+    - 剩余9肖默认各2码 = 18
+    - 前3热肖最多3码，其中两个热肖各加1个 = 20
+    - 0/4头若AI+趋势判断一头明显更弱，20码彻底杀掉该头
+    """
+    score,zmap,zheat,ctx=_selection_number_scores(r,profile)
+    ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
+    allowed=ranked_z[:9]
+    top3=ranked_z[:3]
+    coldest3=ranked_z[-3:]
+
+    head=_combined_04_head_decision(r,force=False)
+    killed=head["killed_head"]
+
+    pools={}
+    for z in allowed:
+        pools[z]=sorted(
+            [n for n in range(1,50)
+             if zmap.get(n)==z and (not killed or head_of(n)!=killed)],
+            key=lambda n:(-score.get(n,-1e9),n)
+        )
+
+    quotas={z:2 for z in allowed}
+    thirds=[]
+    for z in top3:
+        if len(pools.get(z,[]))>=3:
+            n=pools[z][2]
+            thirds.append((score.get(n,-1e9),z))
+    for _v,z in sorted(thirds,reverse=True)[:2]:
+        quotas[z]=3
+
+    selected=[]; groups=[]
+    for z in allowed:
+        take=pools.get(z,[])[:quotas[z]]
+        selected.extend(take)
+        groups.append({"zodiac":z,"codes":take,"quota":quotas[z]})
+
+    # Defensive fill: never use coldest3 and never violate the killed head.
+    used=set(selected)
+    if len(selected)<20:
+        for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
+            if n in used or zmap.get(n) not in allowed:
+                continue
+            if killed and head_of(n)==killed:
+                continue
+            z=zmap.get(n)
+            cap=3 if z in top3 else 2
+            if sum(1 for x in selected if zmap.get(x)==z)>=cap:
+                continue
+            selected.append(n); used.add(n)
+            if len(selected)>=20:
+                break
+
+    return selected[:20],{
+      "hot_zodiacs":allowed,
+      "top3_hot":top3,
+      "coldest3":coldest3,
+      "killed_head":killed,
+      "head_decision":head,
+      "groups":groups
+    }
+
+def _issue_block10(issue):
+    try:
+        x=int(issue)
+        start=(x//10)*10
+        return start,start+9
+    except Exception:
+        return 0,0
+
+def _existing_27_block_codes(start,end):
+    if not start:
+        return []
     with db_lock:
         c=connect()
         try:
-            for key,profile in (("A","A组24码"),("B","B组27码")):
-                rows=c.execute("""SELECT hit24 FROM prediction_log
-                    WHERE profile=? AND settled=1
-                    ORDER BY CAST(target_issue AS INTEGER) DESC LIMIT ?""",(profile,window)).fetchall()
-                n=len(rows); hits=sum(int(x["hit24"] or 0) for x in rows)
-                out[key]={"n":n,"hits":hits,"rate":round(100*hits/n,1) if n else 0.0}
-        finally: c.close()
-    return out
+            row=c.execute("""SELECT special24 FROM prediction_log
+                             WHERE profile='27码十期'
+                               AND CAST(target_issue AS INTEGER) BETWEEN ? AND ?
+                             ORDER BY CAST(target_issue AS INTEGER) ASC
+                             LIMIT 1""",(int(start),int(end))).fetchone()
+        finally:
+            c.close()
+    if not row:
+        return []
+    return [int(x) for x in str(row["special24"] or "").split(",") if str(x).strip().isdigit()]
 
-def _candidate24_complement_by_zodiac(r, profile, total=24):
-    """24-code complement mode with a dynamic 3/1 zodiac quota.
+def _tenblock_state(r,target_issue):
+    start,end=_issue_block10(target_issue)
+    state_issue=start-1
+    if start:
+        for i,x in enumerate(r):
+            try:
+                if int(x["issue"])==state_issue:
+                    return r[i:],start,end
+            except Exception:
+                pass
+    return r,start,end
 
-    Ordinary zodiacs keep a consensus/stability slot and an independent
-    AI-side or trend-side seat. The strongest zodiac receives a third code;
-    the weakest gives up one code so the total remains 24.
+def _predict27_tenblock(r, profile, target_issue):
+    """27码：10期固定一组，AI+趋势必杀0头/4头其中一头。"""
+    br,start,end=_tenblock_state(r,target_issue)
+
+    # Reuse the first locked list in the block, guaranteeing "十期一换".
+    existing=_existing_27_block_codes(start,end)
+    score,zmap,zheat,ctx=_selection_number_scores(br,profile)
+    ranked_z=sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))
+    allowed=ranked_z[:9]      # 热肖 + 中位肖
+    coldest3=ranked_z[-3:]
+    head=_combined_04_head_decision(br,force=True)
+    killed=head["killed_head"]
+
+    if existing:
+        return existing[:27],{
+          "block_start":str(start),"block_end":str(end),
+          "hot_mid_zodiacs":allowed,"coldest3":coldest3,
+          "killed_head":killed,"head_decision":head,
+          "reused":True
+        }
+
+    selected=[]; groups=[]
+    for z in allowed:
+        pool=sorted(
+            [n for n in range(1,50)
+             if zmap.get(n)==z and head_of(n)!=killed],
+            key=lambda n:(-score.get(n,-1e9),n)
+        )
+        take=pool[:3]
+        selected.extend(take)
+        groups.append({"zodiac":z,"codes":take})
+
+    # Normally 9肖×3码 = 27 exactly after one head is killed.
+    # If a rare mapping shortage occurs, fill only from the same non-coldest 9肖.
+    used=set(selected)
+    if len(selected)<27:
+        for n in sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n)):
+            if n in used or zmap.get(n) not in allowed or head_of(n)==killed:
+                continue
+            selected.append(n); used.add(n)
+            if len(selected)>=27:
+                break
+
+    return selected[:27],{
+      "block_start":str(start),"block_end":str(end),
+      "hot_mid_zodiacs":allowed,"coldest3":coldest3,
+      "killed_head":killed,"head_decision":head,
+      "groups":groups,"reused":False
+    }
+
+def _profile_hit_stats(profile,window=60):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT hit24 FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(profile,int(window))).fetchall()
+        finally:
+            c.close()
+    n=len(rows)
+    hits=sum(int(x["hit24"] or 0) for x in rows)
+    return {"n":n,"hits":hits,"rate":round(100*hits/n,1) if n else 0.0}
+
+def _stats27_blocks():
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24 FROM prediction_log
+                              WHERE profile='27码十期' AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT 40""").fetchall()
+        finally:
+            c.close()
+
+    grouped={}
+    for x in rows:
+        start,end=_issue_block10(x["target_issue"])
+        g=grouped.setdefault(start,{"start":start,"end":end,"n":0,"hits":0})
+        g["n"]+=1
+        g["hits"]+=int(x["hit24"] or 0)
+
+    blocks=sorted(grouped.values(),key=lambda g:g["start"],reverse=True)
+    current=blocks[0] if blocks else {"start":0,"end":0,"n":0,"hits":0}
+    complete=next((g for g in blocks if g["n"]>=10),None)
+    return {
+      "current":current,
+      "last_complete":complete,
+      "overall":_profile_hit_stats("27码十期",60)
+    }
+
+def _candidate24_complement_by_zodiac(r, profile):
+    """12肖×2码 complement mode.
+
+    Slot A in every zodiac = consensus/stability slot.
+    Slot B = a deliberately independent AI-side or trend-side seat.
     The number of AI-side vs trend-side second seats is learned from honest
     AI-only vs trend-only forward hits instead of a simple global percentage.
     """
@@ -2429,27 +2640,13 @@ def _candidate24_complement_by_zodiac(r, profile, total=24):
 
         ai_value=ai_side.get(ai_pick,0.0)+.32*max(0.0,ai_side.get(ai_pick,0.0)-trend_side.get(ai_pick,0.0))
         trend_value=trend_side.get(trend_pick,0.0)+.32*max(0.0,trend_side.get(trend_pick,0.0)-ai_side.get(trend_pick,0.0))
-        ranking=sorted(
-            pool,
-            key=lambda n:(
-                -(.52*consensus.get(n,0.0)+.24*ai_side.get(n,0.0)+.24*trend_side.get(n,0.0)),
-                -consensus.get(n,-1e9),
-                n
-            )
-        )
-        combined_side={
-            n:.52*consensus.get(n,0.0)+.24*ai_side.get(n,0.0)+.24*trend_side.get(n,0.0)
-            for n in pool
-        }
         prepared.append({
           "zodiac":z,"stable":stable,
           "ai_pick":ai_pick,"trend_pick":trend_pick,
           "margin":ai_value-trend_value,
           "consensus":consensus,
           "trend_side":trend_side,
-          "ai_side":ai_side,
-          "ranking":ranking,
-          "scores":combined_side
+          "ai_side":ai_side
         })
 
     # Allocate independent seats globally, so neither model silently swallows the other.
@@ -2457,7 +2654,7 @@ def _candidate24_complement_by_zodiac(r, profile, total=24):
     differing_sorted=sorted(differing,key=lambda x:(-x["margin"],x["zodiac"]))
     ai_zodiacs={x["zodiac"] for x in differing_sorted[:min(target_ai_slots,len(differing_sorted))]}
 
-    groups=[]
+    groups=[]; selected=[]; used=set()
     actual_ai_slots=0; actual_trend_slots=0; shared_slots=0
     for x in prepared:
         z=x["zodiac"]; stable=x["stable"]
@@ -2471,36 +2668,24 @@ def _candidate24_complement_by_zodiac(r, profile, total=24):
         codes=[stable]
         if second!=stable:
             codes.append(second)
+        # Extremely defensive fallback for a malformed zodiac pool.
         if len(codes)<2:
             for n in pools[z]:
                 if n not in codes:
                     codes.append(n)
                 if len(codes)>=2: break
 
-        groups.append({
-            "zodiac":z,
-            "codes":codes[:2],
-            "stable":stable,
-            "second_type":slot_type,
-            "ranking":x["ranking"],
-            "scores":x["scores"]
-        })
+        groups.append({"zodiac":z,"codes":codes[:2],"stable":stable,"second_type":slot_type})
+        for n in codes[:2]:
+            if n not in used:
+                selected.append(n); used.add(n)
 
-    zodiac_scores=_zodiac_scores_profile(r,profile)
-    priority_scores={
-        x["zodiac"]:(
-            zodiac_scores.get(x["zodiac"],0.0)
-            +.45*ztrans.get(x["zodiac"],0.0)
-            +.20*max(x["scores"].values() or [0.0])
-        )
-        for x in prepared
-    }
-    selected,groups=_allocate_zodiac_groups(
-        groups,pools,priority_scores,ctx["cold_zodiacs"],total,ctx["num_cold"]
-    )
-    focus_z=next((g["zodiac"] for g in groups if g["quota"]==3),"")
-    light_z=next((g["zodiac"] for g in groups if g["quota"]==1),"")
-    plan=[{"zodiac":g["zodiac"],"quota":g["quota"],"codes":g["codes"]} for g in groups]
+    if len(selected)<24:
+        global_rank=sorted(range(1,50),key=lambda n:(-ns.get(n,-1e9),n))
+        for n in global_rank:
+            if n not in used:
+                selected.append(n); used.add(n)
+            if len(selected)>=24: break
 
     meta=dict(transition_meta)
     meta.update({
@@ -2509,13 +2694,9 @@ def _candidate24_complement_by_zodiac(r, profile, total=24):
       "complement":comp,
       "actual_ai_second_slots":actual_ai_slots,
       "actual_trend_second_slots":actual_trend_slots,
-      "shared_second_slots":shared_slots,
-      "zodiac24_focus":focus_z,
-      "zodiac24_light":light_z,
-      "zodiac24_plan":plan,
-      "zodiac24_mode":"最冷2肖0码 / 第3冷肖1码 / 中间偏热肖补5码"
+      "shared_second_slots":shared_slots
     })
-    return selected[:total],groups,ns,zodiac_scores,ctx,meta,ztrans
+    return selected[:24],groups,ns,_zodiac_scores_profile(r,profile),ctx,meta,ztrans
 
 def _predict_complement_with_profile(r, profile):
     cand24,groups,ns,zs,ctx,tmeta,ztrans=_candidate24_complement_by_zodiac(r,profile)
@@ -2526,7 +2707,7 @@ def _predict_complement_with_profile(r, profile):
     return cand24,main4,z4,groups,zpairs
 
 def _candidate24_by_zodiac(r, profile):
-    """Exactly 24 codes with a dynamic focus-zodiac 3/1 quota.
+    """Exactly 24 = 12 zodiacs × 2 codes.
     Hybrid ranking: statistical forecast + stabilized zodiac pair history + online AI."""
     zmap=_number_zodiac_map(r)
     ctx=_strategy_context(r)
@@ -2551,7 +2732,7 @@ def _candidate24_by_zodiac(r, profile):
         if z in pools:
             pools[z].append(n)
 
-    groups=[]
+    groups=[]; selected=[]; used=set()
     for z in ALL_ZODIACS:
         pool=pools[z]
         ns_norm=_norm_pool(ns,pool)
@@ -2564,33 +2745,25 @@ def _candidate24_by_zodiac(r, profile):
                 combined[n]+=.06*ctx["num_cold"].get(n,0)
 
         ranked=sorted(pool,key=lambda n:(-combined.get(n,-1e9),-ns.get(n,-1e9),n))
-        groups.append({"zodiac":z,"codes":ranked[:2],"ranking":ranked,"scores":combined})
+        codes=ranked[:2]
+        groups.append({"zodiac":z,"codes":codes})
+        for n in codes:
+            if n not in used:
+                selected.append(n); used.add(n)
 
-    zodiac_scores=_zodiac_scores_profile(r,profile)
-    priority_scores={
-        g["zodiac"]:(
-            zodiac_scores.get(g["zodiac"],0.0)
-            +.20*max(g.get("scores",{}).values() or [0.0])
-        )
-        for g in groups
-    }
-    selected,groups=_allocate_zodiac_groups(
-        groups,pools,priority_scores,ctx["cold_zodiacs"],24
-    )
-    focus_z=next((g["zodiac"] for g in groups if g["quota"]==3),"")
-    light_z=next((g["zodiac"] for g in groups if g["quota"]==1),"")
-    plan=[{"zodiac":g["zodiac"],"quota":g["quota"],"codes":g["codes"]} for g in groups]
+    if len(selected)<24:
+        for n in sorted(range(1,50),key=lambda n:(-ns[n],n)):
+            if n not in used:
+                selected.append(n); used.add(n)
+            if len(selected)>=24:
+                break
 
     transition_meta=dict(transition_meta)
     transition_meta["ai_ready"]=ai_ready
     transition_meta["ai_trained"]=ai_trained
     transition_meta["ai_mix_pct"]=round(ai_mix*100,1)
-    transition_meta["zodiac24_focus"]=focus_z
-    transition_meta["zodiac24_light"]=light_z
-    transition_meta["zodiac24_plan"]=plan
-    transition_meta["zodiac24_mode"]="最冷2肖0码 / 第3冷肖1码 / 中间偏热肖补5码"
 
-    return selected[:24],groups,ns,zodiac_scores,ctx,transition_meta,ztrans
+    return selected[:24],groups,ns,_zodiac_scores_profile(r,profile),ctx,transition_meta,ztrans
 
 def _dynamic_zodiac4_one_code(r, profile, groups, ns, zs, ctx, ztrans):
     """Predict 4 zodiacs for the NEXT issue using transition + trend, one code each."""
@@ -2717,27 +2890,6 @@ def _predict_pingte_yixiao(r):
         scores[z]+=2.00*ai_z_weight*ai_zmass.get(z,0.0)
     ranked=sorted(ALL_ZODIACS,key=lambda z:(-scores.get(z,-1e9),z))
     one=ranked[0] if ranked else ""
-    if one:
-        # Limit evidence to issues prior to the target, including during backtests.
-        prior_issue=str(r[0]["issue"]) if r else "0"
-        with db_lock:
-            c=connect()
-            try:
-                history=c.execute("""SELECT pingte,hitping FROM prediction_log
-                    WHERE profile='互补在线' AND settled=1 AND target_issue<=?
-                    ORDER BY CAST(target_issue AS INTEGER) DESC LIMIT 6""",(prior_issue,)).fetchall()
-            finally: c.close()
-        miss_streak=0
-        for row in history:
-            if normalize_z(row["pingte"] or "")!=one or row["hitping"]!=0: break
-            miss_streak+=1
-        if miss_streak>=2 and len(ranked)>1:
-            meta["switch_reason"]=f"原首选{one}连续{miss_streak}期未中，改取第二名"
-            one=ranked[1]
-        else:
-            meta["switch_reason"]="按当期评分首选" 
-        meta["original_top"]=ranked[0]
-        meta["miss_streak"]=miss_streak
     return one,meta
 
 
@@ -2907,22 +3059,26 @@ def record_shadow_predictions(r):
         print(f"[COMP] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
     try:
-        existing_b=locked_b_group(target)
-        if existing_b is None:
-            p,_=_select_profile(r)
-            b27,*_= _candidate24_complement_by_zodiac(r,p,total=27)
-            existing_b=locked_b_group(target,b27,_strategy_context(r)["cold_zodiacs"])
-        records.append((target,"B组27码",",".join(map(str,existing_b["numbers"])),"","",py))
+        best_profile,_=_select_profile(r)
+        c20,_m20=_predict20_hot(r,best_profile)
+        records.append((
+            target,"20码精选",
+            ",".join(str(n) for n in c20),
+            "","",py
+        ))
     except Exception as e:
-        print(f"[B27] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[20CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
-    # A is a new forward-only profile. Historical 互补在线 rows remain intact.
     try:
-        p,_=_select_profile(r)
-        a24,*_= _predict_complement_with_profile(r,p)
-        records.append((target,"A组24码",",".join(map(str,a24)),"","",py))
+        best_profile,_=_select_profile(r)
+        c27,_m27=_predict27_tenblock(r,best_profile,target)
+        records.append((
+            target,"27码十期",
+            ",".join(str(n) for n in c27),
+            "","",py
+        ))
     except Exception as e:
-        print(f"[A24] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
     if records:
         with db_lock:
@@ -3041,7 +3197,7 @@ def download_checkpoint_from_supabase():
         return False
 
 def _checkpoint_payload():
-    learning=export_learning_payload(30000)
+    learning=export_learning_payload(1500)
     with db_lock:
         c=connect()
         try:
@@ -3049,7 +3205,6 @@ def _checkpoint_payload():
                               ORDER BY CAST(issue AS INTEGER) DESC
                               LIMIT 1400""").fetchall()
             scores=c.execute("SELECT * FROM learner_scores ORDER BY profile").fetchall()
-            b_locks=c.execute("SELECT * FROM b_group_lock ORDER BY start_issue DESC LIMIT 100").fetchall()
         finally:
             c.close()
     return {
@@ -3058,8 +3213,7 @@ def _checkpoint_payload():
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
       "draws":[{k:r[k] for k in r.keys()} for r in rows],
-      "learner_scores":[{k:r[k] for k in r.keys()} for r in scores],
-      "b_group_lock":[{k:r[k] for k in r.keys()} for r in b_locks]
+      "learner_scores":[{k:r[k] for k in r.keys()} for r in scores]
     }
 
 def write_checkpoint_atomic():
@@ -3127,17 +3281,6 @@ def restore_checkpoint_if_better():
         if len(ck_logs) > current_logs:
             restored += import_learning_payload(learning)
         restored += _restore_draw_dicts(payload.get("draws",[]) or [])
-        with db_lock:
-            c=connect()
-            try:
-                for item in payload.get("b_group_lock",[]) or []:
-                    c.execute("""INSERT OR IGNORE INTO b_group_lock
-                        (start_issue,end_issue,numbers,cold_zodiacs,created_at)
-                        VALUES (?,?,?,?,?)""",(
-                        item.get("start_issue"),item.get("end_issue"),
-                        item.get("numbers"),item.get("cold_zodiacs"),item.get("created_at")))
-                c.commit()
-            finally: c.close()
         load_ai_state()
         refresh_learner_cache(60)
         print(f"[BACKUP] restored checkpoint logs={len(ck_logs)} inserted={restored}",flush=True)
@@ -3174,6 +3317,12 @@ def import_learning_payload(payload):
         try:
             weights=str(ai_payload.get("weights") or "[]")
             parsed=json.loads(weights)
+            if len(parsed)<len(AI_FEATURES):
+                parsed=list(parsed)+[0.0]*(len(AI_FEATURES)-len(parsed))
+                weights=json.dumps(parsed,separators=(",",":"))
+            elif len(parsed)>len(AI_FEATURES):
+                parsed=list(parsed)[:len(AI_FEATURES)]
+                weights=json.dumps(parsed,separators=(",",":"))
             if len(parsed)==len(AI_FEATURES):
                 with db_lock:
                     c=connect()
@@ -3374,8 +3523,7 @@ def initialize_quick_live_cache():
           "latest_numbers":latest_numbers,
           "latest_special_zodiac":normalize_z(latest["z7"] or ""),
           "latest_created_at":latest["created_at"] or "",
-          "special24":[],"special27":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
-          "zodiac24_focus":"","zodiac24_light":"","zodiac24_plan":[],
+          "special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
           "pingte_yixiao":"",
           "pingte_samples":0,
           "profile":model_state.get("profile") or "平衡",
@@ -3403,22 +3551,11 @@ def build_model():
     model_state["recalc_started_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
     r=recent_rows(1200)
     if not r:
-        return {"issue":None,"count":0,"special24":[],"special27":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
-                "zodiac24_focus":"","zodiac24_light":"","zodiac24_plan":[],
-                "telegram":bool(BOT_TOKEN),"recalculating":False}
+        return {"issue":None,"count":0,"special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],"telegram":bool(BOT_TOKEN),"recalculating":False}
     profile,profile_scores=_select_profile(r)
-    c24,m4,z4,groups,zpairs=_predict_complement_with_profile(r,profile)
+    _legacy24,m4,z4,groups,zpairs=_predict_complement_with_profile(r,profile)
     comp=complement_matrix(60,profile)
     pingte_one,pingte_meta=_predict_pingte_yixiao(r)
-    with db_lock:
-        c=connect()
-        try:
-            locked_pingte=c.execute("""SELECT pingte FROM prediction_log
-                WHERE target_issue=? AND profile='互补在线'""",(str(int(r[0]["issue"])+1),)).fetchone()
-        finally: c.close()
-    if locked_pingte and locked_pingte["pingte"]:
-        pingte_one=locked_pingte["pingte"]
-        pingte_meta["switch_reason"]="本期预测已在开奖前锁定"
     trend=_trend_profiles(r)
     strategy=_strategy_context(r)
     _nt,_zt,_ht,_wt,_st,_pt,transition_meta=_forward_transition_scores(r)
@@ -3426,50 +3563,30 @@ def build_model():
     latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
     try: next_issue=str(int(latest["issue"])+1)
     except Exception: next_issue=""
-    zodiac24_plan=[
-        {"zodiac":g.get("zodiac",""),"quota":int(g.get("quota",len(g.get("codes",[])) or 2)),
-         "codes":[f"{int(n):02d}" for n in g.get("codes",[])]}
-        for g in groups
-    ]
-    zodiac24_focus=next((x["zodiac"] for x in zodiac24_plan if x["quota"]==3),"")
-    zodiac24_light=next((x["zodiac"] for x in zodiac24_plan if x["quota"]==1),"")
-    with db_lock:
-        c=connect()
-        try:
-            locked_a=c.execute("SELECT special24 FROM prediction_log WHERE target_issue=? AND profile='A组24码'",(next_issue,)).fetchone()
-        finally: c.close()
-    if locked_a:
-        nums=_csv_nums(locked_a["special24"])
-        if len(nums)==24 and len(set(nums))==24:
-            c24=nums
-    saved_b=locked_b_group(next_issue)
-    if saved_b is None:
-        b27,bgroups,*_= _candidate24_complement_by_zodiac(r,profile,total=27)
-        saved_b=locked_b_group(next_issue,b27,strategy["cold_zodiacs"])
+    c20,meta20=_predict20_hot(r,profile)
+    c27,meta27=_predict27_tenblock(r,profile,next_issue)
+    stats20=_profile_hit_stats("20码精选",60)
+    stats27=_stats27_blocks()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
       "latest_special_zodiac":normalize_z(latest["z7"] or ""),
       "latest_created_at":latest["created_at"] or "",
-      "special24":[f"{n:02d}" for n in sorted(c24)],
-      "special27":[f"{n:02d}" for n in saved_b["numbers"]],
-      "b_start_issue":saved_b["start"],
-      "b_end_issue":saved_b["end"],
-      "b_cold_zodiacs":saved_b["cold_zodiacs"],
+      "special20":[f"{n:02d}" for n in sorted(c20)],
+      "special27":[f"{n:02d}" for n in sorted(c27)],
+      "special24":[f"{n:02d}" for n in sorted(c20)],  # compatibility alias
+      "strategy20":meta20,
+      "strategy27":meta27,
+      "stats20":stats20,
+      "stats27":stats27,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
-      "zodiac24_focus":zodiac24_focus,
-      "zodiac24_light":zodiac24_light,
-      "zodiac24_plan":zodiac24_plan,
-      "a_locked":bool(locked_a),
       "pingte_yixiao":pingte_one,
       "pingte_samples":pingte_meta.get("samples",0),
-      "pingte_reason":pingte_meta.get("switch_reason","按当期评分首选"),
       "profile":profile,
       "profile_scores":profile_scores,
       "complement":comp,
-      "group_live_stats":group_live_stats(),
       "calibration_n":model_state.get("calibration_n",0),
       "learning":{
         "enabled":True,
@@ -3504,7 +3621,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"双模型互补：共识码 + AI独立补位 + 趋势独立补位"
+        "mode":"20码每期精选 + 27码十期固定 · AI/趋势共识优先"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -3520,7 +3637,8 @@ def build_model():
       "trend":{
         "wave":{k:round(v*100,1) for k,v in trend["wave"].items()},
         "size":{k:round(v*100,1) for k,v in trend["size"].items()},
-        "parity":{k:round(v*100,1) for k,v in trend["parity"].items()}
+        "parity":{k:round(v*100,1) for k,v in trend["parity"].items()},
+        "wave_parity":{k:round(v*100,1) for k,v in trend["wave_parity"].items()}
       },
       "telegram":bool(BOT_TOKEN),
       "recalculating":False,
@@ -3615,7 +3733,10 @@ def _build_stats_background():
 
 @app.get("/api/stats")
 def stats_api():
-    return jsonify(learner_validation_stats())
+    base=learner_validation_stats()
+    base["code20"]=_profile_hit_stats("20码精选",60)
+    base["code27"]=_stats27_blocks()
+    return jsonify(base)
 
 @app.get("/api/learning")
 def learning_status():
@@ -3938,4 +4059,3 @@ boot()
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=PORT)
-
