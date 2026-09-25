@@ -242,6 +242,7 @@ C22_V62_PROFILE="22C纯近10期独立优化v62"
 B27_V63_PROFILE="27B近10期缺尾补码v63"
 C22_V63_PROFILE="22C近10期缺尾补码v63"
 D16_V64_PROFILE="16D多策略波色+近10期v64"
+D16_V65_PROFILE="16D波色大小+近10期v65"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -656,8 +657,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard dCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">D组16码 · 波色融合</div>
-        <div class="sectionHint">多策略池波色60% + 最新10期波色40% · 每期重算</div>
+        <div class="sectionTitle">D组16码 · 波色 + 大小</div>
+        <div class="sectionHint">波色与大小同时融合 · 各自模型60% + 最新10期40% · 每期重算</div>
       </div>
       <button class="copyBtn" onclick="copy16D()">复制D组</button>
     </div>
@@ -665,7 +666,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="miniInfoRow">
       <span id="code16DRound">本轮20期 · 已开0/20 · 中0 · 错0</span>
       <span id="code16DLifetime" class="lifetimeStat">累计实盘：中0 · 错0</span>
-      <span id="code16DMeta">红/蓝/绿 --</span>
+      <span id="code16DMeta">波色/大小 --</span>
     </div>
   </section>
 
@@ -778,7 +779,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v64：新增D组16码。D只做波色策略：正式多策略池“波色模型”占60%，最新10期实际特码波色占40%，融合后决定红/蓝/绿16个席位的配额，再由六模型综合分在各波色内部挑号码；每期开奖后重算，并独立记录20期轮次与累计中错。F/A/B/C/平特一肖算法维持v63。全页面UI再次缩小、压紧，减少滑动。</div>
+  <div class="foot">v65：D组16码在v64波色融合基础上加入“大小”。波色继续用正式波色模型60%+最新10期波色40%；大小用六模型综合池的大/小强弱60%+最新10期大小40%。程序同时计算红/蓝/绿配额和大/小配额，再在红大、红小、蓝大、蓝小、绿大、绿小六个交叉区域里挑最高分号码，最终固定16码、每期开奖后动态重算。F/A/B/C及紧凑UI保持v64。</div>
 </div>
 
 <script>
@@ -977,8 +978,9 @@ async function loadMain(){
     code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
     const dLife=s16.lifetime||{};
     code16DLifetime.textContent=`累计实盘：中 ${dLife.hits??0}期 · 错 ${dLife.misses??0}期`;
-    const df=m16.fused_wave||{}, dq=m16.wave_quota||{}, dc=m16.recent10_counts||{};
-    code16DMeta.textContent=`融合波色 红${df['红']??0}%/蓝${df['蓝']??0}%/绿${df['绿']??0}% · 配额 ${dq['红']??0}/${dq['蓝']??0}/${dq['绿']??0} · 近10次数 ${dc['红']??0}/${dc['蓝']??0}/${dc['绿']??0}`;
+    const df=m16.fused_wave||{}, dq=m16.wave_quota||{}, dwc=m16.recent10_wave_counts||{};
+    const ds=m16.fused_size||{}, dsq=m16.size_quota||{}, dsc=m16.recent10_size_counts||{};
+    code16DMeta.textContent=`波 红${df['红']??0}/蓝${df['蓝']??0}/绿${df['绿']??0}% 配${dq['红']??0}/${dq['蓝']??0}/${dq['绿']??0} · 大小 大${ds['大']??0}%/小${ds['小']??0}% 配${dsq['大']??0}/${dsq['小']??0} · 近10 大${dsc['大']??0}/小${dsc['小']??0}`;
 
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
@@ -1043,7 +1045,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v64 新增D16波色融合 · F/A/B/C原算法保留`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v65 D16波色+大小 · F/A/B/C保持`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -7626,83 +7628,177 @@ def _predict22_dynamic_c(r, profile):
 
 
 def _predict16_dynamic_d(r, profile):
-    """D组16码：多策略池“波色模型” + 最新10期波色融合。
+    """D组16码 v65：波色 + 大小，两条线一起预测。
 
-    1) 多策略池正式波色模型 W 给红/蓝/绿一个长期/模型分；
-    2) 最新10期只看特码波色，近期加权；
-    3) 两者融合决定16个席位在红/蓝/绿中的配额；
-    4) 每个波色内部，再用六模型总分 + 波色模型分挑最强号码。
+    波色：
+      - 正式多策略池“波色模型 W” 60%
+      - 最新10期特码波色 40%
 
-    D不使用B/C的杀头、冷肖、缺尾规则，保持纯波色策略独立。
+    大小：
+      - 六模型综合池按“大/小”聚合 60%
+      - 最新10期特码大小 40%
+
+    然后同时满足：
+      - 红/蓝/绿动态配额
+      - 大/小动态配额
+
+    最后在 6 个交叉格（红大/红小/蓝大/蓝小/绿大/绿小）
+    里挑分数最高的号码，总数固定16码。
     """
     nums=list(range(1,50))
     recent=list(r[:10])
 
-    # Formal multi-strategy pool.
     specialists=_specialist_model_scores(r,profile,"20")
     W=dict(specialists.get("W") or {})
     pool_score,_models,_perf=_pool_ensemble_score(r,profile,"20")
 
     waves=["红","蓝","绿"]
+    sizes=["大","小"]
 
-    # Convert W number scores into one score per wave.
+    # -------------------------
+    # A. 波色：模型池 W + 近10期
+    # -------------------------
     pool_wave_raw={}
     for w in waves:
         ns=[n for n in nums if wave_of(n)==w]
         pool_wave_raw[w]=sum(float(W.get(n,.5)) for n in ns)/max(1,len(ns))
     pool_wave=_norm_values(pool_wave_raw,waves)
 
-    # Latest10 special-wave signal, newer draws weighted higher.
-    recent_raw=Counter()
-    recent_count=Counter()
+    recent_wave_raw=Counter()
+    recent_wave_count=Counter()
     tw=0.0
     for i,x in enumerate(recent):
-        try:
-            n=int(x["special"])
-        except Exception:
-            continue
-        wgt=exp_weight(i,3.0)
-        recent_raw[wave_of(n)]+=wgt
-        recent_count[wave_of(n)]+=1
-        tw+=wgt
-    if tw<=0:
-        recent_share={w:1/3 for w in waves}
-    else:
-        recent_share={w:float(recent_raw[w])/tw for w in waves}
-    recent_wave=_norm_values(recent_share,waves)
+        try: n=int(x["special"])
+        except Exception: continue
+        wt=exp_weight(i,3.0)
+        recent_wave_raw[wave_of(n)]+=wt
+        recent_wave_count[wave_of(n)]+=1
+        tw+=wt
+    recent_wave_share={w:(float(recent_wave_raw[w])/tw if tw else 1/3) for w in waves}
+    recent_wave=_norm_values(recent_wave_share,waves)
 
-    # 60% formal pool wave + 40% latest10 wave.
-    fused_raw={
+    fused_wave_raw={
       w:.60*float(pool_wave.get(w,.5))+.40*float(recent_wave.get(w,.5))
       for w in waves
     }
-    fused=_norm_values(fused_raw,waves)
+    fused_wave=_norm_values(fused_wave_raw,waves)
 
-    # 16 seats: minimum 4 per wave, remaining 4 allocated by fused strength.
-    quota={w:4 for w in waves}
+    # 16 seats: each wave minimum 4, remaining 4 allocated dynamically.
+    wave_quota={w:4 for w in waves}
     for _ in range(4):
-        # Allocate to the wave most underrepresented versus its fused target.
-        target={w:4+4*float(fused.get(w,.5)) for w in waves}
-        pick=max(waves,key=lambda w:(target[w]-quota[w],fused.get(w,0),w))
-        quota[pick]+=1
+        target={w:4+4*float(fused_wave.get(w,.5)) for w in waves}
+        pick=max(waves,key=lambda w:(target[w]-wave_quota[w],fused_wave.get(w,0),w))
+        wave_quota[pick]+=1
 
-    # Within each wave, use the whole pool to avoid arbitrary numeric-order picks.
-    # Wave specialist stays meaningful through both quota and an extra 20% in ranking.
+    # -------------------------
+    # B. 大小：六模型综合池 + 近10期
+    # -------------------------
+    pool_size_raw={}
+    for sz in sizes:
+        ns=[n for n in nums if size_of(n)==sz]
+        pool_size_raw[sz]=sum(float(pool_score.get(n,.5)) for n in ns)/max(1,len(ns))
+    pool_size=_norm_values(pool_size_raw,sizes)
+
+    recent_size_raw=Counter()
+    recent_size_count=Counter()
+    ts=0.0
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        wt=exp_weight(i,3.0)
+        recent_size_raw[size_of(n)]+=wt
+        recent_size_count[size_of(n)]+=1
+        ts+=wt
+    recent_size_share={sz:(float(recent_size_raw[sz])/ts if ts else .5) for sz in sizes}
+    recent_size=_norm_values(recent_size_share,sizes)
+
+    fused_size_raw={
+      sz:.60*float(pool_size.get(sz,.5))+.40*float(recent_size.get(sz,.5))
+      for sz in sizes
+    }
+
+    # Convert to two-category probabilities for a stable 16-seat quota.
+    denom=sum(max(.001,float(v)) for v in fused_size_raw.values()) or 1.0
+    size_prob={sz:max(.001,float(fused_size_raw[sz]))/denom for sz in sizes}
+    big_quota=max(6,min(10,int(round(16*size_prob["大"]))))
+    size_quota={"大":big_quota,"小":16-big_quota}
+
+    # -------------------------
+    # C. Number score
+    # -------------------------
+    # Base six-model strength dominates; wave and size specialists refine it.
+    fused_size_norm=_norm_values(fused_size_raw,sizes)
     number_score={
-      n:.80*float(pool_score.get(n,.5))+.20*float(W.get(n,.5))
+      n:(
+        .62*float(pool_score.get(n,.5))
+        +.20*float(W.get(n,.5))
+        +.10*float(fused_wave.get(wave_of(n),.5))
+        +.08*float(fused_size_norm.get(size_of(n),.5))
+      )
       for n in nums
     }
 
-    selected=[]
-    by_wave={}
+    # -------------------------
+    # D. Exact joint quota allocation
+    # -------------------------
+    cell={}
     for w in waves:
-        candidates=[n for n in nums if wave_of(n)==w]
-        candidates=sorted(candidates,key=lambda n:(-number_score.get(n,-1e9),n))
-        picks=candidates[:quota[w]]
-        by_wave[w]=picks
-        selected.extend(picks)
+        for sz in sizes:
+            arr=[n for n in nums if wave_of(n)==w and size_of(n)==sz]
+            cell[(w,sz)]=sorted(arr,key=lambda n:(-number_score.get(n,-1e9),n))
 
-    # Defensive trim/fill to exactly 16.
+    # Enumerate how many BIG codes each wave gets. Row sums = wave quotas;
+    # total BIG = size quota. Choose the allocation with best summed score.
+    best_alloc=None
+    best_value=-1e18
+    ranges=[range(0,wave_quota[w]+1) for w in waves]
+    for big_counts in itertools.product(*ranges):
+        if sum(big_counts)!=size_quota["大"]:
+            continue
+        valid=True
+        value=0.0
+        alloc={}
+        for w,bq in zip(waves,big_counts):
+            sq=wave_quota[w]-bq
+            if bq>len(cell[(w,"大")]) or sq>len(cell[(w,"小")]):
+                valid=False
+                break
+            alloc[(w,"大")]=bq
+            alloc[(w,"小")]=sq
+            value+=sum(number_score[n] for n in cell[(w,"大")][:bq])
+            value+=sum(number_score[n] for n in cell[(w,"小")][:sq])
+        if valid and value>best_value:
+            best_value=value
+            best_alloc=alloc
+
+    # Defensive fallback (should not be needed with 1..49 distribution).
+    if best_alloc is None:
+        best_alloc={}
+        for w in waves:
+            # Split each wave roughly by global size quota.
+            bq=int(round(wave_quota[w]*size_quota["大"]/16))
+            bq=max(0,min(wave_quota[w],bq,len(cell[(w,"大")])))
+            sq=wave_quota[w]-bq
+            if sq>len(cell[(w,"小")]):
+                extra=sq-len(cell[(w,"小")])
+                sq-=extra
+                bq+=extra
+            best_alloc[(w,"大")]=bq
+            best_alloc[(w,"小")]=sq
+
+    selected=[]
+    codes_by_wave={w:[] for w in waves}
+    codes_by_size={sz:[] for sz in sizes}
+    joint_quota={}
+    for w in waves:
+        for sz in sizes:
+            q=int(best_alloc.get((w,sz),0))
+            picks=cell[(w,sz)][:q]
+            joint_quota[f"{w}{sz}"]=q
+            selected.extend(picks)
+            codes_by_wave[w].extend(picks)
+            codes_by_size[sz].extend(picks)
+
     selected=list(dict.fromkeys(selected))
     if len(selected)<16:
         rest=[n for n in sorted(nums,key=lambda n:(-number_score.get(n,-1e9),n))
@@ -7711,22 +7807,32 @@ def _predict16_dynamic_d(r, profile):
     selected=selected[:16]
 
     return selected,{
-      "mode":"D组16码·多策略池波色+近10期波色",
+      "mode":"D组16码·波色+大小融合·近10期",
       "window":len(recent),
       "window_issues":[str(x["issue"]) for x in recent if x["issue"]],
       "pool_wave":{w:round(float(pool_wave.get(w,0))*100,1) for w in waves},
       "recent10_wave":{w:round(float(recent_wave.get(w,0))*100,1) for w in waves},
-      "recent10_counts":{w:int(recent_count[w]) for w in waves},
-      "fused_wave":{w:round(float(fused.get(w,0))*100,1) for w in waves},
-      "wave_quota":quota,
-      "codes_by_wave":{w:[int(n) for n in by_wave.get(w,[])] for w in waves},
+      "recent10_wave_counts":{w:int(recent_wave_count[w]) for w in waves},
+      "fused_wave":{w:round(float(fused_wave.get(w,0))*100,1) for w in waves},
+      "wave_quota":wave_quota,
+      "pool_size":{sz:round(float(pool_size.get(sz,0))*100,1) for sz in sizes},
+      "recent10_size":{sz:round(float(recent_size.get(sz,0))*100,1) for sz in sizes},
+      "recent10_size_counts":{sz:int(recent_size_count[sz]) for sz in sizes},
+      "fused_size":{sz:round(float(size_prob.get(sz,0))*100,1) for sz in sizes},
+      "size_quota":size_quota,
+      "joint_quota":joint_quota,
+      "codes_by_wave":{w:[int(n) for n in codes_by_wave[w]] for w in waves},
+      "codes_by_size":{sz:[int(n) for n in codes_by_size[sz]] for sz in sizes},
       "code_count":16,
       "independent":True,
       "recalc_each_issue":True,
       "uses_pool_wave":True,
+      "uses_pool_size":True,
       "uses_recent10_wave":True,
-      "audit_regime":"D16V64|poolwave=60|recent10wave=40"
+      "uses_recent10_size":True,
+      "audit_regime":"D16V65|wave=pool60+recent10_40|size=pool60+recent10_40"
     }
+
 
 def _stats20round_profile(profile,target_issue=None):
     """20期一轮 + 当前策略累计真实前瞻成绩。"""
@@ -9452,11 +9558,11 @@ def record_shadow_predictions(r):
         best_profile,_=_select_profile(r)
         c16d,_m16d=_predict16_dynamic_d(r,best_profile)
         records.append((
-            target,D16_V64_PROFILE,
+            target,D16_V65_PROFILE,
             ",".join(str(n) for n in c16d),
             "","", ""
         ))
-        _record_strategy_audit(target,D16_V64_PROFILE,c16d,_m16d)
+        _record_strategy_audit(target,D16_V65_PROFILE,c16d,_m16d)
     except Exception as e:
         print(f"[16D] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -9668,7 +9774,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v64",
+      "version":"v65",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -10111,9 +10217,9 @@ def build_model():
     stats22c=_stats20round_profile(C22_V63_PROFILE,next_issue)
     stats22c["version_lifetime"]=_profile_lifetime_stats(C22_V63_PROFILE)
     stats22c["lifetime"]=_profiles_lifetime_stats([C22_V54_PROFILE,C22_V58_PROFILE,C22_V62_PROFILE,C22_V63_PROFILE])
-    stats16d=_stats20round_profile(D16_V64_PROFILE,next_issue)
-    stats16d["version_lifetime"]=_profile_lifetime_stats(D16_V64_PROFILE)
-    stats16d["lifetime"]=_profile_lifetime_stats(D16_V64_PROFILE)
+    stats16d=_stats20round_profile(D16_V65_PROFILE,next_issue)
+    stats16d["version_lifetime"]=_profile_lifetime_stats(D16_V65_PROFILE)
+    stats16d["lifetime"]=_profiles_lifetime_stats([D16_V64_PROFILE,D16_V65_PROFILE])
     pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
@@ -10216,7 +10322,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v64：新增D组16码波色融合 · UI全局缩小"
+        "mode":"v65：D组16码加入大小 · 波色+大小双融合"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
