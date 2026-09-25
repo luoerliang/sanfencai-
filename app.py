@@ -1,4 +1,4 @@
-import os, re, csv, sqlite3, threading, math, time, hashlib, json, gzip
+import os, re, csv, sqlite3, threading, math, time, hashlib, json, gzip, itertools
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
 from flask import Flask, jsonify, render_template_string, request, send_file
@@ -1045,7 +1045,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v65 D16波色+大小 · F/A/B/C保持`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v65.1 D16波色+大小修复 · F/A/B/C保持`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -9774,7 +9774,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v65",
+      "version":"v65.1",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -10322,7 +10322,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v65：D组16码加入大小 · 波色+大小双融合"
+        "mode":"v65.1：修复D组波色+大小初始化卡住"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
