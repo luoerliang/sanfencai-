@@ -213,6 +213,8 @@ TEN27_V7_RAW_PROFILE="27V7原始Top27"
 B27_V50_PROFILE="27B每期动态v50"
 B27_V51_PROFILE="27B动态杀头v51"
 B27_V52_PROFILE="27B纯20期v52"
+C22_V54_PROFILE="22C纯20期v54"
+PINGTE_B20_V54_PROFILE="平特一肖B20v54"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -402,6 +404,10 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
 .miniLabel{font-size:8px;color:#8f9cb0;margin-bottom:4px}
 .pingteCompact{background:#0c1421;border:1px solid #223149;border-radius:9px;padding:6px;text-align:center;display:flex;flex-direction:column;justify-content:center}
 .pingteValue{font-size:24px;font-weight:950;line-height:1.05}
+.cPingGrid{display:grid;grid-template-columns:minmax(0,3.2fr) minmax(92px,.8fr);gap:7px;align-items:stretch}
+.c22Balls{grid-template-columns:repeat(8,1fr);gap:3px}
+.c22Balls .ball{height:27px;aspect-ratio:auto;border-radius:7px;font-size:9.5px}
+.cPingCard .pingteCompact{min-height:88px}
 #pingteSamples{margin-top:4px!important;font-size:7.5px}
 @media(max-width:430px){
   .forecastGrid .strategyBox{height:66px;min-height:66px}
@@ -561,20 +567,28 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </section>
 
-  <section class="card comboPredictCard">
+  <section class="card numberCard cPingCard">
     <div class="sectionHead">
-      <div class="sectionTitle">4肖4码 · 平特一肖</div>
-      <div class="sectionHint">每期重算</div>
-    </div>
-    <div class="comboPredictGrid">
       <div>
-        <div class="miniLabel">4肖 · 一肖一码</div>
-        <div id="zpair" class="zpairGrid"></div>
+        <div class="sectionTitle">C组22码 · 平特一肖</div>
+        <div class="sectionHint">C组与B组同算法 · 都只看最新20期 · 每期开奖后重算</div>
+      </div>
+      <button class="copyBtn" onclick="copy22C()">复制C组</button>
+    </div>
+    <div class="cPingGrid">
+      <div>
+        <div id="sp22c" class="balls c22Balls"></div>
+        <div class="miniInfoRow">
+          <span id="code22CRound">本轮20期 · 已开0/20 · 中0 · 错0</span>
+          <span id="code22CLifetime" class="lifetimeStat">累计实盘：中0 · 错0</span>
+          <span id="code22CMeta">B组同算法</span>
+        </div>
       </div>
       <div class="pingteCompact">
-        <div class="miniLabel">平特一肖</div>
+        <div class="miniLabel">平特一肖 · B组近20期算法</div>
         <div id="pingteOne" class="pingteValue">--</div>
-        <div id="pingteSamples" class="sectionHint">--</div>
+        <div id="pingteSamples" class="sectionHint">近20期实时滚动</div>
+        <div id="pingteRecord" class="sectionHint">实盘 中0 · 错0</div>
       </div>
     </div>
   </section>
@@ -641,8 +655,6 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead"><div class="sectionTitle">滚动验证（后台更新）</div><div id="statsHint" class="sectionHint">等待样本</div></div>
     <div class="stats">
       <div class="stat"><div class="statName">F动态19–23</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
-      <div class="stat"><div class="statName">4肖1码</div><div id="hit4" class="rate">--</div><div id="err4" class="err"></div></div>
-      <div class="stat"><div class="statName">4肖</div><div id="hitZ" class="rate">--</div><div id="errZ" class="err"></div></div>
       <div class="stat"><div class="statName">平特一肖</div><div id="hitPingte" class="rate">--</div><div id="errPingte" class="err"></div></div>
     </div>
   </section>
@@ -664,7 +676,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v53：B组号码算法不改，仍只读取最新20期开奖并每期重算；新增与F一样的“20期一轮”成绩显示，满20期后下一期本轮中/错自动归零。F、A、B三个号码区各新增“累计实盘”小区域，持续显示当前策略从真实提前锁单开始到现在总共中几期、错几期；轮次重置不会清掉累计成绩。</div>
+  <div class="foot">v54：删除前台4肖4码，仅保留平特一肖；新增C组22码，C组与B组使用同一套“只看最新20期、每期开奖后重算、动态杀一头、冷3肖各2码、其他肖最多3码”算法，只把席位缩到22码。平特一肖也改成独立B组近20期算法，并与C组放在同一区域。C组同样每20期一轮并保留累计实盘。</div>
 </div>
 
 <script>
@@ -674,6 +686,7 @@ function cls(n){n=Number(n);return RED.has(n)?'red':(BLUE.has(n)?'blue':'green')
 let SPECIAL20=[];
 let SPECIAL27=[];
 let SPECIAL27B=[];
+let SPECIAL22C=[];
 function fmt(n){return String(n).padStart(2,'0')}
 async function copySpecial(){
   const text=SPECIAL20.join(',');
@@ -709,6 +722,18 @@ async function copy27B(){
   }
   const t=document.getElementById('toast');
   t.textContent='已复制B组27码：'+text;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+async function copy22C(){
+  const text=SPECIAL22C.join(',');
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+  const t=document.getElementById('toast');
+  t.textContent='已复制C组22码：'+text;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),1800);
 }
@@ -827,13 +852,18 @@ async function loadMain(){
     const bColdCodes=m27b.cold3_codes||{};
     const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
     code27BMeta.textContent=`杀${m27b.killed_head||'--'} · ${m27b.head_confidence||'--'}信号 · 冷3肖 ${bColdTxt} · 冷肖各2码 / 其他肖≤3`;
-    const pairs=d.zodiac_pairs||[];
-    zpair.innerHTML=pairs.map(p=>`<div class="zpair">
-      <div class="zpairName">${p.zodiac}</div>
-      <div class="zpairCodes"><span class="microball ${cls(p.code)}">${p.code}</span></div>
-    </div>`).join('');
+    SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
+    const s22=d.stats22c||{}, m22=d.strategy22c||{};
+    code22CRound.textContent=`本轮 ${s22.start||'--'}—${s22.end||'--'} · 已开 ${s22.n??0}/20 · 中 ${s22.hits??0} · 错 ${s22.misses??0}`;
+    const cLife=s22.lifetime||{};
+    code22CLifetime.textContent=`累计实盘：中 ${cLife.hits??0}期 · 错 ${cLife.misses??0}期`;
+    const cCold=(m22.coldest3||[]).join('、')||'--';
+    code22CMeta.textContent=`杀${m22.killed_head||'--'} · 冷3肖 ${cCold} · 冷肖各2码 / 其他肖≤3`;
+
     pingteOne.textContent=d.pingte_yixiao||'--';
-    pingteSamples.textContent=`转移样本 ${d.pingte_samples??0}`;
+    pingteSamples.textContent=`B组算法 · 近${d.pingte_samples??20}期实时滚动`;
+    const ps=d.pingte_b20_stats||{};
+    pingteRecord.textContent=`实盘：中 ${ps.hits??0}期 · 错 ${ps.misses??0}期`;
     const tr=d.trend||{};
     const w=tr.wave||{}, sz=tr.size||{}, pa=tr.parity||{}, wp=tr.wave_parity||{};
     waveTrend.innerHTML=`红 ${w['红']??0}%<br>蓝 ${w['蓝']??0}%<br>绿 ${w['绿']??0}%`;
@@ -6892,6 +6922,137 @@ def _predict27_dynamic_b(r, profile):
       "audit_regime":f"B27V52|kill={killed_head}|cold={','.join(cold3)}|conf={head_conf}"
     }
 
+
+def _predict22_dynamic_c(r, profile):
+    """C组22码：与B组同函数、同窗口、同杀码/生肖规则，只把席位从27缩到22。"""
+    bcodes,bmeta=_predict27_dynamic_b(r,profile)
+    selected=list(bcodes[:22])
+    meta=dict(bmeta)
+    meta["mode"]="C组22码·B组同算法·纯近20期"
+    meta["code_count"]=22
+    meta["source"]="B组同算法"
+    meta["audit_regime"]=str(meta.get("audit_regime") or "").replace("B27V52","C22V54")
+    return selected,meta
+
+def _stats20round_profile(profile,target_issue=None):
+    """20期一轮 + 当前策略累计真实前瞻成绩。"""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (profile,)).fetchall()
+        finally:
+            c.close()
+
+    items=[dict(x) for x in rows]
+    target=str(target_issue or "")
+    issues=[str(x["target_issue"]) for x in items]
+    total=len(items)
+
+    if target and target in issues:
+        idx=issues.index(target)
+        gstart=(idx//20)*20
+        chunk=items[gstart:gstart+20]
+        start_issue=str(chunk[0]["target_issue"]) if chunk else target
+    else:
+        rem=total%20
+        if rem==0:
+            chunk=[]
+            start_issue=target or (_next_issue_id(items[-1]["target_issue"]) if items else "")
+        else:
+            gstart=total-rem
+            chunk=items[gstart:]
+            start_issue=str(chunk[0]["target_issue"])
+
+    settled=[x for x in chunk if int(x.get("settled") or 0)==1]
+    n=len(settled)
+    hits=sum(int(x.get("hit24") or 0) for x in settled)
+    lifetime=_profile_lifetime_stats(profile)
+    return {
+      "start":start_issue,
+      "end":_issue_add(start_issue,19) if start_issue else "",
+      "n":n,
+      "hits":hits,
+      "misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0,
+      "round_size":20,
+      "round_complete":bool(n>=20),
+      "round_no":(total//20+1),
+      "lifetime":lifetime
+    }
+
+def _predict_pingte_yixiao_b20(r):
+    """平特一肖：完全采用B组思想，只看最新20期，开奖后滚动重算。
+
+    平特是“7个开奖号中是否出现该生肖”，所以这里用每期7个位置的
+    生肖出现情况，而不是只看特码；除此之外窗口、实时衰减、冷热/遗漏
+    都与B组近20期实时逻辑一致，不使用A组/F/长期模型池。
+    """
+    recent=list(r[:20])
+    if not recent:
+        return "",{"samples":0,"mode":"B组近20期"}
+
+    presence=Counter()
+    recent6=Counter()
+    last_seen={z:20 for z in ALL_ZODIACS}
+    raw=Counter()
+
+    for i,x in enumerate(recent):
+        zs={normalize_z(x[f"z{k}"] or "") for k in range(1,8)}
+        zs.discard("")
+        w=exp_weight(i,6.2)
+        for z in zs:
+            presence[z]+=w
+            raw[z]+=1
+            if last_seen[z]==20:
+                last_seen[z]=i
+
+    for i,x in enumerate(recent[:6]):
+        zs={normalize_z(x[f"z{k}"] or "") for k in range(1,8)}
+        zs.discard("")
+        w=exp_weight(i,2.2)
+        for z in zs:
+            recent6[z]+=w
+
+    ptotal=sum(presence.values()) or 1.0
+    r6total=sum(recent6.values()) or 1.0
+    # Presence dominates. Small omission term avoids blindly chasing only hot zodiac.
+    scores={}
+    for z in ALL_ZODIACS:
+        hot20=presence[z]/ptotal
+        hot6=recent6[z]/r6total
+        omission=min(20,last_seen[z])/20.0
+        scores[z]=.62*hot20+.28*hot6+.10*omission
+
+    ranked=sorted(ALL_ZODIACS,key=lambda z:(-scores[z],z))
+    return ranked[0],{
+      "samples":len(recent),
+      "mode":"B组近20期实时算法",
+      "ranked":ranked,
+      "scores":{z:round(scores[z],4) for z in ranked},
+      "window_issues":[str(x["issue"]) for x in recent if x["issue"]]
+    }
+
+def _pingte_b20_stats():
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT hitping FROM prediction_log
+                              WHERE profile=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (PINGTE_B20_V54_PROFILE,)).fetchall()
+        finally:
+            c.close()
+    n=len(rows)
+    hits=sum(int(x["hitping"] or 0) for x in rows)
+    return {
+      "n":n,"hits":hits,"misses":max(0,n-hits),
+      "rate":round(100*hits/n,1) if n else 0.0
+    }
+
 def _stats27b_v52(target_issue=None):
     """B组：每20期一轮 + 从v52实盘开始的累计统计。
 
@@ -7947,6 +8108,26 @@ def record_shadow_predictions(r):
     except Exception as e:
         print(f"[20CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
+    # C组22码：B组同算法、同近20期窗口，只缩为22码。
+    try:
+        best_profile,_=_select_profile(r)
+        c22c,_m22c=_predict22_dynamic_c(r,best_profile)
+        records.append((
+            target,C22_V54_PROFILE,
+            ",".join(str(n) for n in c22c),
+            "","", ""
+        ))
+        _record_strategy_audit(target,C22_V54_PROFILE,c22c,_m22c)
+    except Exception as e:
+        print(f"[22C] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
+
+    # 平特一肖：独立B组近20期算法，真实前瞻锁单。
+    try:
+        py_b20,_py_meta=_predict_pingte_yixiao_b20(r)
+        records.append((target,PINGTE_B20_V54_PROFILE,"","","",py_b20))
+    except Exception as e:
+        print(f"[PINGTE-B20] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+
     # B组27码：每期动态重算，单独实盘锁单统计。
     try:
         best_profile,_=_select_profile(r)
@@ -8140,7 +8321,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v53",
+      "version":"v54",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8527,7 +8708,7 @@ def initialize_quick_live_cache():
           "latest_numbers":latest_numbers,
           "latest_special_zodiac":normalize_z(latest["z7"] or ""),
           "latest_created_at":latest["created_at"] or "",
-          "special24":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
+          "special24":[],"special22c":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
           "pingte_yixiao":"",
           "pingte_samples":0,
           "profile":model_state.get("profile") or "平衡",
@@ -8559,7 +8740,7 @@ def build_model():
     profile,profile_scores=_select_profile(r)
     _legacy24,m4,z4,groups,zpairs=_predict_complement_with_profile(r,profile)
     comp=complement_matrix(60,profile)
-    pingte_one,pingte_meta=_predict_pingte_yixiao(r)
+    pingte_one,pingte_meta=_predict_pingte_yixiao_b20(r)
     trend=_trend_profiles(r)
     strategy=_strategy_context(r)
     _nt,_zt,_ht,_wt,_st,_pt,transition_meta=_forward_transition_scores(r)
@@ -8570,12 +8751,16 @@ def build_model():
     c20,meta20=_predict20_hot(r,profile)
     # A组：原v49长码10期，完全保留
     c27,meta27=_predict27_tenblock(r,profile,next_issue)
-    # B组：最新期开奖 + 前10期，每一期实时重算
+    # B组：纯近20期，每一期实时重算
     c27b,meta27b=_predict27_dynamic_b(r,profile)
+    # C组：与B组完全相同算法，只缩成22码
+    c22c,meta22c=_predict22_dynamic_c(r,profile)
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_v7()
     stats27b=_stats27b_v52(next_issue)
+    stats22c=_stats20round_profile(C22_V54_PROFILE,next_issue)
+    pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
     # 10-period round, prediction_log may not contain that new target yet.
@@ -8611,14 +8796,18 @@ def build_model():
       "special20":[f"{n:02d}" for n in sorted(c20)],
       "special27":[f"{n:02d}" for n in sorted(c27)],
       "special27b":[f"{n:02d}" for n in sorted(c27b)],
+      "special22c":[f"{n:02d}" for n in sorted(c22c)],
       "special24":[f"{n:02d}" for n in sorted(c20)],  # compatibility alias
       "strategy20":meta20,
       "strategy27":meta27,
       "strategy27b":meta27b,
+      "strategy22c":meta22c,
       "stats20":stats20,
       "statsF":statsF,
       "stats27":stats27,
       "stats27b":stats27b,
+      "stats22c":stats22c,
+      "pingte_b20_stats":pingte_b20_stats,
       "diagnostics20":diag20,
       "diagnostics27":diag27,
       "correction":correction,
@@ -8667,7 +8856,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"中文六模型 + F20期轮 + A10期轮 + B20期轮 + 三组累计实盘"
+        "mode":"F+A+B+C实盘 · C22=B算法 · 平特=B近20期算法"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
