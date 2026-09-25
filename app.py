@@ -215,6 +215,7 @@ B27_V51_PROFILE="27B动态杀头v51"
 B27_V52_PROFILE="27B纯20期v52"
 C22_V54_PROFILE="22C纯20期v54"
 PINGTE_B20_V54_PROFILE="平特一肖B20v54"
+PINGTE_DYNAMIC_V56_PROFILE="平特一肖多节奏v56"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -585,7 +586,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
         </div>
       </div>
       <div class="pingteCompact">
-        <div class="miniLabel">平特一肖 · B组近20期算法</div>
+        <div class="miniLabel">平特一肖 · 多节奏动态</div>
         <div id="pingteOne" class="pingteValue">--</div>
         <div id="pingteSamples" class="sectionHint">近20期实时滚动</div>
         <div id="pingteRecord" class="sectionHint">实盘 中0 · 错0</div>
@@ -676,7 +677,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v55：修复v54页面全是“--”的前端故障。原因是加入C组/平特一肖后，loadMain里重复声明了同名const变量，浏览器直接拒绝解析整段JavaScript；后台其实一直正常入库、学习、锁单和Supabase备份。v55已拆分变量名，并清理删除4肖4码后遗留的旧DOM更新代码。C组22码、平特一肖B近20期算法及全部v54功能不变。</div>
+  <div class="foot">v56：平特一肖升级为真正多节奏动态算法。仍然只看最新20期官方开奖记录，但不再由20期平均值主导；每期开奖后同时重新计算近3期突变、近6期走势、近10期中短节奏、近20期底座、连续出现/遗漏和“上一期生肖组合→下一期生肖”的20期内转移。页面直接显示当前一肖、第二名、分数和领先强弱。不会因为本期出现鼠就默认下期继续鼠。</div>
 </div>
 
 <script>
@@ -861,9 +862,13 @@ async function loadMain(){
     code22CMeta.textContent=`杀${m22.killed_head||'--'} · 冷3肖 ${cCold} · 冷肖各2码 / 其他肖≤3`;
 
     pingteOne.textContent=d.pingte_yixiao||'--';
-    pingteSamples.textContent=`B组算法 · 近${d.pingte_samples??20}期实时滚动`;
+    const pm=d.pingte_meta||{};
+    const pds=pm.display_scores||{};
+    const pTop=pm.top||d.pingte_yixiao||'--';
+    const pSecond=pm.second||'--';
+    pingteSamples.textContent=`当前 ${pTop} ${pds[pTop]??'--'}分 · 第二 ${pSecond} ${pds[pSecond]??'--'}分 · ${pm.confidence||'--'}`;
     const pingteStats=d.pingte_b20_stats||{};
-    pingteRecord.textContent=`实盘：中 ${pingteStats.hits??0}期 · 错 ${pingteStats.misses??0}期`;
+    pingteRecord.textContent=`近3/6/10/20期实时重算 · 实盘中 ${pingteStats.hits??0} · 错 ${pingteStats.misses??0}`;
     const tr=d.trend||{};
     const w=tr.wave||{}, sz=tr.size||{}, pa=tr.parity||{}, wp=tr.wave_parity||{};
     waveTrend.innerHTML=`红 ${w['红']??0}%<br>蓝 ${w['蓝']??0}%<br>绿 ${w['绿']??0}%`;
@@ -6986,54 +6991,170 @@ def _stats20round_profile(profile,target_issue=None):
     }
 
 def _predict_pingte_yixiao_b20(r):
-    """平特一肖：完全采用B组思想，只看最新20期，开奖后滚动重算。
+    """平特一肖 v56：真正多节奏动态，只看最新20期。
 
-    平特是“7个开奖号中是否出现该生肖”，所以这里用每期7个位置的
-    生肖出现情况，而不是只看特码；除此之外窗口、实时衰减、冷热/遗漏
-    都与B组近20期实时逻辑一致，不使用A组/F/长期模型池。
+    目标是预测下一期7个开奖号里“至少出现一次”的生肖。
+    每期开奖后重算，不假设“这期出现了，下期还会出现”。
+
+    组成：
+      - 近3期突变
+      - 近6期走势
+      - 近10期中短节奏
+      - 近20期底座
+      - 连续出现 / 连续遗漏修正
+      - 上一期 -> 下一期生肖转移（仅用这20期内历史转移）
     """
     recent=list(r[:20])
     if not recent:
-        return "",{"samples":0,"mode":"B组近20期"}
+        return "",{"samples":0,"mode":"多节奏动态"}
 
-    presence=Counter()
-    recent6=Counter()
-    last_seen={z:20 for z in ALL_ZODIACS}
-    raw=Counter()
-
-    for i,x in enumerate(recent):
+    def draw_zset(x):
         zs={normalize_z(x[f"z{k}"] or "") for k in range(1,8)}
         zs.discard("")
-        w=exp_weight(i,6.2)
-        for z in zs:
-            presence[z]+=w
-            raw[z]+=1
-            if last_seen[z]==20:
-                last_seen[z]=i
+        return zs
 
-    for i,x in enumerate(recent[:6]):
-        zs={normalize_z(x[f"z{k}"] or "") for k in range(1,8)}
-        zs.discard("")
-        w=exp_weight(i,2.2)
-        for z in zs:
-            recent6[z]+=w
+    # Precompute each draw's zodiac presence set.
+    draw_sets=[draw_zset(x) for x in recent]
 
-    ptotal=sum(presence.values()) or 1.0
-    r6total=sum(recent6.values()) or 1.0
-    # Presence dominates. Small omission term avoids blindly chasing only hot zodiac.
+    # --------------------------------------------------------
+    # Multi-window presence strength.
+    # A zodiac counts once per draw even if it appears multiple times.
+    # --------------------------------------------------------
+    def presence_score(block,half):
+        c=Counter()
+        tw=0.0
+        for i,zs in enumerate(block):
+            w=exp_weight(i,half)
+            tw+=w
+            for z in zs:
+                c[z]+=w
+        return {z:(c[z]/tw if tw else 0.0) for z in ALL_ZODIACS}
+
+    p3=presence_score(draw_sets[:3],1.35)
+    p6=presence_score(draw_sets[:6],2.4)
+    p10=presence_score(draw_sets[:10],4.0)
+    p20=presence_score(draw_sets[:20],7.0)
+
+    # --------------------------------------------------------
+    # Current streak / omission.
+    # --------------------------------------------------------
+    streak={}
+    omission={}
+    for z in ALL_ZODIACS:
+        st=0
+        for zs in draw_sets:
+            if z in zs:
+                st+=1
+            else:
+                break
+        streak[z]=st
+
+        om=20
+        for i,zs in enumerate(draw_sets):
+            if z in zs:
+                om=i
+                break
+        omission[z]=om
+
+    # Streak term: mild continuation up to 2, then damp to avoid sticky picks.
+    # Omission term: moderate rebound, not enough to overpower active trend.
+    streak_term={}
+    omission_term={}
+    for z in ALL_ZODIACS:
+        st=streak[z]
+        if st==0:
+            streak_term[z]=0.46
+        elif st==1:
+            streak_term[z]=0.62
+        elif st==2:
+            streak_term[z]=0.68
+        elif st==3:
+            streak_term[z]=0.60
+        else:
+            streak_term[z]=0.50
+
+        om=omission[z]
+        omission_term[z]=min(1.0,0.28+0.09*om)
+
+    # --------------------------------------------------------
+    # Previous draw -> next draw zodiac transition, only using recent20.
+    # For each historical pair (older -> newer), if source zodiac was present,
+    # count which zodiacs appeared in the following draw.
+    # Current source = latest draw's zodiac set.
+    # --------------------------------------------------------
+    latest_set=draw_sets[0] if draw_sets else set()
+    trans_counts=Counter()
+    trans_total=0.0
+
+    # recent is newest->oldest. For i from older index to next newer index:
+    # source=draw_sets[i], destination=draw_sets[i-1]
+    for i in range(1,len(draw_sets)):
+        src=draw_sets[i]
+        dst=draw_sets[i-1]
+        overlap=len(src & latest_set)
+        if overlap<=0:
+            continue
+        # More similar source sets get higher weight; recency also matters.
+        w=(0.55+0.18*overlap)*exp_weight(i-1,5.5)
+        trans_total+=w
+        for z in dst:
+            trans_counts[z]+=w
+
+    transition={
+      z:(trans_counts[z]/trans_total if trans_total else p20.get(z,0.0))
+      for z in ALL_ZODIACS
+    }
+
+    # --------------------------------------------------------
+    # Final score.
+    # Faster windows dominate so ranking can move after each draw.
+    # --------------------------------------------------------
     scores={}
     for z in ALL_ZODIACS:
-        hot20=presence[z]/ptotal
-        hot6=recent6[z]/r6total
-        omission=min(20,last_seen[z])/20.0
-        scores[z]=.62*hot20+.28*hot6+.10*omission
+        scores[z]=(
+          .24*p3.get(z,0.0)
+          +.22*p6.get(z,0.0)
+          +.17*p10.get(z,0.0)
+          +.13*p20.get(z,0.0)
+          +.10*streak_term.get(z,0.5)
+          +.06*omission_term.get(z,0.5)
+          +.08*transition.get(z,0.0)
+        )
 
     ranked=sorted(ALL_ZODIACS,key=lambda z:(-scores[z],z))
-    return ranked[0],{
+    top=ranked[0]
+    second=ranked[1] if len(ranked)>1 else ""
+    gap=(scores[top]-scores[second]) if second else 0.0
+
+    # 0-100 relative display score for readability.
+    vals=list(scores.values())
+    lo=min(vals) if vals else 0.0
+    hi=max(vals) if vals else 1.0
+    def display_score(z):
+        if hi<=lo:
+            return 50.0
+        return round(50.0+50.0*(scores[z]-lo)/(hi-lo),1)
+
+    if gap>=0.055:
+        confidence="强优势"
+    elif gap>=0.025:
+        confidence="中优势"
+    else:
+        confidence="弱优势"
+
+    return top,{
       "samples":len(recent),
-      "mode":"B组近20期实时算法",
+      "mode":"近3+6+10+20期多节奏动态",
       "ranked":ranked,
-      "scores":{z:round(scores[z],4) for z in ranked},
+      "scores":{z:round(scores[z],5) for z in ranked},
+      "display_scores":{z:display_score(z) for z in ranked},
+      "top":top,
+      "second":second,
+      "lead_gap":round(gap,5),
+      "confidence":confidence,
+      "streak":streak,
+      "omission":omission,
+      "transition_samples":sum(1 for i in range(1,len(draw_sets)) if len(draw_sets[i] & latest_set)>0),
       "window_issues":[str(x["issue"]) for x in recent if x["issue"]]
     }
 
@@ -7044,7 +7165,7 @@ def _pingte_b20_stats():
             rows=c.execute("""SELECT hitping FROM prediction_log
                               WHERE profile=? AND settled=1
                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           (PINGTE_B20_V54_PROFILE,)).fetchall()
+                           (PINGTE_DYNAMIC_V56_PROFILE,)).fetchall()
         finally:
             c.close()
     n=len(rows)
@@ -7053,6 +7174,7 @@ def _pingte_b20_stats():
       "n":n,"hits":hits,"misses":max(0,n-hits),
       "rate":round(100*hits/n,1) if n else 0.0
     }
+
 
 def _stats27b_v52(target_issue=None):
     """B组：每20期一轮 + 从v52实盘开始的累计统计。
@@ -8125,7 +8247,7 @@ def record_shadow_predictions(r):
     # 平特一肖：独立B组近20期算法，真实前瞻锁单。
     try:
         py_b20,_py_meta=_predict_pingte_yixiao_b20(r)
-        records.append((target,PINGTE_B20_V54_PROFILE,"","","",py_b20))
+        records.append((target,PINGTE_DYNAMIC_V56_PROFILE,"","","",py_b20))
     except Exception as e:
         print(f"[PINGTE-B20] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
@@ -8322,7 +8444,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v55",
+      "version":"v56",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8820,6 +8942,7 @@ def build_model():
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
       "pingte_yixiao":pingte_one,
       "pingte_samples":pingte_meta.get("samples",0),
+      "pingte_meta":pingte_meta,
       "profile":profile,
       "profile_scores":profile_scores,
       "complement":comp,
@@ -8857,7 +8980,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F+A+B+C实盘 · C22=B算法 · 平特=B近20期算法"
+        "mode":"F+A+B+C实盘 · C22=B算法 · 平特多节奏动态"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
