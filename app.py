@@ -216,6 +216,9 @@ B27_V52_PROFILE="27B纯20期v52"
 C22_V54_PROFILE="22C纯20期v54"
 PINGTE_B20_V54_PROFILE="平特一肖B20v54"
 PINGTE_DYNAMIC_V56_PROFILE="平特一肖多节奏v56"
+F_DYNAMIC_V57_PROFILE="F动态v57减法融合"
+F_RAW23_V57_PROFILE="F六模型原始Top23v57"
+A27_V57_PROFILE="A组27简化长码v57"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -520,7 +523,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div id="fDynamicTitle" class="sectionTitle">F动态 · 当前--码</div>
-        <div class="sectionHint">每期重算号码 · 每20期开奖为一轮，满20期统计自动清零重开</div>
+        <div class="sectionHint">减法融合：4+/6强保 · 3/6只加分 · 2/6看搭档 · 1/6最多2个救援</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -537,7 +540,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">A组27码 · 10期长码</div>
-        <div id="code27Hint" class="sectionHint">一组打10期 · 当前轮次和中错直接看下面</div>
+        <div id="code27Hint" class="sectionHint">简化长码 · 纯十期前瞻模型Top27 · 一组固定10期 · 不硬杀号</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -677,7 +680,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v56：平特一肖升级为真正多节奏动态算法。仍然只看最新20期官方开奖记录，但不再由20期平均值主导；每期开奖后同时重新计算近3期突变、近6期走势、近10期中短节奏、近20期底座、连续出现/遗漏和“上一期生肖组合→下一期生肖”的20期内转移。页面直接显示当前一肖、第二名、分数和领先强弱。不会因为本期出现鼠就默认下期继续鼠。</div>
+  <div class="foot">v57同时重构F与A：F取消冷肖扣分、旧AI/Trend重复救援和3/6硬塞，改为4+/6强保、3/6只加分、2/6按真实模型搭档质量、1/6最多2个独家救援，并后台同步锁定“纯六模型Top23”对照；A组改成纯十期前瞻模型Top27，一组固定10期，不再硬杀波色单双、头数或冷三肖。B组27码与C组22码算法完全不动。</div>
 </div>
 
 <script>
@@ -798,13 +801,13 @@ async function loadMain(){
     const m20=d.strategy20||{}, m27=d.strategy27||{}, m27b=d.strategy27b||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{}, s27b=d.stats27b||{};
     const cs=m20.consensus||{};
     const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
-    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 本轮 ${fRange} · 2/6实保 ${cs.protected2_actual_count??0}/${cs.protected2_count??0} · 独救 ${cs.rescue1_actual_count??0}/${cs.rescue1_count??0}`;
-    code20Fusion.textContent=`模型池 ${cs.pool_primary_pct??m20.pool_mix_pct??0}% · 辅助 ${cs.aux_ai_trend_pct??0}% · 修正 ${cs.blind_rescue_pct??m20.error_rescue_pct??0}%`;
+    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 4+/6强保 ${cs.protected4_actual_count??0} · 3/6软加分 ${cs.soft3_count??0} · 2/6搭档 ${cs.protected2_actual_count??0}/${cs.protected2_count??0} · 独救 ${cs.rescue1_actual_count??0}/${cs.rescue1_count??0}`;
+    code20Fusion.textContent=`六模型100% · 冷肖不扣分 · 旧AI/趋势重复票已移除`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fLife=sF.lifetime||{};
     code20Lifetime.textContent=`累计实盘：中 ${fLife.hits??0}期 · 错 ${fLife.misses??0}期`;
     const fed=d.f_error_diag||{};
-    fErrorRescueInfo.textContent=`F错${fed.f_misses??0} · 融合漏${fed.fusion_miss??0} · 全池错${fed.pool_all_miss??0}`;
+    fErrorRescueInfo.textContent=`v57对照${fed.n??0}期 · 原始23中${fed.raw_hits??0} · F中${fed.f_hits??0} · 加工救回${fed.rescued??0} · 加工误伤${fed.harmed??0}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, f20=m27.filter20||{}, trg=m27.trend_trigger||{};
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
@@ -835,9 +838,7 @@ async function loadMain(){
     code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
     const aLife=s27.lifetime||{};
     code27Lifetime.textContent=`累计实盘：中 ${aLife.hits??0}期 · 错 ${aLife.misses??0}期`;
-    const feas=(m27.pair_feasibility||{});
-    code27Stats.textContent=`杀 ${kw} · ${m27.killed_head||'不杀头'} · 冷3肖 ${c3pairs} · ${cold6ok?'6/6杀码✓':'冷肖码待补'} · ${feas.safe_ok?'杀头兼容✓':(feas.raw_ok?'杀头有冲突':'组合待检')} · 变盘${m27.trend_switches??0}${r28.active?' · +28':''}`;
-    maybeShowRescue28(m27,d.next_issue);
+    code27Stats.textContent=`纯模型Top27 · 不硬杀波色单双 · 不硬杀头 · 不用冷三肖硬删 · 本轮固定10期`;
 
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
@@ -884,7 +885,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`模型池主导F<br>动态19–23码`;
+    learningState.innerHTML=`F减法融合<br>动态19–23码`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -913,7 +914,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · F每期变 · A组10期长码 · B组纯近20期动态`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · F减法融合 · A简化10期长码 · B/C算法不动`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -4041,83 +4042,165 @@ def _f_unique_model_value():
         }
     return out
 
-def _predict20_hot(r, profile):
-    """F动态19~23码：模型池主导，旧AI/趋势只做辅助。
 
-    Rules:
-    - Default 20 codes, dynamically 19~23.
-    - 3+/6 specialist consensus is protected.
-    - Strong 2/6 consensus is prioritized.
-    - Cold-zodiac / zodiac quotas become SOFT structure signals and cannot
-      delete a protected consensus number.
-    - 23-code mode is intentionally frequency-limited.
+def _f_pair_value():
+    """Recent real pre-draw value of every two-model pairing.
+
+    Used only when a candidate has exactly 2/6 support.  We do NOT assume all
+    two-model agreements are equal; pairs that have co-hit more often receive
+    higher priority.
     """
-    # Existing trend/AI/correction stack is retained as an AUXILIARY signal.
-    aux_score,zmap,zheat,ctx=_selection_number_scores(r,profile,"20")
-    aux_n=_norm_values(aux_score,range(1,50))
+    keys=list(POOL_MODEL_PROFILES.keys())
+    profiles=list(POOL_MODEL_PROFILES.values())
+    p2k={v:k for k,v in POOL_MODEL_PROFILES.items()}
+    placeholders=",".join("?" for _ in profiles)
 
-    # Specialist pool is now the primary framework.
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) DESC
+                               LIMIT 720""",tuple(profiles)).fetchall()
+        finally:
+            c.close()
+
+    by={}
+    for x in rows:
+        q=str(x["target_issue"])
+        k=p2k.get(str(x["profile"]))
+        if k:
+            by.setdefault(q,{})[k]=int(x["hit24"] or 0)
+
+    issues=sorted(by,key=lambda q:int(q),reverse=True)[:60]
+    baseline=(20/49)**2
+    out={}
+    values=[]
+    for i,a in enumerate(keys):
+        for b in keys[i+1:]:
+            usable=[q for q in issues if a in by[q] and b in by[q]]
+            both=sum(1 for q in usable if by[q][a] and by[q][b])
+            n=len(usable)
+            # Bayesian smoothing to stop tiny samples from dominating.
+            value=(both+6*baseline)/(n+6) if n else baseline
+            name="+".join(sorted((a,b)))
+            out[name]={"n":n,"both":both,"value":round(value,5)}
+            values.append(value)
+
+    sv=sorted(values)
+    median=sv[len(sv)//2] if sv else baseline
+    return out,median,baseline
+
+def _f_v57_compare_stats(limit=200):
+    """Compare pure six-model Top23 vs final F on honest forward locks."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,profile,hit24
+                              FROM prediction_log
+                              WHERE profile IN (?,?) AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (F_RAW23_V57_PROFILE,F_DYNAMIC_V57_PROFILE)).fetchall()
+        finally:
+            c.close()
+
+    by={}
+    for x in rows:
+        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
+
+    issues=sorted(by,key=lambda q:int(q))[-int(limit):]
+    n=raw_hits=f_hits=both_hit=both_miss=rescued=harmed=0
+    for q in issues:
+        d=by[q]
+        if F_RAW23_V57_PROFILE not in d or F_DYNAMIC_V57_PROFILE not in d:
+            continue
+        n+=1
+        rh=int(d[F_RAW23_V57_PROFILE]); fh=int(d[F_DYNAMIC_V57_PROFILE])
+        raw_hits+=rh; f_hits+=fh
+        if rh and fh: both_hit+=1
+        elif (not rh) and (not fh): both_miss+=1
+        elif (not rh) and fh: rescued+=1
+        elif rh and (not fh): harmed+=1
+    return {
+      "n":n,
+      "raw_hits":raw_hits,
+      "f_hits":f_hits,
+      "both_hit":both_hit,
+      "both_miss":both_miss,
+      "rescued":rescued,
+      "harmed":harmed,
+      "raw_rate":round(100*raw_hits/n,1) if n else 0.0,
+      "f_rate":round(100*f_hits/n,1) if n else 0.0,
+      # compatibility names used by existing compact UI
+      "f_misses":max(0,n-f_hits),
+      "fusion_miss":harmed,
+      "pool_all_miss":both_miss
+    }
+
+def _predict20_hot(r, profile):
+    """F v57: subtractive fusion, 19~23 codes.
+
+    - 4+/6 = hard protection
+    - 3/6  = score bonus only, never automatic hard protection
+    - 2/6  = pairing quality decides up to four seats
+    - 1/6  = at most two recent unique-hit rescue seats
+    - no cold-zodiac penalty
+    - no duplicate legacy AI/Trend rescue votes
+    """
+    nums=list(range(1,50))
     pool_score,models,perf=_pool_ensemble_score(r,profile,"20")
     models,perf,ranks,support,weighted,top15=_f_consensus_map(r,profile)
 
-    # Blind-spot correction is only a small final rescue layer.
-    blind,blind_meta=_pool_error_rescue_score(r,profile)
-    blind_ready=bool(blind_meta.get("ready"))
-    blind_w=min(.10,max(.05,float(ctx.get("error_rescue_pct",0))/100.0)) if blind_ready else 0.0
-    aux_w=.18
-    pool_w=1.0-aux_w-blind_w
+    # Pure six-model weighted average comparator.
+    raw_top23=sorted(nums,key=lambda n:(-pool_score.get(n,-1e9),n))[:23]
 
-    coldest3,cold_meta=_final_coldest3(r,profile,"20",zheat)
-    coldset=set(coldest3)
-
-    raw={}
-    for n in range(1,50):
-        # Consensus has direct value, independent of the average pool score.
-        consensus_bonus=.055*(support.get(n,0)/5.0)+.065*weighted.get(n,0)
-        v=(
-          pool_w*pool_score.get(n,.5)
-          +aux_w*aux_n.get(n,.5)
-          +blind_w*blind.get(n,.5)
-          +consensus_bonus
+    # Final F ranking: pool strength dominates; consensus is a modest bonus.
+    # Correct denominator is SIX models.
+    final_raw={}
+    for n in nums:
+        final_raw[n]=(
+          .84*float(pool_score.get(n,.5))
+          +.10*(float(support.get(n,0))/max(1,len(models)))
+          +.06*float(weighted.get(n,0))
         )
+    final_score=_norm_values(final_raw,nums)
+    ranked49=sorted(nums,key=lambda n:(-final_score.get(n,-1e9),n))
 
-        # Coldest3 is now a SOFT penalty only for low-consensus numbers.
-        # 2/6 and 3+/6 consensus numbers are never hard-deleted by zodiac.
-        if zmap.get(n) in coldset and support.get(n,0)<=1:
-            v-=.075
-        elif zmap.get(n) in coldset and support.get(n,0)==2:
-            v-=.015
-        raw[n]=v
+    # 4+/6 only = true hard consensus.
+    protected4=[n for n in ranked49 if support.get(n,0)>=4]
+    soft3=[n for n in ranked49 if support.get(n,0)==3]
 
-    final_score=_norm_values(raw,range(1,50))
-    ranked49=sorted(range(1,50),key=lambda n:(-final_score.get(n,-1e9),n))
+    # 2/6 seats depend on which two models are agreeing.
+    pair_stats,pair_median,pair_baseline=_f_pair_value()
+    pair_candidates=[]
+    for n in ranked49:
+        if support.get(n,0)!=2:
+            continue
+        supporters=sorted(k for k in models if ranks[k].get(n,99)<=20)
+        if len(supporters)!=2:
+            continue
+        pair_name="+".join(supporters)
+        pv=float((pair_stats.get(pair_name) or {}).get("value",pair_baseline))
+        # Pair must show at least median recent value, or have unusually strong
+        # weighted/pool evidence.
+        if pv>=pair_median or weighted.get(n,0)>=.40 or pool_score.get(n,0)>=.80:
+            pair_candidates.append((pv,weighted.get(n,0),pool_score.get(n,0),n,pair_name))
 
-    protected3=[n for n in ranked49 if support.get(n,0)>=3]
-    protected2_candidates=[
-      n for n in ranked49
-      if support.get(n,0)==2
-      and (
-        weighted.get(n,0)>=.42
-        or top15.get(n,0)>=2
-        or pool_score.get(n,0)>=.78
-      )
-    ]
+    pair_candidates.sort(key=lambda x:(-x[0],-x[1],-x[2],x[3]))
+    protected2=[]
+    protected2_pairs={}
+    for pv,_w,_p,n,pair_name in pair_candidates:
+        if n not in protected2:
+            protected2.append(n)
+            protected2_pairs[f"{n:02d}"]={
+              "pair":pair_name,
+              "value":round(pv,4)
+            }
+        if len(protected2)>=4:
+            break
 
-    # v38: strong 2/6 consensus gets at most FOUR protected seats in F.
-    # Rank them by current model weight support first, then pool strength,
-    # then final F score. 3+/6 consensus remains unlimited/protected.
-    protected2=sorted(
-      protected2_candidates,
-      key=lambda n:(
-        -weighted.get(n,0),
-        -pool_score.get(n,0),
-        -final_score.get(n,0),
-        ranked49.index(n)
-      )
-    )[:4]
-
-    # v49: reserve up to TWO 1/6 unique-rescue seats.
-    # Only models with a real unique hit in the last 30 settled issues qualify.
+    # Up to two 1/6 rescue seats, based on actual unique-hit history.
     unique_value=_f_unique_model_value()
     unique_candidates=[]
     for n in ranked49:
@@ -4132,139 +4215,134 @@ def _predict20_hot(r, profile):
             continue
         mr=int(ranks[k].get(n,99))
         rescue_score=(
-          .46*float(uv.get("value",0))
-          +.24*(1.0-min(mr,20)/20.0)
+          .52*float(uv.get("value",0))
+          +.20*(1.0-min(mr,20)/20.0)
           +.18*float(pool_score.get(n,.5))
-          +.12*float(final_score.get(n,.5))
+          +.10*float(final_score.get(n,.5))
         )
         unique_candidates.append((rescue_score,n,k,mr))
 
     unique_candidates.sort(key=lambda x:(-x[0],x[3],x[1]))
     rescue1=[]
     rescue1_models=[]
-    # First try different models, then allow the strongest model to take both.
     for _sc,n,k,_mr in unique_candidates:
-        if n in rescue1 or n in protected2:
+        if n in protected2 or n in rescue1:
             continue
+        # Prefer different specialists for the two rescue seats.
         if k not in rescue1_models:
-            rescue1.append(n)
-            rescue1_models.append(k)
+            rescue1.append(n); rescue1_models.append(k)
         if len(rescue1)>=2:
             break
     if len(rescue1)<2:
         for _sc,n,k,_mr in unique_candidates:
-            if n in rescue1 or n in protected2:
-                continue
-            rescue1.append(n)
-            rescue1_models.append(k)
+            if n not in protected2 and n not in rescue1:
+                rescue1.append(n); rescue1_models.append(k)
             if len(rescue1)>=2:
                 break
 
-    target_count,count_reasons,edge_candidates=_choose_f_dynamic_count(
-      ranked49,final_score,pool_score,support,weighted,protected3
-    )
-
-    # v49 seat architecture:
-    #   3+/6 core + up to 4 REAL 2/6 seats + up to 2 REAL 1/6 rescue seats.
-    # Rescue seats are not allowed to be squeezed out by a crowded 3/5 core.
-    fixed_rescue=[]
-    for n in protected2 + rescue1:
-        if n not in fixed_rescue:
-            fixed_rescue.append(n)
-
-    max_core=max(0,23-len(fixed_rescue))
-    protected3_effective=[n for n in protected3 if n not in fixed_rescue][:max_core]
-
-    required_union=[]
-    for n in protected3_effective + fixed_rescue:
-        if n not in required_union:
-            required_union.append(n)
-
-    required_count=min(23,len(required_union))
-    if required_count>target_count:
-        target_count=required_count
-        count_reasons.append(f"共识+救援真实保护扩至{target_count}码")
-
-    if len(protected3)+len(fixed_rescue)>23:
-        count_reasons.append(
-          f"共识拥挤：固定2/6 {len(protected2)}席 + 独家救援 {len(rescue1)}席"
+    # Dynamic 19-23 count.  Expand only when edge candidates are genuinely
+    # close to the 20th score; no "protected rules fill all 23 seats" behavior.
+    target_count=20
+    count_reasons=["默认20码"]
+    s20=float(final_score.get(ranked49[19],0.0))
+    edge_candidates=[]
+    for idx in (20,21,22):
+        n=ranked49[idx]
+        gap=max(0.0,s20-float(final_score.get(n,0.0)))
+        qualifies=(
+          gap<=.050
+          and (
+            support.get(n,0)>=3
+            or n in protected2
+            or float(pool_score.get(n,.5))>=.80
+          )
         )
+        edge_candidates.append({
+          "code":f"{n:02d}","rank":idx+1,"gap":round(gap,4),
+          "support":support.get(n,0),"qualifies":bool(qualifies)
+        })
+        if qualifies:
+            target_count=idx+1
+
+    # Shrink to 19 only on a clear score cliff and when no hard/rescue seat
+    # would be lost.
+    gap19_20=max(0.0,float(final_score.get(ranked49[18],0))-float(final_score.get(ranked49[19],0)))
+    must_keep=set(protected4+protected2+rescue1)
+    if gap19_20>=.11 and ranked49[19] not in must_keep and support.get(ranked49[19],0)<=1:
+        target_count=19
+        count_reasons=["19/20出现明显断层，收缩19码"]
+    elif target_count>20:
+        count_reasons=[f"边缘分差小，扩至{target_count}码"]
 
     target_count=max(19,min(23,target_count))
 
+    # Priority: only real hard consensus + learned pair seats + unique rescue.
+    # 3/6 is deliberately NOT placed here; it competes by final score.
     priority=[]
-    for n in protected3_effective:
+    for n in protected4+protected2+rescue1+ranked49:
         if n not in priority:
             priority.append(n)
-    for n in protected2:
-        if n not in priority:
-            priority.append(n)
-    for n in rescue1:
-        if n not in priority:
-            priority.append(n)
-    for n in ranked49:
-        if n not in priority:
-            priority.append(n)
-
     selected=priority[:target_count]
     selected=sorted(set(selected))
 
-    protected2_actual=[n for n in protected2 if n in selected]
-    protected3_actual=[n for n in protected3_effective if n in selected]
-    rescue1_actual=[n for n in rescue1 if n in selected]
+    p4_actual=[n for n in protected4 if n in selected]
+    p2_actual=[n for n in protected2 if n in selected]
+    r1_actual=[n for n in rescue1 if n in selected]
 
-    # Metadata for explainability.
     consensus_summary={
-      "protected3_count":len(protected3),
-      "protected3":[f"{n:02d}" for n in protected3[:12]],
-      "protected3_actual_count":len(protected3_actual),
+      "protected4_count":len(protected4),
+      "protected4":[f"{n:02d}" for n in protected4],
+      "protected4_actual_count":len(p4_actual),
+      "soft3_count":len(soft3),
+      "soft3":[f"{n:02d}" for n in soft3[:16]],
       "protected2_count":len(protected2),
       "protected2_cap":4,
       "protected2":[f"{n:02d}" for n in protected2],
-      "protected2_actual_count":len(protected2_actual),
-      "protected2_actual":[f"{n:02d}" for n in protected2_actual],
+      "protected2_actual_count":len(p2_actual),
+      "protected2_actual":[f"{n:02d}" for n in p2_actual],
+      "protected2_pairs":protected2_pairs,
       "rescue1_count":len(rescue1),
       "rescue1":[f"{n:02d}" for n in rescue1],
-      "rescue1_actual_count":len(rescue1_actual),
-      "rescue1_actual":[f"{n:02d}" for n in rescue1_actual],
+      "rescue1_actual_count":len(r1_actual),
+      "rescue1_actual":[f"{n:02d}" for n in r1_actual],
       "rescue1_models":rescue1_models,
       "unique_model_value":unique_value,
-      "pool_primary_pct":round(pool_w*100,1),
-      "aux_ai_trend_pct":round(aux_w*100,1),
-      "blind_rescue_pct":round(blind_w*100,1),
+      "pair_median":round(pair_median,4),
+      "pair_baseline":round(pair_baseline,4),
+      "pool_primary_pct":100.0,
+      "aux_ai_trend_pct":0.0,
+      "blind_rescue_pct":0.0,
     }
 
-    # Keep old diagnostic keys for UI/API compatibility.
-    ztrans,ztrans_meta=_zodiac_transition_model(r)
     return selected,{
-      "hot_zodiacs":[z for z in ALL_ZODIACS if z not in coldset],
-      "top3_hot":sorted(ALL_ZODIACS,key=lambda z:(-zheat.get(z,-1e9),z))[:3],
-      "coldest3":coldest3,
-      "cold_meta":cold_meta,
-      "rescued_cold_zodiacs":cold_meta.get("rescued_zodiacs",[]),
+      "hot_zodiacs":[],
+      "top3_hot":[],
+      "coldest3":[],
+      "cold_meta":{"mode":"F不使用冷三肖扣分"},
+      "rescued_cold_zodiacs":[],
       "killed_head":"",
       "weak_head":"",
-      "head_decision":_pool_04_weakness_decision(r,profile,"20"),
+      "head_decision":{"active":False,"reason":"F不硬杀号"},
       "groups":[],
       "ranked49":ranked49,
+      "raw_top23":raw_top23,
       "edge_rescue_swaps":[],
       "dynamic_count":target_count,
       "count_reasons":count_reasons,
       "edge_candidates":edge_candidates,
       "consensus":consensus_summary,
-      "regime":(ctx.get("regime") or {}).get("name","平衡"),
-      "correction_trained":ctx.get("correction_trained",0),
-      "correction_weight_pct":ctx.get("correction_weight_pct",0),
-      "trend_weight_pct":ctx.get("trend_weight_pct",0),
-      "base_ai_weight_pct":ctx.get("base_ai_weight_pct",0),
-      "pool_mix_pct":round(pool_w*100,1),
+      "regime":"v57减法融合",
+      "correction_trained":0,
+      "correction_weight_pct":0,
+      "trend_weight_pct":0,
+      "base_ai_weight_pct":0,
+      "pool_mix_pct":100.0,
       "pool_weights_pct":{k:round(100*v,1) for k,v in (perf.get("weights") or {}).items()},
-      "error_rescue_pct":round(blind_w*100,1),
-      "error_rescue_meta":blind_meta,
-      "zodiac_transition_top":sorted(ALL_ZODIACS,key=lambda z:(-ztrans.get(z,0),z))[:4],
-      "zodiac_transition_samples":ztrans_meta.get("samples",0)
+      "error_rescue_pct":0.0,
+      "error_rescue_meta":{"ready":False,"reason":"旧AI/Trend重复救援已移除"},
+      "zodiac_transition_top":[],
+      "zodiac_transition_samples":0
     }
-
 
 def _ten27_distribution(block,mapper,keys):
     c=Counter()
@@ -7319,6 +7397,152 @@ def _stats27b_v50(window=60):
       "recent20_rate":round(100*h20/len(recent20),1) if recent20 else 0.0
     }
 
+
+def _a27_v57_context(target_issue):
+    """Find current fixed 10-period A round from honest forward locks."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,special24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (A27_V57_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    items=[dict(x) for x in rows]
+    target=str(target_issue or "")
+    issues=[str(x["target_issue"]) for x in items]
+
+    if target and target in issues:
+        idx=issues.index(target)
+        gstart=(idx//10)*10
+        chunk=items[gstart:gstart+10]
+        start=str(chunk[0]["target_issue"]) if chunk else target
+        codes=_csv_nums(chunk[0]["special24"]) if chunk else []
+        return {
+          "new_round":False,"start":start,"end":_issue_add(start,9),
+          "position":idx-gstart+1,"codes":codes
+        }
+
+    rem=len(items)%10
+    if rem:
+        gstart=len(items)-rem
+        chunk=items[gstart:]
+        start=str(chunk[0]["target_issue"])
+        return {
+          "new_round":False,"start":start,"end":_issue_add(start,9),
+          "position":rem+1,"codes":_csv_nums(chunk[0]["special24"])
+        }
+
+    return {
+      "new_round":True,"start":target,"end":_issue_add(target,9) if target else "",
+      "position":1,"codes":[]
+    }
+
+def _predict27_tenblock_v57(r,profile,target_issue):
+    """A组v57：纯十期前瞻模型Top27，一轮固定10期。
+
+    Hard filters removed:
+      - no wave×parity hard kill
+      - no 0/4 head hard kill
+      - no cold-zodiac forced two-code rule
+      - no zodiac quota hard deletion
+    """
+    rc=_a27_v57_context(target_issue)
+    if not rc.get("new_round") and rc.get("codes"):
+        selected=list(rc["codes"])[:27]
+        ranked=list(selected)
+        # ranked49 is display/diagnostic only while the fixed round is running.
+        score,_spec,perf,hmeta=_ten27_horizon_score(r,profile)
+        ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+        return selected,{
+          "block_start":rc["start"],"block_end":rc["end"],
+          "round_position":rc["position"],
+          "round_mode":"A简化长码·纯模型Top27·10期固定",
+          "code_count":len(selected),
+          "core23":selected[:23],"mobile4":selected[23:27],
+          "ranked49":ranked49,
+          "raw_top27":selected,
+          "killed_wave_parity":[],
+          "killed_head":"",
+          "coldest3":[],
+          "cold3_codes":{},
+          "cold_defense6":[],
+          "zodiac_counts":{},
+          "trend_switches":0,
+          "rescue28":{"active":False,"code":None,"message":""},
+          "simplified":True,
+          "regime":"A简化长码·不硬杀号",
+          "audit_regime":f"A27V57|round={rc['start']}"
+        }
+
+    score,specialists,perf,hmeta=_ten27_horizon_score(r,profile)
+    ranked49=sorted(range(1,50),key=lambda n:(-score.get(n,-1e9),n))
+    selected=ranked49[:27]
+    return selected,{
+      "block_start":str(target_issue),
+      "block_end":_issue_add(str(target_issue),9),
+      "round_position":1,
+      "round_mode":"A简化长码·纯模型Top27·10期固定",
+      "code_count":27,
+      "core23":selected[:23],
+      "mobile4":selected[23:27],
+      "ranked49":ranked49,
+      "raw_top27":selected,
+      "killed_wave_parity":[],
+      "killed_head":"",
+      "coldest3":[],
+      "cold3_codes":{},
+      "cold_defense6":[],
+      "zodiac_counts":{},
+      "trend_switches":0,
+      "rescue28":{"active":False,"code":None,"message":""},
+      "simplified":True,
+      "ten_horizon":{
+        "analog_samples":hmeta.get("analog_samples",0),
+        "model_weights":{k:round(100*v,1) for k,v in (perf.get("weights") or {}).items()}
+      },
+      "regime":"A简化长码·不硬杀号",
+      "audit_regime":f"A27V57|round={target_issue}"
+    }
+
+def _stats27_a_v57():
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,hit24,settled
+                              FROM prediction_log
+                              WHERE profile=?
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (A27_V57_PROFILE,)).fetchall()
+        finally:
+            c.close()
+
+    items=[dict(x) for x in rows]
+    groups=[]
+    for i in range(0,len(items),10):
+        chunk=items[i:i+10]
+        if not chunk:
+            continue
+        settled=[x for x in chunk if int(x.get("settled") or 0)==1]
+        hits=sum(int(x.get("hit24") or 0) for x in settled)
+        start=str(chunk[0]["target_issue"])
+        groups.append({
+          "start":start,"end":_issue_add(start,9),
+          "n":len(settled),"hits":hits,"misses":max(0,len(settled)-hits)
+        })
+
+    empty={"start":0,"end":0,"n":0,"hits":0,"misses":0}
+    return {
+      "current":groups[-1] if groups else dict(empty),
+      "last_complete":next((g for g in reversed(groups) if g["n"]>=10),None),
+      "rounds_completed":sum(1 for g in groups if g["n"]>=10),
+      "overall":_profile_hit_stats(A27_V57_PROFILE,60),
+      "lifetime":_profile_lifetime_stats(A27_V57_PROFILE)
+    }
+
 def _predict27_tenblock(r, profile, target_issue):
     """V7: long-code + cold-zodiac-feasible killed pair + raw Top27 comparator."""
     rc=_long27_v7_round_context(target_issue)
@@ -7647,7 +7871,7 @@ def _f_dynamic_current_stats(target_issue=None):
                               FROM prediction_log
                               WHERE profile=?
                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           (F_DYNAMIC_V49_PROFILE,)).fetchall()
+                           (F_DYNAMIC_V57_PROFILE,)).fetchall()
         finally:
             c.close()
 
@@ -7679,7 +7903,7 @@ def _f_dynamic_current_stats(target_issue=None):
     hits=sum(int(x.get("hit24") or 0) for x in settled)
     misses=max(0,n-hits)
 
-    lifetime=_profile_lifetime_stats(F_DYNAMIC_V49_PROFILE)
+    lifetime=_profile_lifetime_stats(F_DYNAMIC_V57_PROFILE)
     return {
       "start":start_issue,
       "end":_issue_add(start_issue,19) if start_issue else "",
@@ -8266,21 +8490,11 @@ def record_shadow_predictions(r):
 
     try:
         best_profile,_=_select_profile(r)
-        c27,_m27=_predict27_tenblock(r,best_profile,target)
-        core23=list(_m27.get("core23") or [])[:23]
-        mobile4=list(_m27.get("mobile4") or [])[:4]
-        rescue28=_m27.get("rescue28") or {}
-        rescue_codes=[int(rescue28["code"])] if rescue28.get("active") and rescue28.get("code") else []
-
-        raw27=list(_m27.get("raw_top27") or (_m27.get("ranked49") or [])[:27])
-        records.append((target,TEN27_V7_PROFILE,",".join(str(n) for n in c27),"","",py))
-        records.append((target,TEN27_V7_CORE_PROFILE,",".join(str(n) for n in core23),"","",py))
-        records.append((target,TEN27_V7_MOBILE_PROFILE,",".join(str(n) for n in mobile4),"","",py))
-        records.append((target,TEN27_V7_28_PROFILE,",".join(str(n) for n in rescue_codes),"","",py))
-        records.append((target,TEN27_V7_RAW_PROFILE,",".join(str(n) for n in raw27),"","",py))
-        _record_strategy_audit(target,TEN27_V7_PROFILE,c27,_m27)
+        c27,_m27=_predict27_tenblock_v57(r,best_profile,target)
+        records.append((target,A27_V57_PROFILE,",".join(str(n) for n in c27),"","",py))
+        _record_strategy_audit(target,A27_V57_PROFILE,c27,_m27)
     except Exception as e:
-        print(f"[27CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[27A-V57] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
     # Parallel specialist pool: same 20-code target, different logic.
     try:
@@ -8290,13 +8504,13 @@ def record_shadow_predictions(r):
             ranked=sorted(range(1,50),key=lambda n:(-specialists[key].get(n,-1e9),n))
             codes=ranked[:20]
             records.append((target,prof,",".join(str(n) for n in codes),"","",py))
-        # F = the actual final 20-code list, kept separately from 20码精选 for
-        # easy T/Z/C/W/A/F table comparisons.
+        # F v57 final + pure six-model Top23 comparator, both locked pre-draw.
         c20f,_mf=_predict20_hot(r,best_profile)
+        raw23=list(_mf.get("raw_top23") or [])[:23]
         records.append((target,POOL_FINAL_PROFILE,",".join(str(n) for n in c20f),"","",py))
-        # Separate current-version F stats so old F rules do not contaminate
-        # "已开/中/错" shown under the live F card.
-        records.append((target,F_DYNAMIC_V49_PROFILE,",".join(str(n) for n in c20f),"","",py))
+        records.append((target,F_DYNAMIC_V57_PROFILE,",".join(str(n) for n in c20f),"","",py))
+        records.append((target,F_RAW23_V57_PROFILE,",".join(str(n) for n in raw23),"","",py))
+        _record_strategy_audit(target,F_DYNAMIC_V57_PROFILE,c20f,_mf)
     except Exception as e:
         print(f"[POOL] locked specialist models failed: {type(e).__name__}: {e}",flush=True)
 
@@ -8444,7 +8658,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v56",
+      "version":"v57",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -8872,15 +9086,15 @@ def build_model():
     try: next_issue=_next_issue_id(latest["issue"])
     except Exception: next_issue=""
     c20,meta20=_predict20_hot(r,profile)
-    # A组：原v49长码10期，完全保留
-    c27,meta27=_predict27_tenblock(r,profile,next_issue)
+    # A组v57：简化长码，纯十期前瞻模型Top27，一组固定10期
+    c27,meta27=_predict27_tenblock_v57(r,profile,next_issue)
     # B组：纯近20期，每一期实时重算
     c27b,meta27b=_predict27_dynamic_b(r,profile)
     # C组：与B组完全相同算法，只缩成22码
     c22c,meta22c=_predict22_dynamic_c(r,profile)
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
-    stats27=_stats27_v7()
+    stats27=_stats27_a_v57()
     stats27b=_stats27b_v52(next_issue)
     stats22c=_stats20round_profile(C22_V54_PROFILE,next_issue)
     pingte_b20_stats=_pingte_b20_stats()
@@ -8905,12 +9119,12 @@ def build_model():
         stats27=dict(stats27)
         stats27["live_round_reset"]=False
 
-    diag20=_strategy_diagnostics("20码精选",60)
-    diag27=_diagnostics27_v7(60)
+    diag20=_strategy_diagnostics(F_DYNAMIC_V57_PROFILE,60)
+    diag27=_strategy_diagnostics(A27_V57_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
-    f_error_diag=_f_failure_attribution(60)
+    f_error_diag=_f_v57_compare_stats(200)
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -8980,7 +9194,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"F+A+B+C实盘 · C22=B算法 · 平特多节奏动态"
+        "mode":"F减法融合 + A简化长码 + B/C保持v56"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -9210,8 +9424,8 @@ def complement_status():
 @app.get("/api/strategy-diagnostics")
 def strategy_diagnostics_api():
     return jsonify({
-      "code20":_strategy_diagnostics("20码精选",60),
-      "code27":_diagnostics27_v7(60),
+      "code20":_strategy_diagnostics(F_DYNAMIC_V57_PROFILE,60),
+      "code27":_strategy_diagnostics(A27_V57_PROFILE,60),
       "correction":_correction_status()
     })
 
