@@ -241,6 +241,7 @@ B27_V62_PROFILE="27B纯近10期尾数软评分v62"
 C22_V62_PROFILE="22C纯近10期独立优化v62"
 B27_V63_PROFILE="27B近10期缺尾补码v63"
 C22_V63_PROFILE="22C近10期缺尾补码v63"
+D16_V64_PROFILE="16D多策略波色+近10期v64"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -445,6 +446,65 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
 #code27Block,#code27Kill,#code27Stats{font-size:9px}
 #code27Block{font-weight:850;color:#dce7fa}
 #code27Kill{font-weight:850;color:#9fe4c4}
+
+
+/* v64: all-interface extra compact mode */
+.wrap{max-width:860px;padding:calc(env(safe-area-inset-top) + 4px) 6px 14px}
+.topbar{margin:0 0 4px;gap:4px}
+.title{font-size:18px;letter-spacing:-.4px}
+.subtitle{font-size:7.5px;margin-top:2px}
+.livebox{font-size:8px;padding:3px 6px;gap:4px}
+.dot{width:6px;height:6px}
+.card{padding:6px;border-radius:11px;margin-bottom:4px;box-shadow:0 6px 16px #00000018}
+.grid2{gap:4px}
+.metricLabel{font-size:8px}
+.metric{font-size:14px;margin-top:3px}
+.sectionHead{margin-bottom:4px;gap:4px}
+.sectionTitle{font-size:12px}
+.sectionHint{font-size:7.2px;line-height:1.25}
+.copyBtn{padding:3px 6px;border-radius:6px;font-size:7.5px}
+.numberCard{padding:6px}
+.numberCard .sectionHead{margin-bottom:3px}
+.numberCard .sectionTitle{font-size:12px}
+.numberCard .sectionHint{font-size:7.2px}
+.compactBalls{grid-template-columns:repeat(10,1fr);gap:2px}
+.compactBalls .ball{height:22px;border-radius:5px;font-size:8.5px}
+.c22Balls{grid-template-columns:repeat(8,1fr);gap:2px}
+.c22Balls .ball{height:22px;border-radius:5px;font-size:8.2px}
+.d16Balls{grid-template-columns:repeat(8,1fr);gap:2px}
+.d16Balls .ball{height:22px;aspect-ratio:auto;border-radius:5px;font-size:8.5px}
+.miniInfoRow{gap:3px;margin-top:3px;font-size:7px}
+.miniInfoRow span{padding:2px 4px}
+.poolCard{padding:5px}
+#modelPoolRows{gap:2px}
+.modelMini{border-radius:6px;padding:3px 2px}
+.modelMiniKey{font-size:10px}.modelMiniWeight{font-size:8px;margin-top:1px}.modelMiniMeta{font-size:6px;margin-top:1px}
+.poolSummary{margin-top:3px!important}.poolSummary .pill{font-size:6.5px;padding:2px 3px}
+.forecastCard{padding:6px}.forecastCard .sectionTitle{font-size:12px}
+.forecastGrid{gap:3px}.forecastGrid .strategyBox{height:48px;min-height:48px;padding:4px}
+.forecastGrid .strategyMain{font-size:8.2px;line-height:1.2;height:24px}
+.forecastGrid .strategyTitle{font-size:7px}
+.strategyGrid,.trendGrid{gap:3px}
+.strategyBox,.trendBox{padding:4px;border-radius:7px}
+.strategyTitle,.trendTitle{font-size:6.8px;margin-bottom:2px}
+.strategyMain,.trendMain{font-size:8.2px;line-height:1.25}
+.pillrow{gap:3px;margin-top:3px}.pill{font-size:7px;padding:3px 4px}
+.cPingGrid{gap:4px;grid-template-columns:minmax(0,3.3fr) minmax(78px,.7fr)}
+.pingteCompact{padding:4px;border-radius:7px}
+.pingteValue{font-size:20px}.miniLabel{font-size:6.8px;margin-bottom:2px}
+#pingteSamples{font-size:6.5px!important;margin-top:2px!important}
+.historyScroll{height:220px}.historyItem{grid-template-columns:84px 1fr;padding:5px 1px;gap:4px}
+.historyIssue{font-size:8px}.historyMeta{font-size:6.5px}
+.smallball{width:21px;height:21px;font-size:8px}
+.latestRow{gap:2px}.balls{gap:2px}.ball{border-radius:6px;font-size:9px}
+.stats{gap:3px}.stat{padding:5px;border-radius:7px}.statName{font-size:7px}.rate{font-size:14px;margin-top:2px}.err{font-size:7px;margin-top:1px}
+.foot{font-size:6.5px;line-height:1.3;padding:2px 4px}
+#code27Block,#code27Kill,#code27Stats{font-size:7px}
+@media(max-width:430px){
+  .compactBalls .ball,.c22Balls .ball,.d16Balls .ball{height:21px;font-size:8px}
+  .title{font-size:17px}
+}
+
 </style>
 </head>
 <body>
@@ -593,6 +653,22 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </section>
 
+  <section class="card numberCard dCard">
+    <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">D组16码 · 波色融合</div>
+        <div class="sectionHint">多策略池波色60% + 最新10期波色40% · 每期重算</div>
+      </div>
+      <button class="copyBtn" onclick="copy16D()">复制D组</button>
+    </div>
+    <div id="sp16d" class="balls d16Balls"></div>
+    <div class="miniInfoRow">
+      <span id="code16DRound">本轮20期 · 已开0/20 · 中0 · 错0</span>
+      <span id="code16DLifetime" class="lifetimeStat">累计实盘：中0 · 错0</span>
+      <span id="code16DMeta">红/蓝/绿 --</span>
+    </div>
+  </section>
+
   <section class="card numberCard cPingCard">
     <div class="sectionHead">
       <div>
@@ -702,7 +778,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v63：B/C尾数逻辑升级。每期开奖后只看最新10期特码，找出0~9尾里10期一次都没出现的“缺尾”；每个缺尾至少保证1个号码进入下一期号码组。补码会结合当前杀码：B补码硬避开被杀头，C补码也优先避开被杀头，同时通过替换弱码保持B=27码、C=22码不增加总码数。原尾数10%软评分继续保留。F与A维持v62算法不动。</div>
+  <div class="foot">v64：新增D组16码。D只做波色策略：正式多策略池“波色模型”占60%，最新10期实际特码波色占40%，融合后决定红/蓝/绿16个席位的配额，再由六模型综合分在各波色内部挑号码；每期开奖后重算，并独立记录20期轮次与累计中错。F/A/B/C/平特一肖算法维持v63。全页面UI再次缩小、压紧，减少滑动。</div>
 </div>
 
 <script>
@@ -713,6 +789,7 @@ let SPECIAL20=[];
 let SPECIAL27=[];
 let SPECIAL27B=[];
 let SPECIAL22C=[];
+let SPECIAL16D=[];
 function fmt(n){return String(n).padStart(2,'0')}
 async function copySpecial(){
   const text=SPECIAL20.join(',');
@@ -762,6 +839,18 @@ async function copy22C(){
   t.textContent='已复制C组22码：'+text;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),1800);
+}
+async function copy16D(){
+  const text=SPECIAL16D.join(',');
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+  const t=document.getElementById('toast');
+  t.textContent='已复制D组16码：'+text;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1600);
 }
 function balls(nums,small=false){
   return (nums||[]).map((n,i)=>`<span class="${small?'smallball':'ball'} ${cls(n)} ${small&&i===6?'special':''}">${fmt(n)}</span>`).join('')
@@ -883,6 +972,14 @@ async function loadMain(){
     const bMR=m27b.missing_tail_rescue||{};
     const bMissCodes=Object.keys(bMR).map(t=>`${t}尾:${fmt(bMR[t].code)}`).join(' · ')||'无';
     code27BMeta.textContent=`近10期 · 杀${m27b.killed_head||'--'} · 缺尾 ${bMiss} · 补 ${bMissCodes} · 强尾 ${bTails}（软权${m27b.tail_weight_pct??10}%）`;
+    SPECIAL16D=d.special16d||[]; sp16d.innerHTML=balls(SPECIAL16D);
+    const s16=d.stats16d||{}, m16=d.strategy16d||{};
+    code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
+    const dLife=s16.lifetime||{};
+    code16DLifetime.textContent=`累计实盘：中 ${dLife.hits??0}期 · 错 ${dLife.misses??0}期`;
+    const df=m16.fused_wave||{}, dq=m16.wave_quota||{}, dc=m16.recent10_counts||{};
+    code16DMeta.textContent=`融合波色 红${df['红']??0}%/蓝${df['蓝']??0}%/绿${df['绿']??0}% · 配额 ${dq['红']??0}/${dq['蓝']??0}/${dq['绿']??0} · 近10次数 ${dc['红']??0}/${dc['蓝']??0}/${dc['绿']??0}`;
+
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
     code22CRound.textContent=`本轮 ${s22.start||'--'}—${s22.end||'--'} · 已开 ${s22.n??0}/20 · 中 ${s22.hits??0} · 错 ${s22.misses??0}`;
@@ -946,7 +1043,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v63 B/C近10期缺尾补码 · F/A保持v62`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v64 新增D16波色融合 · F/A/B/C原算法保留`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -7527,6 +7624,110 @@ def _predict22_dynamic_c(r, profile):
     return selected,meta
 
 
+
+def _predict16_dynamic_d(r, profile):
+    """D组16码：多策略池“波色模型” + 最新10期波色融合。
+
+    1) 多策略池正式波色模型 W 给红/蓝/绿一个长期/模型分；
+    2) 最新10期只看特码波色，近期加权；
+    3) 两者融合决定16个席位在红/蓝/绿中的配额；
+    4) 每个波色内部，再用六模型总分 + 波色模型分挑最强号码。
+
+    D不使用B/C的杀头、冷肖、缺尾规则，保持纯波色策略独立。
+    """
+    nums=list(range(1,50))
+    recent=list(r[:10])
+
+    # Formal multi-strategy pool.
+    specialists=_specialist_model_scores(r,profile,"20")
+    W=dict(specialists.get("W") or {})
+    pool_score,_models,_perf=_pool_ensemble_score(r,profile,"20")
+
+    waves=["红","蓝","绿"]
+
+    # Convert W number scores into one score per wave.
+    pool_wave_raw={}
+    for w in waves:
+        ns=[n for n in nums if wave_of(n)==w]
+        pool_wave_raw[w]=sum(float(W.get(n,.5)) for n in ns)/max(1,len(ns))
+    pool_wave=_norm_values(pool_wave_raw,waves)
+
+    # Latest10 special-wave signal, newer draws weighted higher.
+    recent_raw=Counter()
+    recent_count=Counter()
+    tw=0.0
+    for i,x in enumerate(recent):
+        try:
+            n=int(x["special"])
+        except Exception:
+            continue
+        wgt=exp_weight(i,3.0)
+        recent_raw[wave_of(n)]+=wgt
+        recent_count[wave_of(n)]+=1
+        tw+=wgt
+    if tw<=0:
+        recent_share={w:1/3 for w in waves}
+    else:
+        recent_share={w:float(recent_raw[w])/tw for w in waves}
+    recent_wave=_norm_values(recent_share,waves)
+
+    # 60% formal pool wave + 40% latest10 wave.
+    fused_raw={
+      w:.60*float(pool_wave.get(w,.5))+.40*float(recent_wave.get(w,.5))
+      for w in waves
+    }
+    fused=_norm_values(fused_raw,waves)
+
+    # 16 seats: minimum 4 per wave, remaining 4 allocated by fused strength.
+    quota={w:4 for w in waves}
+    for _ in range(4):
+        # Allocate to the wave most underrepresented versus its fused target.
+        target={w:4+4*float(fused.get(w,.5)) for w in waves}
+        pick=max(waves,key=lambda w:(target[w]-quota[w],fused.get(w,0),w))
+        quota[pick]+=1
+
+    # Within each wave, use the whole pool to avoid arbitrary numeric-order picks.
+    # Wave specialist stays meaningful through both quota and an extra 20% in ranking.
+    number_score={
+      n:.80*float(pool_score.get(n,.5))+.20*float(W.get(n,.5))
+      for n in nums
+    }
+
+    selected=[]
+    by_wave={}
+    for w in waves:
+        candidates=[n for n in nums if wave_of(n)==w]
+        candidates=sorted(candidates,key=lambda n:(-number_score.get(n,-1e9),n))
+        picks=candidates[:quota[w]]
+        by_wave[w]=picks
+        selected.extend(picks)
+
+    # Defensive trim/fill to exactly 16.
+    selected=list(dict.fromkeys(selected))
+    if len(selected)<16:
+        rest=[n for n in sorted(nums,key=lambda n:(-number_score.get(n,-1e9),n))
+              if n not in selected]
+        selected.extend(rest[:16-len(selected)])
+    selected=selected[:16]
+
+    return selected,{
+      "mode":"D组16码·多策略池波色+近10期波色",
+      "window":len(recent),
+      "window_issues":[str(x["issue"]) for x in recent if x["issue"]],
+      "pool_wave":{w:round(float(pool_wave.get(w,0))*100,1) for w in waves},
+      "recent10_wave":{w:round(float(recent_wave.get(w,0))*100,1) for w in waves},
+      "recent10_counts":{w:int(recent_count[w]) for w in waves},
+      "fused_wave":{w:round(float(fused.get(w,0))*100,1) for w in waves},
+      "wave_quota":quota,
+      "codes_by_wave":{w:[int(n) for n in by_wave.get(w,[])] for w in waves},
+      "code_count":16,
+      "independent":True,
+      "recalc_each_issue":True,
+      "uses_pool_wave":True,
+      "uses_recent10_wave":True,
+      "audit_regime":"D16V64|poolwave=60|recent10wave=40"
+    }
+
 def _stats20round_profile(profile,target_issue=None):
     """20期一轮 + 当前策略累计真实前瞻成绩。"""
     with db_lock:
@@ -9246,6 +9447,19 @@ def record_shadow_predictions(r):
     except Exception as e:
         print(f"[22C] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
 
+    # D组16码：多策略池波色 + 最新10期波色，独立前瞻锁单。
+    try:
+        best_profile,_=_select_profile(r)
+        c16d,_m16d=_predict16_dynamic_d(r,best_profile)
+        records.append((
+            target,D16_V64_PROFILE,
+            ",".join(str(n) for n in c16d),
+            "","", ""
+        ))
+        _record_strategy_audit(target,D16_V64_PROFILE,c16d,_m16d)
+    except Exception as e:
+        print(f"[16D] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
+
     # 平特一肖：独立B组近20期算法，真实前瞻锁单。
     try:
         py_b20,_py_meta=_predict_pingte_yixiao_b20(r)
@@ -9454,7 +9668,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v63",
+      "version":"v64",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -9888,6 +10102,8 @@ def build_model():
     c27b,meta27b=_predict27_dynamic_b(r,profile)
     # C组：只看最新10期，独立22位优化
     c22c,meta22c=_predict22_dynamic_c(r,profile)
+    # D组：多策略池波色 + 最新10期波色
+    c16d,meta16d=_predict16_dynamic_d(r,profile)
     stats20=_profile_hit_stats("20码精选",60)
     statsF=_f_dynamic_current_stats(next_issue)
     stats27=_stats27_a_v62()
@@ -9895,6 +10111,9 @@ def build_model():
     stats22c=_stats20round_profile(C22_V63_PROFILE,next_issue)
     stats22c["version_lifetime"]=_profile_lifetime_stats(C22_V63_PROFILE)
     stats22c["lifetime"]=_profiles_lifetime_stats([C22_V54_PROFILE,C22_V58_PROFILE,C22_V62_PROFILE,C22_V63_PROFILE])
+    stats16d=_stats20round_profile(D16_V64_PROFILE,next_issue)
+    stats16d["version_lifetime"]=_profile_lifetime_stats(D16_V64_PROFILE)
+    stats16d["lifetime"]=_profile_lifetime_stats(D16_V64_PROFILE)
     pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
@@ -9933,16 +10152,19 @@ def build_model():
       "special27":[f"{n:02d}" for n in sorted(c27)],
       "special27b":[f"{n:02d}" for n in sorted(c27b)],
       "special22c":[f"{n:02d}" for n in sorted(c22c)],
+      "special16d":[f"{n:02d}" for n in sorted(c16d)],
       "special24":[f"{n:02d}" for n in sorted(c20)],  # compatibility alias
       "strategy20":meta20,
       "strategy27":meta27,
       "strategy27b":meta27b,
       "strategy22c":meta22c,
+      "strategy16d":meta16d,
       "stats20":stats20,
       "statsF":statsF,
       "stats27":stats27,
       "stats27b":stats27b,
       "stats22c":stats22c,
+      "stats16d":stats16d,
       "pingte_b20_stats":pingte_b20_stats,
       "diagnostics20":diag20,
       "diagnostics27":diag27,
@@ -9994,7 +10216,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v63：B/C近10期缺尾补码 · F/A保持v62"
+        "mode":"v64：新增D组16码波色融合 · UI全局缩小"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -10075,6 +10297,8 @@ def model():
             stale["special20"]=[]
             stale["special27"]=[]
             stale["special27b"]=[]
+            stale["special22c"]=[]
+            stale["special16d"]=[]
             stale["special24"]=[]
             fc=dict(stale.get("forecast") or {})
             fc["target_issue"]=_next_issue_id(latest_issue)
@@ -10092,14 +10316,14 @@ def model():
           "issue":str(latest["issue"]) if latest else None,
           "next_issue":_next_issue_id(latest["issue"]) if latest else "",
           "count":0,"recalculating":True,"stale_prediction":True,
-          "special20":[],"special27":[],"special27b":[],"special24":[]
+          "special20":[],"special27":[],"special27b":[],"special22c":[],"special16d":[],"special24":[]
         }
 
     return {
       "issue":str(latest["issue"]) if latest else None,
       "next_issue":_next_issue_id(latest["issue"]) if latest else "",
       "count":0,"recalculating":True,"stale_prediction":True,
-      "special20":[],"special27":[],"special27b":[],"special24":[]
+      "special20":[],"special27":[],"special27b":[],"special22c":[],"special16d":[],"special24":[]
     }
 
 
