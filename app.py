@@ -676,7 +676,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v54：删除前台4肖4码，仅保留平特一肖；新增C组22码，C组与B组使用同一套“只看最新20期、每期开奖后重算、动态杀一头、冷3肖各2码、其他肖最多3码”算法，只把席位缩到22码。平特一肖也改成独立B组近20期算法，并与C组放在同一区域。C组同样每20期一轮并保留累计实盘。</div>
+  <div class="foot">v55：修复v54页面全是“--”的前端故障。原因是加入C组/平特一肖后，loadMain里重复声明了同名const变量，浏览器直接拒绝解析整段JavaScript；后台其实一直正常入库、学习、锁单和Supabase备份。v55已拆分变量名，并清理删除4肖4码后遗留的旧DOM更新代码。C组22码、平特一肖B近20期算法及全部v54功能不变。</div>
 </div>
 
 <script>
@@ -862,16 +862,16 @@ async function loadMain(){
 
     pingteOne.textContent=d.pingte_yixiao||'--';
     pingteSamples.textContent=`B组算法 · 近${d.pingte_samples??20}期实时滚动`;
-    const ps=d.pingte_b20_stats||{};
-    pingteRecord.textContent=`实盘：中 ${ps.hits??0}期 · 错 ${ps.misses??0}期`;
+    const pingteStats=d.pingte_b20_stats||{};
+    pingteRecord.textContent=`实盘：中 ${pingteStats.hits??0}期 · 错 ${pingteStats.misses??0}期`;
     const tr=d.trend||{};
     const w=tr.wave||{}, sz=tr.size||{}, pa=tr.parity||{}, wp=tr.wave_parity||{};
     waveTrend.innerHTML=`红 ${w['红']??0}%<br>蓝 ${w['蓝']??0}%<br>绿 ${w['绿']??0}%`;
     sizeTrend.innerHTML=`大 ${sz['大']??0}%<br>小 ${sz['小']??0}%`;
     parityTrend.innerHTML=`单 ${pa['单']??0}%<br>双 ${pa['双']??0}%`;
     waveParityTrend.innerHTML=`红单 ${wp['红单']??0}% · 红双 ${wp['红双']??0}%<br>蓝单 ${wp['蓝单']??0}% · 蓝双 ${wp['蓝双']??0}%<br>绿单 ${wp['绿单']??0}% · 绿双 ${wp['绿双']??0}%`;
-    const ps=d.profile_scores||{};
-    profileInfo.textContent=`当前模型 ${d.profile||'--'} · 校准${d.calibration_n??0}期 · 得分 ${ps[d.profile]??0}%`;
+    const profileScores=d.profile_scores||{};
+    profileInfo.textContent=`当前模型 ${d.profile||'--'} · 校准${d.calibration_n??0}期 · 得分 ${profileScores[d.profile]??0}%`;
     const fc=d.forecast||{};
     forecastTarget.textContent=d.stale_prediction?`正在重算 ${d.next_issue||'--'} 期`:(fc.target_issue?`预测 ${fc.target_issue} 期`:'--');
     forecastMode.innerHTML=`多策略前瞻<br>转移 ${fc.transition_samples??0} · 长期 ${fc.long_prior_ready?'✓':'…'}`;
@@ -912,7 +912,12 @@ async function loadMain(){
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
-  }catch(e){}
+  }catch(e){
+    try{
+      forecastTarget.textContent='页面数据加载失败';
+      forecastMode.textContent=String(e&&e.message?e.message:e).slice(0,80);
+    }catch(_e){}
+  }
 }
 async function loadStats(){
   try{
@@ -923,13 +928,9 @@ async function loadStats(){
     statsHint.textContent=`20码 ${c20.hits??0}/${c20.n??0} · 27码 ${ov27.hits??0}/${ov27.n??0} · 冷三肖误杀 ${d20.cold_zodiac_errors??0}`;
     if(st.building){
       hit22.textContent='计算中'; err22.textContent='';
-      hit4.textContent='计算中'; err4.textContent='';
-      hitZ.textContent='计算中'; errZ.textContent='';
       hitPingte.textContent='计算中'; errPingte.textContent='';
     }else{
       hit22.textContent=(c20.rate??0).toFixed(1)+'%'; err22.textContent=`${c20.hits??0}中${c20.n??0}`;
-      hit4.textContent=(st.hitMain??0).toFixed(1)+'%'; err4.textContent='错误 '+(st.errMain??0).toFixed(1)+'%';
-      hitZ.textContent=(st.hitZ??0).toFixed(1)+'%'; errZ.textContent='错误 '+(st.errZ??0).toFixed(1)+'%';
       hitPingte.textContent=(st.hitPingte??0).toFixed(1)+'%'; errPingte.textContent='错误 '+(st.errPingte??0).toFixed(1)+'%';
     }
   }catch(e){}
@@ -8321,7 +8322,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v54",
+      "version":"v55",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
