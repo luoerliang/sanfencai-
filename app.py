@@ -243,6 +243,17 @@ B27_V63_PROFILE="27B近10期缺尾补码v63"
 C22_V63_PROFILE="22C近10期缺尾补码v63"
 D16_V64_PROFILE="16D多策略波色+近10期v64"
 D16_V65_PROFILE="16D波色大小+近10期v65"
+F_DYNAMIC_V66_PROFILE="F动态v66减法验收"
+F_RAW_SAME_V66_PROFILE="F六模型同码数基准v66"
+F_RAW23_V66_PROFILE="F六模型Top23参考v66"
+F_CORE20_V66_PROFILE="F核心20贡献v66"
+F_ADD21_V66_PROFILE="F第21码贡献v66"
+F_ADD22_V66_PROFILE="F第22码贡献v66"
+F_ADD23_V66_PROFILE="F第23码贡献v66"
+A27_RAW_V66_PROFILE="A原始Top27基准v66"
+B27_RAW_V66_PROFILE="B原始Top27基准v66"
+C22_RAW_V66_PROFILE="C原始Top22基准v66"
+D16_RAW_V66_PROFILE="D原始Top16基准v66"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -506,6 +517,15 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   .title{font-size:17px}
 }
 
+
+
+.v66AuditRows{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.v66AuditBox{background:#0b1320;border:1px solid #22304a;border-radius:7px;padding:4px}
+.v66AuditName{font-size:8px;font-weight:800}
+.v66AuditMain{font-size:7px;margin-top:2px;line-height:1.25}
+.v66AuditGood{color:#35d491}.v66AuditBad{color:#ff6b78}.v66AuditWait{color:#9aa7ba}
+@media(max-width:430px){.v66AuditRows{grid-template-columns:repeat(2,1fr)}}
+
 </style>
 </head>
 <body>
@@ -606,7 +626,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div id="fDynamicTitle" class="sectionTitle">F动态 · 当前--码</div>
-        <div class="sectionHint">4+/6绝对保留 · 强3/6优先保 · 普通3/6只加分 · 其余误伤控制</div>
+        <div class="sectionHint">v66减法：4+/6绝保 · 强3/6优先 · 2/6严格限制 · 1/6停用</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -652,6 +672,16 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
       <span id="code27BCumulative" class="lifetimeStat">累计实盘 中0 · 错0</span>
       <span id="code27BMeta">等待实盘</span>
     </div>
+  </section>
+
+  <section class="card numberCard v66AuditCard">
+    <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">v66规则验收 · 加工 vs 原始同码数</div>
+        <div class="sectionHint">只看开奖前锁单 · 40期起评估 · 差异样本≥12才判断</div>
+      </div>
+    </div>
+    <div id="v66AuditRows" class="v66AuditRows"></div>
   </section>
 
   <section class="card numberCard dCard">
@@ -779,7 +809,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v65：D组16码在v64波色融合基础上加入“大小”。波色继续用正式波色模型60%+最新10期波色40%；大小用六模型综合池的大/小强弱60%+最新10期大小40%。程序同时计算红/蓝/绿配额和大/小配额，再在红大、红小、蓝大、蓝小、绿大、绿小六个交叉区域里挑最高分号码，最终固定16码、每期开奖后动态重算。F/A/B/C及紧凑UI保持v64。</div>
+  <div class="foot">v66减法验收版：不再继续堆规则。A/B/C/D每期同时锁一组“纯六模型同码数Top-N”作为原始基准，与现有加工策略一对一真实前瞻比较；40个配对样本后、且至少12个差异样本才开始判断规则是否真有增益。F保留4+/6绝对保留和强3/6优先，1/6救援完全关闭，2/6只有v66同码数实盘不落后且满40期后才允许极严格使用。历史、机器人、Supabase继续继承。</div>
 </div>
 
 <script>
@@ -973,6 +1003,17 @@ async function loadMain(){
     const bMR=m27b.missing_tail_rescue||{};
     const bMissCodes=Object.keys(bMR).map(t=>`${t}尾:${fmt(bMR[t].code)}`).join(' · ')||'无';
     code27BMeta.textContent=`近10期 · 杀${m27b.killed_head||'--'} · 缺尾 ${bMiss} · 补 ${bMissCodes} · 强尾 ${bTails}（软权${m27b.tail_weight_pct??10}%）`;
+    const rv=d.rule_validation||{};
+    v66AuditRows.innerHTML=['A','B','C','D'].map(k=>{
+      const x=rv[k]||{}, bad=x.flag==='raw_better', good=x.flag==='processed_better';
+      const cc=bad?'v66AuditBad':(good?'v66AuditGood':'v66AuditWait');
+      return `<div class="v66AuditBox">
+        <div class="v66AuditName">${k}组</div>
+        <div class="v66AuditMain">加工 ${x.processed_hits??0}/${x.n??0} · 原始 ${x.raw_hits??0}/${x.n??0}</div>
+        <div class="v66AuditMain ${cc}">${x.verdict||'等待样本'} · 净${x.net??0}</div>
+      </div>`;
+    }).join('');
+
     SPECIAL16D=d.special16d||[]; sp16d.innerHTML=balls(SPECIAL16D);
     const s16=d.stats16d||{}, m16=d.strategy16d||{};
     code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
@@ -1045,7 +1086,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v65.1 D16波色+大小修复 · F/A/B/C保持`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v66减法验收 · A/B/C/D原始同码数并行`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -4325,6 +4366,57 @@ def _f_v62_compare_stats(limit=240):
     }
 
 
+def _f_v66_compare_stats(limit=240):
+    """Fair same-count comparison for the current v62 F algorithm."""
+    profiles=(F_RAW_SAME_V66_PROFILE,F_DYNAMIC_V66_PROFILE,F_RAW23_V66_PROFILE)
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT target_issue,profile,hit24
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           profiles).fetchall()
+        finally:
+            c.close()
+
+    by={}
+    for x in rows:
+        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
+
+    issues=sorted(by,key=lambda q:int(q))[-int(limit):]
+    n=same_hits=f_hits=both_hit=both_miss=rescued=harmed=0
+    top23_n=top23_hits=0
+    for q in issues:
+        d=by[q]
+        if F_RAW_SAME_V66_PROFILE in d and F_DYNAMIC_V66_PROFILE in d:
+            n+=1
+            rh=int(d[F_RAW_SAME_V66_PROFILE])
+            fh=int(d[F_DYNAMIC_V66_PROFILE])
+            same_hits+=rh; f_hits+=fh
+            if rh and fh: both_hit+=1
+            elif (not rh) and (not fh): both_miss+=1
+            elif (not rh) and fh: rescued+=1
+            elif rh and (not fh): harmed+=1
+        if F_RAW23_V66_PROFILE in d:
+            top23_n+=1
+            top23_hits+=int(d[F_RAW23_V66_PROFILE])
+
+    return {
+      "n":n,"raw_hits":same_hits,"f_hits":f_hits,
+      "both_hit":both_hit,"both_miss":both_miss,
+      "rescued":rescued,"harmed":harmed,"net":rescued-harmed,
+      "raw_rate":round(100*same_hits/n,1) if n else 0.0,
+      "f_rate":round(100*f_hits/n,1) if n else 0.0,
+      "top23_n":top23_n,"top23_hits":top23_hits,
+      "top23_rate":round(100*top23_hits/top23_n,1) if top23_n else 0.0,
+      "f_misses":max(0,n-f_hits),
+      "fusion_miss":harmed,
+      "pool_all_miss":both_miss
+    }
+
+
 def _f_v62_slot_stats():
     """Forward-only v62 contribution of F core<=20 and +21/+22/+23."""
     profiles=[
@@ -4359,6 +4451,40 @@ def _f_v62_slot_stats():
     }
 
 
+def _f_v66_slot_stats():
+    """Forward-only v62 contribution of F core<=20 and +21/+22/+23."""
+    profiles=[
+      F_CORE20_V66_PROFILE,F_ADD21_V66_PROFILE,
+      F_ADD22_V66_PROFILE,F_ADD23_V66_PROFILE
+    ]
+    placeholders=",".join("?" for _ in profiles)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT profile,COUNT(*) AS n,
+                                      COALESCE(SUM(CASE WHEN hit24=1 THEN 1 ELSE 0 END),0) AS hits
+                               FROM prediction_log
+                               WHERE profile IN ({placeholders}) AND settled=1
+                               GROUP BY profile""",tuple(profiles)).fetchall()
+        finally:
+            c.close()
+
+    data={p:{"n":0,"hits":0,"misses":0,"rate":0.0} for p in profiles}
+    for x in rows:
+        p=str(x["profile"]); n=int(x["n"] or 0); h=int(x["hits"] or 0)
+        data[p]={"n":n,"hits":h,"misses":max(0,n-h),
+                 "rate":round(100*h/n,1) if n else 0.0}
+    core=data[F_CORE20_V66_PROFILE]
+    p21=data[F_ADD21_V66_PROFILE]
+    p22=data[F_ADD22_V66_PROFILE]
+    p23=data[F_ADD23_V66_PROFILE]
+    return {
+      "core20":core,"add21":p21,"add22":p22,"add23":p23,
+      "extra_hits":p21["hits"]+p22["hits"]+p23["hits"],
+      "observed_from":"v66"
+    }
+
+
 def _f_v62_swap_budget():
     """Normal (non-4+/6) intervention budget for v62.
 
@@ -4377,6 +4503,20 @@ def _f_v62_swap_budget():
         return 2,"普通调整救回稳定领先：最多2次",st
     return 1,"普通调整救回/误伤接近：最多1次",st
 
+
+
+def _f_v66_swap_budget():
+    st=_f_v66_compare_stats(240)
+    n=int(st.get("n",0))
+    rescued=int(st.get("rescued",0))
+    harmed=int(st.get("harmed",0))
+    pval=_exact_mcnemar_p(rescued,harmed)
+
+    if n<40:
+        return 1,"v66学习期：4+/6绝保外最多1次调整",st
+    if rescued+harmed>=12 and harmed>rescued and pval<=.10:
+        return 0,"加工误伤显著：只保留4+/6绝保",st
+    return 1,"减法模式：最多1次强3票/严格2票调整",st
 
 def _predict20_hot(r, profile):
     """F v62: 4+/6 absolute keep + strong 3/6 priority + harm control.
@@ -4482,7 +4622,7 @@ def _predict20_hot(r, profile):
     # --------------------------------------------------------
     # Harm controller decides how many OTHER changes F is allowed to make.
     # --------------------------------------------------------
-    swap_budget,swap_reason,swap_stats=_f_v62_swap_budget()
+    swap_budget,swap_reason,swap_stats=_f_v66_swap_budget()
 
     # Strict candidates OUTSIDE same-count baseline.
     candidates=[]
@@ -4530,37 +4670,24 @@ def _predict20_hot(r, profile):
 
         # 2/6: only if the exact pair is genuinely above median and the
         # number is already close to the baseline boundary.
-        if support.get(n,0)==2 and gap<=.022:
+        if support.get(n,0)==2 and gap<=.018 \
+           and int(swap_stats.get("n",0))>=40 \
+           and int(swap_stats.get("rescued",0))>=int(swap_stats.get("harmed",0)):
             supporters=sorted(k for k in models if ranks[k].get(n,99)<=20)
             if len(supporters)==2:
                 pair_name="+".join(supporters)
                 pv=float((pair_stats.get(pair_name) or {}).get("value",pair_baseline))
-                if pv>=pair_median+.015:
+                if pv>=pair_median+.020:
                     candidates.append((
                       2,
                       pv,
                       float(pool_score.get(n,0)),
                       n,
-                      f"2/6优质搭档 {pair_name}"
+                      f"2/6严格搭档 {pair_name}"
                     ))
                     continue
 
-        # 1/6 rescue is intentionally disabled until same-count evidence has
-        # shown that F is rescuing more than it harms.
-        if support.get(n,0)==1 and swap_stats.get("n",0)>=20 \
-           and int(swap_stats.get("rescued",0))>=int(swap_stats.get("harmed",0))+2 \
-           and gap<=.015:
-            sole=[k for k in models if ranks[k].get(n,99)<=20]
-            if len(sole)==1:
-                uv=unique_value.get(sole[0],{})
-                if int(uv.get("unique30",0))>=2:
-                    candidates.append((
-                      1,
-                      float(uv.get("value",0)),
-                      float(pool_score.get(n,0)),
-                      n,
-                      f"1/6独家救援 {sole[0]}"
-                    ))
+        # v66减法：1/6独家救援完全停用。
 
     candidates.sort(key=lambda x:(-x[0],-x[1],-x[2],x[3]))
 
@@ -4667,7 +4794,7 @@ def _predict20_hot(r, profile):
       "count_reasons":count_reasons,
       "edge_candidates":edge_candidates,
       "consensus":consensus_summary,
-      "regime":"v62四票绝保+强三票优先+误伤控制",
+      "regime":"v66减法：4票绝保+强3票优先+低票收缩",
       "correction_trained":0,
       "correction_weight_pct":0,
       "trend_weight_pct":0,
@@ -8898,6 +9025,87 @@ def _profile_hit_stats(profile,window=60):
 
 
 
+
+def _raw_pool_topn(r, profile, n, strategy="20"):
+    score,_models,_perf=_pool_ensemble_score(r,profile,strategy)
+    ranked=sorted(range(1,50),key=lambda x:(-float(score.get(x,-1e9)),x))
+    return ranked[:int(n)],{"ranked49":ranked,"code_count":int(n)}
+
+def _exact_mcnemar_p(proc_only,raw_only):
+    a=int(proc_only); b=int(raw_only); n=a+b
+    if n<=0: return 1.0
+    k=min(a,b)
+    tail=sum(math.comb(n,i) for i in range(k+1))/(2.0**n)
+    return min(1.0,2.0*tail)
+
+def _paired_rule_stats(processed_profile, raw_profile, code_count, limit=240):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,profile,hit24
+                              FROM prediction_log
+                              WHERE profile IN (?,?) AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (processed_profile,raw_profile)).fetchall()
+        finally:
+            c.close()
+    by={}
+    for x in rows:
+        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
+    issues=sorted(by,key=lambda q:int(q))[-int(limit):]
+
+    n=ph=rh=po=ro=both=miss=0
+    for q in issues:
+        d=by[q]
+        if processed_profile not in d or raw_profile not in d:
+            continue
+        n+=1
+        p=int(d[processed_profile]); r=int(d[raw_profile])
+        ph+=p; rh+=r
+        if p and r: both+=1
+        elif p and not r: po+=1
+        elif r and not p: ro+=1
+        else: miss+=1
+
+    discord=po+ro
+    pval=_exact_mcnemar_p(po,ro)
+    base=100.0*float(code_count)/49.0
+
+    if n<40:
+        verdict=f"样本收集中 {n}/40"
+        flag="collecting"
+    elif discord<12:
+        verdict=f"差异样本不足 {discord}/12"
+        flag="unclear"
+    elif ro>po and pval<=.10:
+        verdict="加工规则负增益"
+        flag="raw_better"
+    elif po>ro and pval<=.10:
+        verdict="加工规则有增益"
+        flag="processed_better"
+    else:
+        verdict="无显著差异"
+        flag="unclear"
+
+    return {
+      "n":n,"processed_hits":ph,"raw_hits":rh,
+      "processed_rate":round(100*ph/n,1) if n else 0.0,
+      "raw_rate":round(100*rh/n,1) if n else 0.0,
+      "random_baseline":round(base,1),
+      "processed_only":po,"raw_only":ro,
+      "both_hit":both,"both_miss":miss,
+      "discordant":discord,"p_value":round(pval,4),
+      "net":po-ro,"verdict":verdict,"flag":flag
+    }
+
+def _v66_validation_dashboard():
+    return {
+      "A":_paired_rule_stats(A27_V62_PROFILE,A27_RAW_V66_PROFILE,27),
+      "B":_paired_rule_stats(B27_V63_PROFILE,B27_RAW_V66_PROFILE,27),
+      "C":_paired_rule_stats(C22_V63_PROFILE,C22_RAW_V66_PROFILE,22),
+      "D":_paired_rule_stats(D16_V65_PROFILE,D16_RAW_V66_PROFILE,16),
+    }
+
 def _profiles_lifetime_stats(profiles):
     profiles=[p for p in profiles if p]
     if not profiles:
@@ -8956,7 +9164,7 @@ def _f_dynamic_current_stats(target_issue=None):
                               FROM prediction_log
                               WHERE profile=?
                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           (F_DYNAMIC_V62_PROFILE,)).fetchall()
+                           (F_DYNAMIC_V66_PROFILE,)).fetchall()
         finally:
             c.close()
 
@@ -8988,7 +9196,7 @@ def _f_dynamic_current_stats(target_issue=None):
     hits=sum(int(x.get("hit24") or 0) for x in settled)
     misses=max(0,n-hits)
 
-    lifetime=_profiles_lifetime_stats([F_DYNAMIC_V57_PROFILE,F_DYNAMIC_V59_PROFILE,F_DYNAMIC_V61_PROFILE,F_DYNAMIC_V62_PROFILE])
+    lifetime=_profiles_lifetime_stats([F_DYNAMIC_V57_PROFILE,F_DYNAMIC_V59_PROFILE,F_DYNAMIC_V61_PROFILE,F_DYNAMIC_V62_PROFILE,F_DYNAMIC_V66_PROFILE])
     return {
       "start":start_issue,
       "end":_issue_add(start_issue,19) if start_issue else "",
@@ -9594,6 +9802,20 @@ def record_shadow_predictions(r):
     except Exception as e:
         print(f"[27A-V62] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
+    # v66同码数原始基准：开奖前锁定，绝不事后回填。
+    try:
+        best_profile,_=_select_profile(r)
+        rawA,_=_raw_pool_topn(r,best_profile,27,"27")
+        rawB,_=_raw_pool_topn(r,best_profile,27,"20")
+        rawC,_=_raw_pool_topn(r,best_profile,22,"20")
+        rawD,_=_raw_pool_topn(r,best_profile,16,"20")
+        records.append((target,A27_RAW_V66_PROFILE,",".join(str(n) for n in rawA),"","",""))
+        records.append((target,B27_RAW_V66_PROFILE,",".join(str(n) for n in rawB),"","",""))
+        records.append((target,C22_RAW_V66_PROFILE,",".join(str(n) for n in rawC),"","",""))
+        records.append((target,D16_RAW_V66_PROFILE,",".join(str(n) for n in rawD),"","",""))
+    except Exception as e:
+        print(f"[V66-RAW] baseline lock failed: {type(e).__name__}: {e}",flush=True)
+
     # Parallel specialist pool: same 20-code target, different logic.
     try:
         best_profile,_=_select_profile(r)
@@ -9613,20 +9835,20 @@ def record_shadow_predictions(r):
         add23=_mf.get("add23_code")
 
         records.append((target,POOL_FINAL_PROFILE,",".join(str(n) for n in c20f),"","",py))
-        records.append((target,F_DYNAMIC_V62_PROFILE,",".join(str(n) for n in c20f),"","",py))
-        records.append((target,F_RAW_SAME_V62_PROFILE,",".join(str(n) for n in raw_same),"","",py))
-        records.append((target,F_RAW23_V62_PROFILE,",".join(str(n) for n in raw23),"","",py))
+        records.append((target,F_DYNAMIC_V66_PROFILE,",".join(str(n) for n in c20f),"","",py))
+        records.append((target,F_RAW_SAME_V66_PROFILE,",".join(str(n) for n in raw_same),"","",py))
+        records.append((target,F_RAW23_V66_PROFILE,",".join(str(n) for n in raw23),"","",py))
 
         # Exact contribution tracking from v60 forward.
-        records.append((target,F_CORE20_V62_PROFILE,",".join(str(n) for n in core20),"","",py))
+        records.append((target,F_CORE20_V66_PROFILE,",".join(str(n) for n in core20),"","",py))
         if add21 is not None:
-            records.append((target,F_ADD21_V62_PROFILE,str(int(add21)),"","",py))
+            records.append((target,F_ADD21_V66_PROFILE,str(int(add21)),"","",py))
         if add22 is not None:
-            records.append((target,F_ADD22_V62_PROFILE,str(int(add22)),"","",py))
+            records.append((target,F_ADD22_V66_PROFILE,str(int(add22)),"","",py))
         if add23 is not None:
-            records.append((target,F_ADD23_V62_PROFILE,str(int(add23)),"","",py))
+            records.append((target,F_ADD23_V66_PROFILE,str(int(add23)),"","",py))
 
-        _record_strategy_audit(target,F_DYNAMIC_V62_PROFILE,c20f,_mf)
+        _record_strategy_audit(target,F_DYNAMIC_V66_PROFILE,c20f,_mf)
     except Exception as e:
         print(f"[POOL] locked specialist models failed: {type(e).__name__}: {e}",flush=True)
 
@@ -9774,7 +9996,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v65.1",
+      "version":"v66",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -10242,13 +10464,14 @@ def build_model():
         stats27=dict(stats27)
         stats27["live_round_reset"]=False
 
-    diag20=_strategy_diagnostics(F_DYNAMIC_V62_PROFILE,60)
+    diag20=_strategy_diagnostics(F_DYNAMIC_V66_PROFILE,60)
     diag27=_strategy_diagnostics(A27_V62_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
-    f_error_diag=_f_v62_compare_stats(240)
-    f_slot_stats=_f_v62_slot_stats()
+    f_error_diag=_f_v66_compare_stats(240)
+    f_slot_stats=_f_v66_slot_stats()
+    rule_validation=_v66_validation_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -10279,6 +10502,7 @@ def build_model():
       "stable_signals":stable_signals,
       "f_error_diag":f_error_diag,
       "f_slot_stats":f_slot_stats,
+      "rule_validation":rule_validation,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -10322,7 +10546,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v65.1：修复D组波色+大小初始化卡住"
+        "mode":"v66：减法验收 · 同码数原始Top-N并行锁单"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
