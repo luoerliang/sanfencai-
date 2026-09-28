@@ -243,17 +243,50 @@ B27_V63_PROFILE="27B近10期缺尾补码v63"
 C22_V63_PROFILE="22C近10期缺尾补码v63"
 D16_V64_PROFILE="16D多策略波色+近10期v64"
 D16_V65_PROFILE="16D波色大小+近10期v65"
-F_DYNAMIC_V66_PROFILE="F动态v66减法验收"
-F_RAW_SAME_V66_PROFILE="F六模型同码数基准v66"
-F_RAW23_V66_PROFILE="F六模型Top23参考v66"
-F_CORE20_V66_PROFILE="F核心20贡献v66"
-F_ADD21_V66_PROFILE="F第21码贡献v66"
-F_ADD22_V66_PROFILE="F第22码贡献v66"
-F_ADD23_V66_PROFILE="F第23码贡献v66"
-A27_RAW_V66_PROFILE="A原始Top27基准v66"
-B27_RAW_V66_PROFILE="B原始Top27基准v66"
-C22_RAW_V66_PROFILE="C原始Top22基准v66"
-D16_RAW_V66_PROFILE="D原始Top16基准v66"
+F_V66_PROFILE="F减法v66四票绝保"
+F_RAW_V66_PROFILE="F原始同码数Control_v66"
+F_OLD_SHADOW_V66_PROFILE="F旧规则Shadow_v66"
+A27_V66_PROFILE="A27原始Top27Control_v66"
+A27_OLD_SHADOW_V66_PROFILE="A27杀号Shadow_v66"
+B27_V66_PROFILE="B27原始近10Top27Control_v66"
+B27_OLD_SHADOW_V66_PROFILE="B27规则Shadow_v66"
+C22_V66_PROFILE="C22原始近10Top22Control_v66"
+C22_OLD_SHADOW_V66_PROFILE="C22规则Shadow_v66"
+D16_V66_PROFILE="D16波色大小软评分_v66"
+D16_OLD_SHADOW_V66_PROFILE="D16配额Shadow_v66"
+
+# ===================== v67 frozen live + atomic shadow experiments =====================
+F_BASE_V67_PROFILE="F_BASE_TOP22_v67"
+F_4VOTE_V67_PROFILE="F_4VOTE_Shadow_v67"
+F_STRONG3_V67_PROFILE="F_STRONG3_Shadow_v67"
+F_LIMIT2_V67_PROFILE="F_LIMIT2_Shadow_v67"
+F_LEGACY_V66_V67_PROFILE="F_LEGACY_V66_Shadow_v67"
+
+A_BASE_V67_PROFILE="A_BASE_TOP27_v67"
+A_KILL_HEAD_V67_PROFILE="A_KILL_HEAD_Shadow_v67"
+A_FIXED_ROUND_V67_PROFILE="A_FIXED_ROUND_Shadow_v67"
+A_LEGACY_V66_V67_PROFILE="A_LEGACY_V66_Shadow_v67"
+
+B_BASE_V67_PROFILE="B_BASE_TOP27_v67"
+B_TAIL_ONLY_V67_PROFILE="B_TAIL_ONLY_Shadow_v67"
+B_HEAD_ONLY_V67_PROFILE="B_HEAD_ONLY_Shadow_v67"
+B_TAIL_HEAD_V67_PROFILE="B_TAIL_HEAD_Shadow_v67"
+B_LEGACY_V66_V67_PROFILE="B_LEGACY_V66_Shadow_v67"
+
+C_BASE_V67_PROFILE="C_BASE_TOP22_v67"
+C_TAIL_ONLY_V67_PROFILE="C_TAIL_ONLY_Shadow_v67"
+C_COLDHEAD_ONLY_V67_PROFILE="C_COLDHEAD_ONLY_Shadow_v67"
+C_TAIL_COLDHEAD_V67_PROFILE="C_TAIL_COLDHEAD_Shadow_v67"
+C_LEGACY_V66_V67_PROFILE="C_LEGACY_V66_Shadow_v67"
+
+D_BASE_V67_PROFILE="D_BASE_TOP16_v67"
+D_COLOR_ONLY_V67_PROFILE="D_COLOR_ONLY_Shadow_v67"
+D_SIZE_ONLY_V67_PROFILE="D_SIZE_ONLY_Shadow_v67"
+D_COLOR_SIZE_V67_PROFILE="D_COLOR_SIZE_Shadow_v67"
+D_LEGACY_V66_V67_PROFILE="D_LEGACY_V66_Shadow_v67"
+
+V67_RULE_VERSION="v67-r1"
+V67_MODEL_VERSION="v67-model-001"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -517,15 +550,6 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   .title{font-size:17px}
 }
 
-
-
-.v66AuditRows{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-.v66AuditBox{background:#0b1320;border:1px solid #22304a;border-radius:7px;padding:4px}
-.v66AuditName{font-size:8px;font-weight:800}
-.v66AuditMain{font-size:7px;margin-top:2px;line-height:1.25}
-.v66AuditGood{color:#35d491}.v66AuditBad{color:#ff6b78}.v66AuditWait{color:#9aa7ba}
-@media(max-width:430px){.v66AuditRows{grid-template-columns:repeat(2,1fr)}}
-
 </style>
 </head>
 <body>
@@ -611,7 +635,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">最近10期正式锁单结算</div>
-        <div class="sectionHint">✓ 命中 · × 未中 · F为最终20码</div>
+        <div class="sectionHint">✓ 命中 · × 未中 · F为固定22码BASE</div>
       </div>
     </div>
     <div class="tableWrap">
@@ -625,8 +649,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div id="fDynamicTitle" class="sectionTitle">F动态 · 当前--码</div>
-        <div class="sectionHint">v66减法：4+/6绝保 · 强3/6优先 · 2/6严格限制 · 1/6停用</div>
+        <div id="fDynamicTitle" class="sectionTitle">F组 · 固定22码</div>
+        <div class="sectionHint">v67正式：原始集成Top22固定；4票/强3/2票/旧v66全部Shadow</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -642,8 +666,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">A组27码 · 10期长码</div>
-        <div id="code27Hint" class="sectionHint">10期长码 · 六模型多策略池在0/1/2/3/4头中杀最弱一头 · 一轮固定</div>
+        <div class="sectionTitle">A组27码 · 原始Top27</div>
+        <div id="code27Hint" class="sectionHint">v67正式只用原始Top27；杀头和10期固定分别做Shadow</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -660,7 +684,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">B组27码 · 每期动态</div>
-        <div class="sectionHint">最新10期 · 未出尾必须补1码 · 补码按杀头避开被杀头 · 每期重算</div>
+        <div class="sectionHint">v67正式：近10期原始Top27；缺尾/杀头拆开Shadow</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
@@ -668,27 +692,28 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="miniInfoRow">
       <span id="code27BWindow">实时窗口 --</span>
       <span id="code27BRound">本轮20期 · 已开0/20 · 中0 · 错0</span>
-      <span id="code27BRecord">近20期策略实时滚动</span>
+      <span id="code27BRecord">每期重算 · 20期只作为展示统计窗口</span>
       <span id="code27BCumulative" class="lifetimeStat">累计实盘 中0 · 错0</span>
       <span id="code27BMeta">等待实盘</span>
     </div>
   </section>
 
-  <section class="card numberCard v66AuditCard">
+  <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">v66规则验收 · 加工 vs 原始同码数</div>
-        <div class="sectionHint">只看开奖前锁单 · 40期起评估 · 差异样本≥12才判断</div>
+        <div class="sectionTitle">v67 原子规则验收</div>
+        <div class="sectionHint">Live只用BASE；所有规则先Shadow。60/120/200期固定检查，不追着开奖结果改参数。</div>
       </div>
     </div>
-    <div id="v66AuditRows" class="v66AuditRows"></div>
+    <div id="v67RuleGrid" class="strategyGrid"></div>
+    <div class="pillrow"><span class="pill">救回=BASE错/Shadow中 · 误伤=BASE中/Shadow错 · 净=救回-误伤</span></div>
   </section>
 
   <section class="card numberCard dCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">D组16码 · 波色 + 大小</div>
-        <div class="sectionHint">波色与大小同时融合 · 各自模型60% + 最新10期40% · 每期重算</div>
+        <div class="sectionTitle">D组16码 · 原始Top16</div>
+        <div class="sectionHint">v67正式：原始Top16；波色、大小、波色+大小分别Shadow</div>
       </div>
       <button class="copyBtn" onclick="copy16D()">复制D组</button>
     </div>
@@ -704,7 +729,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div class="sectionTitle">C组22码 · 平特一肖</div>
-        <div class="sectionHint">独立22位 · 最新10期未出尾必须补1码 · 补码优先避开杀头</div>
+        <div class="sectionHint">v67正式：近10期原始Top22；缺尾/冷头拆开Shadow</div>
       </div>
       <button class="copyBtn" onclick="copy22C()">复制C组</button>
     </div>
@@ -787,7 +812,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead"><div class="sectionTitle">滚动验证（后台更新）</div><div id="statsHint" class="sectionHint">等待样本</div></div>
     <div class="stats">
-      <div class="stat"><div class="statName">F动态19–23</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
+      <div class="stat"><div class="statName">F固定22</div><div id="hit22" class="rate">--</div><div id="err22" class="err"></div></div>
       <div class="stat"><div class="statName">平特一肖</div><div id="hitPingte" class="rate">--</div><div id="errPingte" class="err"></div></div>
     </div>
   </section>
@@ -809,7 +834,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v66减法验收版：不再继续堆规则。A/B/C/D每期同时锁一组“纯六模型同码数Top-N”作为原始基准，与现有加工策略一对一真实前瞻比较；40个配对样本后、且至少12个差异样本才开始判断规则是否真有增益。F保留4+/6绝对保留和强3/6优先，1/6救援完全关闭，2/6只有v66同码数实盘不落后且满40期后才允许极严格使用。历史、机器人、Supabase继续继承。</div>
+  <div class="foot">v67冻结实验版：F固定原始Top22；A/B原始Top27；C原始Top22；D原始Top16作为唯一Live。4票、强3、2票、杀头、固定轮、缺尾、冷头、波色、大小全部拆成独立Shadow。每期同一历史截止点、开奖前同时锁单；开奖后自动记救回/误伤/净贡献。60期只初筛，120期可降级，200期且差异样本≥30才允许晋级候选。修改任何规则即新版本重新计数。</div>
 </div>
 
 <script>
@@ -943,31 +968,25 @@ async function loadMain(){
     const m20=d.strategy20||{}, m27=d.strategy27||{}, m27b=d.strategy27b||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{}, s27b=d.stats27b||{};
     const cs=m20.consensus||{};
     const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
-    const strong3Used=(m20.edge_rescue_swaps||[]).filter(x=>(x.reason||'').includes('强3/6')).length;
-    code20Brief.textContent=`F=${m20.dynamic_count??SPECIAL20.length}码 · 4+/6绝保 ${cs.protected4_actual_count??0}/${cs.protected4_count??0} · 强3/6补 ${strong3Used} · 其他调整 ${Math.max(0,(m20.edge_rescue_swaps||[]).length-strong3Used)}`;
-    code20Fusion.textContent=`4+/6不受替换预算限制 · ${m20.swap_reason||'误伤控制'} · 冷肖不扣分`;
+    code20Brief.textContent=`F=22码固定BASE · 原始集成Top22 · 不再动态扩缩码`;
+    code20Fusion.textContent=`4票绝保 / 强3票 / 2票限制 / 旧v66 全部Shadow独立验收`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fLife=sF.lifetime||{};
     code20Lifetime.textContent=`累计实盘：中 ${fLife.hits??0}期 · 错 ${fLife.misses??0}期`;
     const fed=d.f_error_diag||{};
     const fss=d.f_slot_stats||{}, fc20=fss.core20||{}, f21=fss.add21||{}, f22=fss.add22||{}, f23=fss.add23||{};
-    fErrorRescueInfo.textContent=`同码数${fed.n??0}期：原始中${fed.raw_hits??0} / F中${fed.f_hits??0} · 救${fed.rescued??0} 伤${fed.harmed??0} 净${fed.net??0} ｜ 核心≤20中${fc20.hits??0}/${fc20.n??0} · +21救${f21.hits??0}/${f21.n??0} · +22救${f22.hits??0}/${f22.n??0} · +23救${f23.hits??0}/${f23.n??0}`;
+    const vf=((d.v67_rules||{}).F||{}).F_4VOTE||{};
+    fErrorRescueInfo.textContent=`v67 F四票Shadow ${vf.n??0}期：救${vf.rescue??0} / 伤${vf.harm??0} / 净${vf.net??0} · ${vf.status||'孵化Shadow'}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, f20=m27.filter20||{}, trg=m27.trend_trigger||{};
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
     const c3=m27.cold3_codes||{};
     const c3txt=(m27.coldest3||[]).map(z=>`${z}${(c3[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
-    // v46: new live codes = new live round. Never let previous-round
-    // settlement numbers remain under a newly changed 27-code set.
-    const liveRoundStart=String(m27.block_start||'');
-    const liveRoundEnd=String(m27.block_end||'');
-    const statRoundStart=String(cur27.start||'');
-    const same27Round=!!liveRoundStart && statRoundStart===liveRoundStart;
-    const roundStart=liveRoundStart||((cur27.start && String(cur27.start)!=='0')?String(cur27.start):'--');
-    const roundEnd=liveRoundEnd||((cur27.end && String(cur27.end)!=='0')?String(cur27.end):'--');
-    const opened=same27Round?Number(cur27.n??0):0;
-    const hits=same27Round?Number(cur27.hits??0):0;
-    const misses=same27Round?Number(cur27.misses??Math.max(0,opened-hits)):0;
+    const roundStart=(cur27.start && String(cur27.start)!=='0')?String(cur27.start):'--';
+    const roundEnd=(cur27.end && String(cur27.end)!=='0')?String(cur27.end):'--';
+    const opened=Number(cur27.n??0);
+    const hits=Number(cur27.hits??0);
+    const misses=Number(cur27.misses??Math.max(0,opened-hits));
 
     const c3pairs=(m27.coldest3||[]).map(z=>{
       const arr=(c3[z]||[]).map(fmt);
@@ -978,17 +997,18 @@ async function loadMain(){
       && (m27.coldest3||[]).every(z=>(c3[z]||[]).length===2)
       && cold6.length===6;
 
-    code27Block.textContent=`本轮 ${roundStart} — ${roundEnd}`;
-    code27Kill.textContent=`已开 ${opened}/10期 · 中 ${hits}期 · 错 ${misses}期`;
+    const va=((d.v67_rules||{}).A||{}).A_KILL_HEAD_ONLY||{};
+    code27Block.textContent=`v67 A BASE · 杀头Shadow ${va.n??0}期 · 救${va.rescue??0}/伤${va.harm??0}/净${va.net??0}`;
+    code27Kill.textContent=`本轮20期 · 已开 ${opened}/20 · 中 ${hits} · 错 ${misses}`;
     const aLife=s27.lifetime||{};
     code27Lifetime.textContent=`累计实盘：中 ${aLife.hits??0}期 · 错 ${aLife.misses??0}期`;
     const ah=m27.head_decision||{};
-    code27Stats.textContent=`多策略池杀 ${m27.killed_head||'--'} · ${ah.confidence||'本轮固定'} · 纯十期前瞻Top27后排除该头 · 10期内不变`;
+    code27Stats.textContent=`v67正式只用原始Top27 · 杀头与10期固定分别Shadow`;
 
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
     const wlast=wb.length?wb[0]:'--';
-    code27BWindow.textContent=`分析窗口 ${wfirst} — ${wlast} · 最新20期实时滚动`;
+    code27BWindow.textContent=`分析窗口 ${wfirst} — ${wlast} · 严格最新10期`;
     const bRoundStart=s27b.start||'--', bRoundEnd=s27b.end||'--';
     code27BRound.textContent=`本轮 ${bRoundStart}—${bRoundEnd} · 已开 ${s27b.n??0}/20 · 中 ${s27b.hits??0} · 错 ${s27b.misses??0}`;
     code27BRecord.textContent=`第${s27b.round_no??1}轮 · 满20期自动归零重开`;
@@ -998,41 +1018,38 @@ async function loadMain(){
     const bCold=m27b.coldest3||[];
     const bColdCodes=m27b.cold3_codes||{};
     const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
-    const bTails=(m27b.tail_top3||[]).map(x=>`${x}尾`).join('/')||'--';
-    const bMiss=(m27b.missing_tails||[]).map(x=>`${x}尾`).join('/')||'无';
-    const bMR=m27b.missing_tail_rescue||{};
-    const bMissCodes=Object.keys(bMR).map(t=>`${t}尾:${fmt(bMR[t].code)}`).join(' · ')||'无';
-    code27BMeta.textContent=`近10期 · 杀${m27b.killed_head||'--'} · 缺尾 ${bMiss} · 补 ${bMissCodes} · 强尾 ${bTails}（软权${m27b.tail_weight_pct??10}%）`;
-    const rv=d.rule_validation||{};
-    v66AuditRows.innerHTML=['A','B','C','D'].map(k=>{
-      const x=rv[k]||{}, bad=x.flag==='raw_better', good=x.flag==='processed_better';
-      const cc=bad?'v66AuditBad':(good?'v66AuditGood':'v66AuditWait');
-      return `<div class="v66AuditBox">
-        <div class="v66AuditName">${k}组</div>
-        <div class="v66AuditMain">加工 ${x.processed_hits??0}/${x.n??0} · 原始 ${x.raw_hits??0}/${x.n??0}</div>
-        <div class="v66AuditMain ${cc}">${x.verdict||'等待样本'} · 净${x.net??0}</div>
-      </div>`;
-    }).join('');
-
+    const vb=(((d.v67_rules||{}).B||{}).B_TAIL_ONLY)||{};
+    code27BMeta.textContent=`v67 BASE · 缺尾Shadow ${vb.n??0}期 · 救${vb.rescue??0} / 伤${vb.harm??0} / 净${vb.net??0} · ${vb.status||'孵化'}`;
     SPECIAL16D=d.special16d||[]; sp16d.innerHTML=balls(SPECIAL16D);
     const s16=d.stats16d||{}, m16=d.strategy16d||{};
     code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
     const dLife=s16.lifetime||{};
     code16DLifetime.textContent=`累计实盘：中 ${dLife.hits??0}期 · 错 ${dLife.misses??0}期`;
-    const df=m16.fused_wave||{}, dq=m16.wave_quota||{}, dwc=m16.recent10_wave_counts||{};
-    const ds=m16.fused_size||{}, dsq=m16.size_quota||{}, dsc=m16.recent10_size_counts||{};
-    code16DMeta.textContent=`波 红${df['红']??0}/蓝${df['蓝']??0}/绿${df['绿']??0}% 配${dq['红']??0}/${dq['蓝']??0}/${dq['绿']??0} · 大小 大${ds['大']??0}%/小${ds['小']??0}% 配${dsq['大']??0}/${dsq['小']??0} · 近10 大${dsc['大']??0}/小${dsc['小']??0}`;
+    const df=m16.fused_wave||{}, ds=m16.fused_size||{}, vd=(((d.v67_rules||{}).D||{}).D_COLOR_SIZE)||{};
+    code16DMeta.textContent=`v67 BASE Top16 · 波色+大小Shadow ${vd.n??0}期 · 救${vd.rescue??0}/伤${vd.harm??0}/净${vd.net??0}`;
 
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
     code22CRound.textContent=`本轮 ${s22.start||'--'}—${s22.end||'--'} · 已开 ${s22.n??0}/20 · 中 ${s22.hits??0} · 错 ${s22.misses??0}`;
     const cLife=s22.lifetime||{};
     code22CLifetime.textContent=`累计实盘：中 ${cLife.hits??0}期 · 错 ${cLife.misses??0}期`;
-    const cCold=(m22.coldest3||[]).join('、')||'--';
-    const cMiss=(m22.missing_tails||[]).map(x=>`${x}尾`).join('/')||'无';
-    const cMR=m22.missing_tail_rescue||{};
-    const cMissCodes=Object.keys(cMR).map(t=>`${t}尾:${fmt(cMR[t].code)}`).join(' · ')||'无';
-    code22CMeta.textContent=`近10期 · ${m22.killed_head||'--'}软降权 · 缺尾 ${cMiss} · 补 ${cMissCodes} · 冷3肖总保${m22.cold_actual_total??m22.cold_target_total??'--'}码`;
+    const vc=(((d.v67_rules||{}).C||{}).C_TAIL_ONLY)||{};
+    code22CMeta.textContent=`v67 BASE · 缺尾Shadow ${vc.n??0}期 · 救${vc.rescue??0}/伤${vc.harm??0}/净${vc.net??0}`;
+
+    const vr=d.v67_rules||{};
+    const vrNames={
+      F:{F_4VOTE:'F·4票绝保',F_STRONG3:'F·强3票',F_LIMIT2:'F·2票限制',F_LEGACY_V66:'F·旧v66'},
+      A:{A_KILL_HEAD_ONLY:'A·杀头',A_FIXED_ROUND_ONLY:'A·10期固定',A_LEGACY_V66:'A·旧v66'},
+      B:{B_TAIL_ONLY:'B·缺尾补码',B_HEAD_ONLY:'B·杀头',B_TAIL_HEAD:'B·缺尾+杀头',B_LEGACY_V66:'B·旧v66'},
+      C:{C_TAIL_ONLY:'C·缺尾补码',C_COLDHEAD_ONLY:'C·冷头/杀头',C_TAIL_COLDHEAD:'C·缺尾+冷头',C_LEGACY_V66:'C·旧v66'},
+      D:{D_COLOR_ONLY:'D·波色',D_SIZE_ONLY:'D·大小',D_COLOR_SIZE:'D·波色+大小',D_LEGACY_V66:'D·旧v66'}
+    };
+    const vrRows=[];
+    Object.keys(vrNames).forEach(g=>Object.keys(vrNames[g]).forEach(k=>{
+      const x=(vr[g]||{})[k]||{};
+      vrRows.push(`<div class="strategyBox"><div class="strategyTitle">${vrNames[g][k]}</div><div class="strategyMain">${x.n??0}期 · 救${x.rescue??0} 伤${x.harm??0} 净${x.net??0}<br>${x.status||'孵化Shadow'} · 效率${x.coverage_efficiency??0}</div></div>`);
+    }));
+    if(document.getElementById('v67RuleGrid')) v67RuleGrid.innerHTML=vrRows.join('');
 
     pingteOne.textContent=d.pingte_yixiao||'--';
     const pm=d.pingte_meta||{};
@@ -1057,7 +1074,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`F误伤控制<br>动态19–23码`;
+    learningState.innerHTML=`v67冻结实验<br>F固定22码`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -1068,12 +1085,13 @@ async function loadMain(){
     compFinal.textContent=(cp.final_n??0)>0?`互补在线 ${cp.final_hits??0}/${cp.final_n} = ${cp.final_rate??0}%`:'互补在线：从本版开始独立验证';
     const dg20=d.diagnostics20||{}, dg27=d.diagnostics27||{}, cr=d.correction||{};
     const rb=dg20.rank_buckets||{}, fr=dg20.failure_reasons||{};
-    regimeState.innerHTML=`20码：${m20.regime||'平衡'}<br>27码：${m27.regime||'平衡'}`;
-    corr20State.innerHTML=`已学错题 ${(cr['20']||{}).trained??0} 次<br>纠错 ${m20.correction_weight_pct??0}% · 模型池 ${m20.pool_mix_pct??0}%`;
+    regimeState.innerHTML=`F：${m20.regime||'BASE'}<br>A：${m27.regime||'BASE'}`;
+    corr20State.innerHTML=`v67 Live不启用纠错替换<br>BASE 100% · 规则只Shadow`;
     rank20State.innerHTML=`1-10 ${rb['1-10']??0} · 11-20 ${rb['11-20']??0}<br>21-27 ${rb['21-27']??0} · 28+ ${rb['28+']??0}`;
     const kh=dg27.head_kill_by_head||{}, k0=kh['0头']||{}, k4=kh['4头']||{};
     const r27=dg27.rule_failure_reasons||{};
-    head27State.innerHTML=`原始Top27 ${dg27.raw_top27_hits??0}/${dg27.raw_top27_n??0} = ${dg27.raw_top27_rate??0}%<br>错因：底层${r27['底层模型没抓到']??0} · 波杀${r27['波色单双杀错']??0} · 头杀${r27['0/4头杀错']??0} · 冷肖${r27['冷肖每肖2码没覆盖']??0} · 配额${r27['生肖3码上限挤出']??0}`;
+    const ak=(((d.v67_rules||{}).A||{}).A_KILL_HEAD_ONLY)||{};
+    head27State.innerHTML=`A杀头Shadow ${ak.n??0}期<br>救${ak.rescue??0} · 伤${ak.harm??0} · 净${ak.net??0} · ${ak.status||'孵化'}`;
     const rescued=(m20.rescued_cold_zodiacs||[]);
     const swaps=(m20.edge_rescue_swaps||[]);
     zodiacTransitionState.textContent=`生肖转移：${(m20.zodiac_transition_top||[]).join('、')||'--'} · 冷肖救回 ${rescued.join('、')||'无'}`;
@@ -1086,7 +1104,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v66减法验收 · A/B/C/D原始同码数并行`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67冻结BASE + 原子Shadow同步锁单`;
     calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -1119,7 +1137,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`模型池主导F<br>动态19–23码`;
+    learningState.innerHTML=`v67冻结实验<br>F固定22码`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -1199,6 +1217,35 @@ def init_db():
           actual_zodiac TEXT,
           PRIMARY KEY(target_issue,profile)
         )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS rule_counterfactual(
+          draw_id TEXT NOT NULL,
+          group_id TEXT NOT NULL,
+          model_version TEXT NOT NULL,
+          rule_id TEXT NOT NULL,
+          rule_version TEXT NOT NULL,
+          experiment_id TEXT NOT NULL,
+          cohort_start_draw TEXT,
+          history_cutoff_id TEXT NOT NULL,
+          locked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          locked_before_draw INTEGER NOT NULL DEFAULT 1,
+          base_code_count INTEGER NOT NULL,
+          rule_code_count INTEGER NOT NULL,
+          base_codes TEXT NOT NULL,
+          rule_codes TEXT NOT NULL,
+          result_special INTEGER,
+          base_hit INTEGER,
+          rule_hit INTEGER,
+          rescue INTEGER,
+          harm INTEGER,
+          same_win INTEGER,
+          same_lose INTEGER,
+          net_contribution INTEGER,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          settled INTEGER DEFAULT 0,
+          PRIMARY KEY(draw_id,group_id,rule_id,rule_version)
+        )""")
+        c.execute("""CREATE INDEX IF NOT EXISTS idx_rule_cf_rule
+                     ON rule_counterfactual(group_id,rule_id,rule_version,settled,draw_id)""")
         c.execute("""CREATE TABLE IF NOT EXISTS learner_scores(
           profile TEXT PRIMARY KEY,
           weight REAL DEFAULT 1.0,
@@ -4366,57 +4413,6 @@ def _f_v62_compare_stats(limit=240):
     }
 
 
-def _f_v66_compare_stats(limit=240):
-    """Fair same-count comparison for the current v62 F algorithm."""
-    profiles=(F_RAW_SAME_V66_PROFILE,F_DYNAMIC_V66_PROFILE,F_RAW23_V66_PROFILE)
-    placeholders=",".join("?" for _ in profiles)
-    with db_lock:
-        c=connect()
-        try:
-            rows=c.execute(f"""SELECT target_issue,profile,hit24
-                               FROM prediction_log
-                               WHERE profile IN ({placeholders}) AND settled=1
-                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           profiles).fetchall()
-        finally:
-            c.close()
-
-    by={}
-    for x in rows:
-        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
-
-    issues=sorted(by,key=lambda q:int(q))[-int(limit):]
-    n=same_hits=f_hits=both_hit=both_miss=rescued=harmed=0
-    top23_n=top23_hits=0
-    for q in issues:
-        d=by[q]
-        if F_RAW_SAME_V66_PROFILE in d and F_DYNAMIC_V66_PROFILE in d:
-            n+=1
-            rh=int(d[F_RAW_SAME_V66_PROFILE])
-            fh=int(d[F_DYNAMIC_V66_PROFILE])
-            same_hits+=rh; f_hits+=fh
-            if rh and fh: both_hit+=1
-            elif (not rh) and (not fh): both_miss+=1
-            elif (not rh) and fh: rescued+=1
-            elif rh and (not fh): harmed+=1
-        if F_RAW23_V66_PROFILE in d:
-            top23_n+=1
-            top23_hits+=int(d[F_RAW23_V66_PROFILE])
-
-    return {
-      "n":n,"raw_hits":same_hits,"f_hits":f_hits,
-      "both_hit":both_hit,"both_miss":both_miss,
-      "rescued":rescued,"harmed":harmed,"net":rescued-harmed,
-      "raw_rate":round(100*same_hits/n,1) if n else 0.0,
-      "f_rate":round(100*f_hits/n,1) if n else 0.0,
-      "top23_n":top23_n,"top23_hits":top23_hits,
-      "top23_rate":round(100*top23_hits/top23_n,1) if top23_n else 0.0,
-      "f_misses":max(0,n-f_hits),
-      "fusion_miss":harmed,
-      "pool_all_miss":both_miss
-    }
-
-
 def _f_v62_slot_stats():
     """Forward-only v62 contribution of F core<=20 and +21/+22/+23."""
     profiles=[
@@ -4451,40 +4447,6 @@ def _f_v62_slot_stats():
     }
 
 
-def _f_v66_slot_stats():
-    """Forward-only v62 contribution of F core<=20 and +21/+22/+23."""
-    profiles=[
-      F_CORE20_V66_PROFILE,F_ADD21_V66_PROFILE,
-      F_ADD22_V66_PROFILE,F_ADD23_V66_PROFILE
-    ]
-    placeholders=",".join("?" for _ in profiles)
-    with db_lock:
-        c=connect()
-        try:
-            rows=c.execute(f"""SELECT profile,COUNT(*) AS n,
-                                      COALESCE(SUM(CASE WHEN hit24=1 THEN 1 ELSE 0 END),0) AS hits
-                               FROM prediction_log
-                               WHERE profile IN ({placeholders}) AND settled=1
-                               GROUP BY profile""",tuple(profiles)).fetchall()
-        finally:
-            c.close()
-
-    data={p:{"n":0,"hits":0,"misses":0,"rate":0.0} for p in profiles}
-    for x in rows:
-        p=str(x["profile"]); n=int(x["n"] or 0); h=int(x["hits"] or 0)
-        data[p]={"n":n,"hits":h,"misses":max(0,n-h),
-                 "rate":round(100*h/n,1) if n else 0.0}
-    core=data[F_CORE20_V66_PROFILE]
-    p21=data[F_ADD21_V66_PROFILE]
-    p22=data[F_ADD22_V66_PROFILE]
-    p23=data[F_ADD23_V66_PROFILE]
-    return {
-      "core20":core,"add21":p21,"add22":p22,"add23":p23,
-      "extra_hits":p21["hits"]+p22["hits"]+p23["hits"],
-      "observed_from":"v66"
-    }
-
-
 def _f_v62_swap_budget():
     """Normal (non-4+/6) intervention budget for v62.
 
@@ -4503,20 +4465,6 @@ def _f_v62_swap_budget():
         return 2,"普通调整救回稳定领先：最多2次",st
     return 1,"普通调整救回/误伤接近：最多1次",st
 
-
-
-def _f_v66_swap_budget():
-    st=_f_v66_compare_stats(240)
-    n=int(st.get("n",0))
-    rescued=int(st.get("rescued",0))
-    harmed=int(st.get("harmed",0))
-    pval=_exact_mcnemar_p(rescued,harmed)
-
-    if n<40:
-        return 1,"v66学习期：4+/6绝保外最多1次调整",st
-    if rescued+harmed>=12 and harmed>rescued and pval<=.10:
-        return 0,"加工误伤显著：只保留4+/6绝保",st
-    return 1,"减法模式：最多1次强3票/严格2票调整",st
 
 def _predict20_hot(r, profile):
     """F v62: 4+/6 absolute keep + strong 3/6 priority + harm control.
@@ -4622,7 +4570,7 @@ def _predict20_hot(r, profile):
     # --------------------------------------------------------
     # Harm controller decides how many OTHER changes F is allowed to make.
     # --------------------------------------------------------
-    swap_budget,swap_reason,swap_stats=_f_v66_swap_budget()
+    swap_budget,swap_reason,swap_stats=_f_v62_swap_budget()
 
     # Strict candidates OUTSIDE same-count baseline.
     candidates=[]
@@ -4670,24 +4618,37 @@ def _predict20_hot(r, profile):
 
         # 2/6: only if the exact pair is genuinely above median and the
         # number is already close to the baseline boundary.
-        if support.get(n,0)==2 and gap<=.018 \
-           and int(swap_stats.get("n",0))>=40 \
-           and int(swap_stats.get("rescued",0))>=int(swap_stats.get("harmed",0)):
+        if support.get(n,0)==2 and gap<=.022:
             supporters=sorted(k for k in models if ranks[k].get(n,99)<=20)
             if len(supporters)==2:
                 pair_name="+".join(supporters)
                 pv=float((pair_stats.get(pair_name) or {}).get("value",pair_baseline))
-                if pv>=pair_median+.020:
+                if pv>=pair_median+.015:
                     candidates.append((
                       2,
                       pv,
                       float(pool_score.get(n,0)),
                       n,
-                      f"2/6严格搭档 {pair_name}"
+                      f"2/6优质搭档 {pair_name}"
                     ))
                     continue
 
-        # v66减法：1/6独家救援完全停用。
+        # 1/6 rescue is intentionally disabled until same-count evidence has
+        # shown that F is rescuing more than it harms.
+        if support.get(n,0)==1 and swap_stats.get("n",0)>=20 \
+           and int(swap_stats.get("rescued",0))>=int(swap_stats.get("harmed",0))+2 \
+           and gap<=.015:
+            sole=[k for k in models if ranks[k].get(n,99)<=20]
+            if len(sole)==1:
+                uv=unique_value.get(sole[0],{})
+                if int(uv.get("unique30",0))>=2:
+                    candidates.append((
+                      1,
+                      float(uv.get("value",0)),
+                      float(pool_score.get(n,0)),
+                      n,
+                      f"1/6独家救援 {sole[0]}"
+                    ))
 
     candidates.sort(key=lambda x:(-x[0],-x[1],-x[2],x[3]))
 
@@ -4794,7 +4755,7 @@ def _predict20_hot(r, profile):
       "count_reasons":count_reasons,
       "edge_candidates":edge_candidates,
       "consensus":consensus_summary,
-      "regime":"v66减法：4票绝保+强3票优先+低票收缩",
+      "regime":"v62四票绝保+强三票优先+误伤控制",
       "correction_trained":0,
       "correction_weight_pct":0,
       "trend_weight_pct":0,
@@ -7961,6 +7922,552 @@ def _predict16_dynamic_d(r, profile):
     }
 
 
+
+def _predict20_v66(r, profile):
+    """v66 F: pure six-model same-count control + ONLY 4+/6 absolute keep.
+
+    Strong3/6, 2/6, 1/6 and other rescue swaps remain SHADOW only.
+    This preserves the user's 4+/6 hard rule while removing unproven
+    secondary interventions from the live list.
+    """
+    old_codes, old_meta = _predict20_hot(r, profile)
+    raw = list(old_meta.get("raw_same_count") or [])
+    ranked = list(old_meta.get("ranked49") or [])
+    cs = dict(old_meta.get("consensus") or {})
+    protected = []
+    for x in (cs.get("protected4") or []):
+        try:
+            protected.append(int(x))
+        except Exception:
+            pass
+
+    selected = list(raw)
+    forced = []
+    rank_pos = {n:i for i,n in enumerate(ranked)}
+    for n in protected:
+        if n in selected:
+            continue
+        # Replace the weakest current non-protected raw number.
+        drop_pool = [x for x in selected if x not in protected]
+        if drop_pool:
+            out_n = max(drop_pool, key=lambda x: rank_pos.get(x, 999))
+            selected[selected.index(out_n)] = n
+            forced.append({"in":f"{n:02d}","out":f"{out_n:02d}","reason":"4+/6绝对保留"})
+        else:
+            selected.append(n)
+            forced.append({"in":f"{n:02d}","out":"","reason":"4+/6绝对保留·扩码"})
+
+    # Keep deterministic order by underlying raw ranking.
+    selected = sorted(set(selected), key=lambda n: rank_pos.get(n, 999))
+    meta = dict(old_meta)
+    meta["selected_ordered"] = list(selected)
+    meta["dynamic_count"] = len(selected)
+    meta["forced4_swaps"] = forced
+    meta["forced4_count"] = len(forced)
+    meta["edge_rescue_swaps"] = []
+    meta["swap_budget"] = 0
+    meta["swap_reason"] = "v66减法：强3票/2票/1票全部转Shadow，不再改最终码"
+    meta["regime"] = "v66原始同码数 + 4+/6绝对保留"
+    meta["audit_regime"] = "F66|rawsame+4of6only"
+    meta["shadow_old_codes"] = list(old_codes)
+    return selected, meta, list(old_codes), dict(old_meta)
+
+def _predict27_a_v66(r, profile):
+    """A v66 live list = raw six-model Top27. Old kill-head version is shadow."""
+    pool_score, _models, perf = _pool_ensemble_score(r, profile, "27")
+    ranked = sorted(range(1,50), key=lambda n:(-pool_score.get(n,-1e9), n))
+    selected = ranked[:27]
+    return selected, {
+      "mode":"A v66 原始Top27 Control",
+      "ranked49":ranked,
+      "raw_top27":selected,
+      "killed_head":"",
+      "head_decision":{"active":False,"reason":"v66硬杀码停用，旧规则仅Shadow"},
+      "block_start":"",
+      "block_end":"",
+      "round_position":1,
+      "round_mode":"每期原始Top27对照",
+      "code_count":27,
+      "core23":selected[:23],
+      "mobile4":selected[23:27],
+      "coldest3":[],
+      "cold3_codes":{},
+      "cold_defense6":[],
+      "zodiac_counts":{},
+      "rescue28":{"active":False,"code":None,"message":""},
+      "regime":"v66 A原始Top27 Control",
+      "audit_regime":"A27V66|raw-control",
+      "pool_weights_pct":{k:round(100*v,1) for k,v in (perf.get("weights") or {}).items()}
+    }
+
+def _predict27_b_v66(r, profile):
+    """B live = its own latest10 raw ranking Top27; all hard rules are shadow."""
+    old_codes, old_meta = _predict27_dynamic_b(r, profile)
+    ranked = list(old_meta.get("ranked49") or [])
+    if not ranked:
+        score = {int(k):float(v) for k,v in (old_meta.get("score49") or {}).items()}
+        ranked = sorted(range(1,50), key=lambda n:(-score.get(n,-1e9), n))
+    selected = ranked[:27]
+    meta = dict(old_meta)
+    meta["mode"] = "B v66 近10期原始Top27 Control"
+    meta["killed_head_shadow"] = old_meta.get("killed_head","")
+    meta["killed_head"] = ""
+    meta["missing_tail_rescue_shadow"] = old_meta.get("missing_tail_rescue") or {}
+    meta["missing_tail_rescue"] = {}
+    meta["regime"] = "v66 B原始近10Top27；杀头/冷肖/缺尾仅Shadow"
+    meta["audit_regime"] = "B27V66|raw10-control"
+    return selected, meta, list(old_codes), dict(old_meta)
+
+def _predict22_c_v66(r, profile):
+    """C live = same latest10 mother ranking Top22; C structure rules are shadow."""
+    _b_old, bmeta = _predict27_dynamic_b(r, profile)
+    old_codes, old_meta = _predict22_dynamic_c(r, profile)
+    ranked = list(bmeta.get("ranked49") or old_meta.get("ranked49") or [])
+    if not ranked:
+        score = {int(k):float(v) for k,v in (bmeta.get("score49") or {}).items()}
+        ranked = sorted(range(1,50), key=lambda n:(-score.get(n,-1e9), n))
+    selected = ranked[:22]
+    meta = {
+      "mode":"C v66 近10期原始Top22 Control",
+      "ranked49":ranked,
+      "killed_head":"",
+      "coldest3":[],
+      "missing_tails":list(bmeta.get("missing_tails") or []),
+      "missing_tail_rescue":{},
+      "cold_actual_total":0,
+      "cold_target_total":0,
+      "tail_weight_pct":10.0,
+      "regime":"v66 C原始近10Top22；杀码/冷肖/缺尾仅Shadow",
+      "audit_regime":"C22V66|raw10-control"
+    }
+    return selected, meta, list(old_codes), dict(old_meta)
+
+def _predict16_d_v66(r, profile):
+    """D v66: wave+size remain SOFT FEATURES only; no hard quota grid."""
+    nums=list(range(1,50))
+    recent=list(r[:10])
+    specialists=_specialist_model_scores(r,profile,"20")
+    W=dict(specialists.get("W") or {})
+    pool_score,_models,_perf=_pool_ensemble_score(r,profile,"20")
+
+    waves=["红","蓝","绿"]
+    sizes=["大","小"]
+
+    # Latest10 weighted wave/size signals.
+    wr=Counter(); sr=Counter(); tw=0.0
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        wt=exp_weight(i,3.0)
+        wr[wave_of(n)]+=wt; sr[size_of(n)]+=wt; tw+=wt
+    if tw<=0: tw=1.0
+    wshare={w:wr[w]/tw for w in waves}
+    sshare={z:sr[z]/tw for z in sizes}
+    wn=_norm_values(wshare,waves)
+    sn=_norm_values(sshare,sizes)
+
+    # Model-side aggregate, still soft.
+    pool_wave={}
+    for w in waves:
+        arr=[n for n in nums if wave_of(n)==w]
+        pool_wave[w]=sum(float(W.get(n,.5)) for n in arr)/len(arr)
+    pool_wave=_norm_values(pool_wave,waves)
+
+    pool_size={}
+    for z in sizes:
+        arr=[n for n in nums if size_of(n)==z]
+        pool_size[z]=sum(float(pool_score.get(n,.5)) for n in arr)/len(arr)
+    pool_size=_norm_values(pool_size,sizes)
+
+    fused_wave={w:.60*pool_wave[w]+.40*wn[w] for w in waves}
+    fused_size={z:.60*pool_size[z]+.40*sn[z] for z in sizes}
+
+    score={
+      n:.70*float(pool_score.get(n,.5))
+        +.16*float(W.get(n,.5))
+        +.08*float(fused_wave.get(wave_of(n),.5))
+        +.06*float(fused_size.get(size_of(n),.5))
+      for n in nums
+    }
+    ranked=sorted(nums,key=lambda n:(-score[n],n))
+    selected=ranked[:16]
+
+    # Old quota algorithm is still calculated for shadow comparison.
+    old_codes, old_meta=_predict16_dynamic_d(r,profile)
+
+    return selected,{
+      "mode":"D v66 波色+大小软评分Top16",
+      "ranked49":ranked,
+      "fused_wave":{k:round(v*100,1) for k,v in fused_wave.items()},
+      "fused_size":{k:round(v*100,1) for k,v in fused_size.items()},
+      "wave_quota":dict(Counter(wave_of(n) for n in selected)),
+      "size_quota":dict(Counter(size_of(n) for n in selected)),
+      "recent10_wave_counts":dict(Counter(wave_of(int(x["special"])) for x in recent if x["special"])),
+      "recent10_size_counts":dict(Counter(size_of(int(x["special"])) for x in recent if x["special"])),
+      "code_count":16,
+      "independent":True,
+      "recalc_each_issue":True,
+      "regime":"v66 D波色大小仅软评分，不硬配额",
+      "audit_regime":"D16V66|soft-wave-size",
+      "shadow_old_codes":list(old_codes)
+    }, list(old_codes), dict(old_meta)
+
+def _v66_pair_compare(control_profile, shadow_profile, limit=600):
+    """Paired forward-only comparison: control vs old rule shadow."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,profile,hit24
+                              FROM prediction_log
+                              WHERE profile IN (?,?) AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) DESC
+                              LIMIT ?""",(control_profile,shadow_profile,int(limit)*2+20)).fetchall()
+        finally:
+            c.close()
+    by={}
+    for x in rows:
+        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
+
+    pairs=[]
+    for issue in sorted(by,key=lambda q:int(q),reverse=True):
+        d=by[issue]
+        if control_profile in d and shadow_profile in d:
+            pairs.append((d[control_profile],d[shadow_profile]))
+        if len(pairs)>=limit:
+            break
+
+    both_hit=both_miss=rescue=harm=0
+    for c0,s0 in pairs:
+        if c0 and s0: both_hit+=1
+        elif (not c0) and (not s0): both_miss+=1
+        elif (not c0) and s0: rescue+=1
+        elif c0 and (not s0): harm+=1
+    n=len(pairs)
+    return {
+      "n":n,
+      "control_hits":sum(x[0] for x in pairs),
+      "shadow_hits":sum(x[1] for x in pairs),
+      "both_hit":both_hit,"both_miss":both_miss,
+      "rescue":rescue,"harm":harm,"net":rescue-harm,
+      "status":("停用候选" if n>=100 and harm>rescue else
+                "观察" if n<250 else
+                "保留Shadow" if rescue<=harm else "有正贡献待验证")
+    }
+
+def _v66_validation_dashboard():
+    return {
+      "F":_v66_pair_compare(F_RAW_V66_PROFILE,F_OLD_SHADOW_V66_PROFILE,600),
+      "A":_v66_pair_compare(A27_V66_PROFILE,A27_OLD_SHADOW_V66_PROFILE,600),
+      "B":_v66_pair_compare(B27_V66_PROFILE,B27_OLD_SHADOW_V66_PROFILE,600),
+      "C":_v66_pair_compare(C22_V66_PROFILE,C22_OLD_SHADOW_V66_PROFILE,600),
+      "D":_v66_pair_compare(D16_V66_PROFILE,D16_OLD_SHADOW_V66_PROFILE,600),
+      "rule":"同一期配对：旧规则救回=Control错/Shadow中；误伤=Control中/Shadow错；净贡献=救回-误伤"
+    }
+
+
+# ===================== v67 frozen-live / atomic-shadow layer =====================
+def _v67_force_include(base, include_codes, ranked, count):
+    selected=list(base[:count])
+    pos={n:i for i,n in enumerate(ranked)}
+    include=[]
+    for x in include_codes:
+        try: x=int(x)
+        except Exception: continue
+        if x not in include: include.append(x)
+    for n in include:
+        if n in selected: continue
+        drops=[x for x in selected if x not in include]
+        if not drops: break
+        out=max(drops,key=lambda x:pos.get(x,999))
+        selected[selected.index(out)]=n
+    return sorted(set(selected),key=lambda n:pos.get(n,999))[:count]
+
+def _v67_tail_rescue(base, ranked, missing_tails, count, avoid_head=""):
+    """Guarantee each missing tail with one code; no zodiac/cold rules."""
+    selected=list(base[:count])
+    pos={n:i for i,n in enumerate(ranked)}
+    protected=set()
+    changes=[]
+    for t in missing_tails or []:
+        try: t=int(t)
+        except Exception: continue
+        existing=[n for n in selected if n%10==t and (not avoid_head or head_of(n)!=avoid_head)]
+        if existing:
+            protected.add(min(existing,key=lambda n:pos.get(n,999)))
+            continue
+        cand=[n for n in ranked if n not in selected and n%10==t and (not avoid_head or head_of(n)!=avoid_head)]
+        if not cand: continue
+        add=cand[0]
+        drop_pool=[n for n in selected if n not in protected and n%10 not in set(int(x) for x in (missing_tails or []))]
+        if not drop_pool: drop_pool=[n for n in selected if n not in protected]
+        if not drop_pool: continue
+        drop=max(drop_pool,key=lambda n:pos.get(n,999))
+        selected[selected.index(drop)]=add
+        protected.add(add)
+        changes.append({"tail":t,"in":add,"out":drop})
+    return sorted(set(selected),key=lambda n:pos.get(n,999))[:count],changes
+
+def _v67_fixed_round_codes(profile, target_issue, current_codes, span=10):
+    """Freeze the first code-set of each span; this isolates 'fixed round' only."""
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,special24 FROM prediction_log
+                              WHERE profile=? ORDER BY CAST(target_issue AS INTEGER) ASC""",
+                           (profile,)).fetchall()
+        finally:
+            c.close()
+    rows=[dict(x) for x in rows]
+    rem=len(rows)%int(span)
+    if rem:
+        chunk=rows[-rem:]
+        return _csv_nums(chunk[0]["special24"])[:len(current_codes)], {
+            "round_start":str(chunk[0]["target_issue"]),"round_position":rem+1,"frozen":True
+        }
+    return list(current_codes), {"round_start":str(target_issue),"round_position":1,"frozen":True}
+
+def _predict_f_v67(r, profile):
+    pool_score, _mods, _perf = _pool_ensemble_score(r,profile,"20")
+    ranked=sorted(range(1,50),key=lambda n:(-pool_score.get(n,-1e9),n))
+    base=ranked[:22]
+    models,perf,ranks,support,weighted,_top15=_f_consensus_map(r,profile)
+    old_codes,old_meta=_predict20_hot(r,profile)
+
+    # 4+/6 only, fixed 22 seats.
+    four=[n for n in ranked if support.get(n,0)>=4]
+    v4=_v67_force_include(base,four,ranked,22)
+
+    # Strong 3/6 only, fixed 22 seats, at most one swap.
+    trio_stats,trio_median,trio_q75,trio_baseline=_f_trio_value()
+    strong=[]
+    boundary=float(pool_score.get(base[-1],0.0))
+    for n in ranked[22:]:
+        if support.get(n,0)!=3: continue
+        supporters=sorted(k for k in models if ranks[k].get(n,99)<=20)
+        if len(supporters)!=3: continue
+        trio_name="+".join(supporters)
+        tv=float((trio_stats.get(trio_name) or {}).get("value",trio_baseline))
+        gap=max(0.0,boundary-float(pool_score.get(n,0.0)))
+        ok=(gap<=.035) and ((tv>=trio_q75) or (tv>=trio_median+.008 and float(weighted.get(n,0))>=.48))
+        if ok: strong.append((tv,float(weighted.get(n,0)),float(pool_score.get(n,0)),n,trio_name))
+    strong.sort(reverse=True)
+    v3=list(base)
+    if strong:
+        n=strong[0][3]
+        drop=max(v3,key=lambda x:ranked.index(x))
+        v3[v3.index(drop)]=n
+        v3=sorted(v3,key=lambda x:ranked.index(x))
+
+    # Qualified 2/6 only, fixed 22 seats, at most one swap.
+    pair_stats,pair_median,pair_baseline=_f_pair_value()
+    twos=[]
+    for n in ranked[22:]:
+        if support.get(n,0)!=2: continue
+        supporters=sorted(k for k in models if ranks[k].get(n,99)<=20)
+        if len(supporters)!=2: continue
+        pair_name="+".join(supporters)
+        pv=float((pair_stats.get(pair_name) or {}).get("value",pair_baseline))
+        gap=max(0.0,boundary-float(pool_score.get(n,0.0)))
+        if gap<=.022 and pv>=pair_median+.015:
+            twos.append((pv,float(pool_score.get(n,0)),n,pair_name))
+    twos.sort(reverse=True)
+    v2=list(base)
+    if twos:
+        n=twos[0][2]
+        drop=max(v2,key=lambda x:ranked.index(x))
+        v2[v2.index(drop)]=n
+        v2=sorted(v2,key=lambda x:ranked.index(x))
+
+    meta={
+      "mode":"v67 F固定22原始集成Top22","code_count":22,"ranked49":ranked,
+      "dynamic_count":22,"regime":"v67 F BASE固定Top22","audit_regime":"F67|base22",
+      "consensus":{"protected4_count":len(four),"protected4":[f"{n:02d}" for n in four],
+                   "protected4_actual_count":sum(1 for n in four if n in base)},
+      "shadow4":v4,"shadow3":v3,"shadow2":v2,"legacy_v66":list(old_codes),
+      "strong3_candidate":f"{strong[0][3]:02d}" if strong else "",
+      "limit2_candidate":f"{twos[0][2]:02d}" if twos else "",
+      "old_meta":old_meta
+    }
+    return base,meta,{"4vote":v4,"strong3":v3,"limit2":v2,"legacy":list(old_codes)}
+
+def _predict_a_v67(r,profile,target_issue):
+    pool_score,_models,perf=_pool_ensemble_score(r,profile,"27")
+    ranked=sorted(range(1,50),key=lambda n:(-pool_score.get(n,-1e9),n))
+    base=ranked[:27]
+    hd=_pool_5head_kill_decision(r,profile,"27")
+    killed=str(hd.get("killed_head") or "")
+    kill=[n for n in ranked if not killed or head_of(n)!=killed][:27]
+    fixed,fmeta=_v67_fixed_round_codes(A_FIXED_ROUND_V67_PROFILE,target_issue,base,10)
+    legacy,lmeta=_predict27_tenblock_v62(r,profile,target_issue)
+    meta={"mode":"v67 A原始Top27","ranked49":ranked,"raw_top27":base,"code_count":27,
+          "killed_head":"","head_decision":{"active":False,"reason":"Live不杀码"},
+          "block_start":"","block_end":"","round_position":1,
+          "regime":"v67 A BASE Top27","audit_regime":"A67|base27",
+          "shadow_killed_head":killed,"fixed_round_meta":fmeta}
+    return base,meta,{"kill_head":kill,"fixed_round":fixed,"legacy":list(legacy)}
+
+def _predict_b_v67(r,profile):
+    legacy,lmeta=_predict27_dynamic_b(r,profile)
+    ranked=list(lmeta.get("ranked49") or [])
+    if not ranked:
+        sc={int(k):float(v) for k,v in (lmeta.get("score49") or {}).items()}
+        ranked=sorted(range(1,50),key=lambda n:(-sc.get(n,-1e9),n))
+    base=ranked[:27]
+    killed=str(lmeta.get("killed_head") or "")
+    missing=list(lmeta.get("missing_tails") or [])
+    head=[n for n in ranked if not killed or head_of(n)!=killed][:27]
+    tail,tail_changes=_v67_tail_rescue(base,ranked,missing,27,"")
+    both,both_changes=_v67_tail_rescue(head,ranked,missing,27,killed)
+    meta=dict(lmeta)
+    meta.update({"mode":"v67 B原始近10Top27","killed_head":"","missing_tail_rescue":{},
+                 "regime":"v67 B BASE近10 Top27","audit_regime":"B67|base27",
+                 "atomic_tail_changes":tail_changes,"atomic_tail_head_changes":both_changes,
+                 "shadow_killed_head":killed})
+    return base,meta,{"tail_only":tail,"head_only":head,"tail_head":both,"legacy":list(legacy)}
+
+def _predict_c_v67(r,profile):
+    _bleg,bmeta=_predict27_dynamic_b(r,profile)
+    legacy,lmeta=_predict22_dynamic_c(r,profile)
+    ranked=list(bmeta.get("ranked49") or lmeta.get("ranked49") or list(range(1,50)))
+    base=ranked[:22]
+    missing=list(bmeta.get("missing_tails") or [])
+    killed=str(bmeta.get("killed_head") or "")
+    tail,tail_changes=_v67_tail_rescue(base,ranked,missing,22,"")
+
+    # Head/cold structural score only; tail rescue excluded.
+    score22={int(k):float(v) for k,v in (lmeta.get("score22_base") or {}).items()}
+    if score22:
+        coldhead_rank=sorted(ranked,key=lambda n:(-score22.get(n,-1e9),n))
+    else:
+        coldhead_rank=list(lmeta.get("ranked49") or ranked)
+    coldhead=coldhead_rank[:22]
+    tail_cold,tc_changes=_v67_tail_rescue(coldhead,coldhead_rank,missing,22,killed)
+    meta={"mode":"v67 C原始近10Top22","ranked49":ranked,"code_count":22,"killed_head":"",
+          "coldest3":[],"missing_tails":missing,"missing_tail_rescue":{},
+          "regime":"v67 C BASE近10 Top22","audit_regime":"C67|base22",
+          "atomic_tail_changes":tail_changes,"atomic_tail_cold_changes":tc_changes,
+          "shadow_killed_head":killed}
+    return base,meta,{"tail_only":tail,"coldhead_only":coldhead,"tail_coldhead":tail_cold,"legacy":list(legacy)}
+
+def _predict_d_v67(r,profile):
+    nums=list(range(1,50))
+    pool_score,_models,_perf=_pool_ensemble_score(r,profile,"20")
+    ranked=sorted(nums,key=lambda n:(-pool_score.get(n,-1e9),n))
+    base=ranked[:16]
+    _soft,soft_meta=_predict16_d_v66(r,profile)
+    legacy,lmeta=_predict16_dynamic_d(r,profile)
+    fw={k:float(v)/100.0 for k,v in (soft_meta.get("fused_wave") or {}).items()}
+    fs={k:float(v)/100.0 for k,v in (soft_meta.get("fused_size") or {}).items()}
+    def take(wave_w,size_w):
+        base_w=max(0.0,1.0-wave_w-size_w)
+        sc={n:base_w*float(pool_score.get(n,.5))+wave_w*fw.get(wave_of(n),.5)+size_w*fs.get(size_of(n),.5) for n in nums}
+        return sorted(nums,key=lambda n:(-sc[n],n))[:16]
+    color=take(.16,0.0)
+    size=take(0.0,.16)
+    both=take(.10,.10)
+    meta={"mode":"v67 D原始Top16","ranked49":ranked,"code_count":16,
+          "fused_wave":soft_meta.get("fused_wave") or {},"fused_size":soft_meta.get("fused_size") or {},
+          "regime":"v67 D BASE Top16","audit_regime":"D67|base16"}
+    return base,meta,{"color_only":color,"size_only":size,"color_size":both,"legacy":list(legacy)}
+
+def _binom_tail_half(k,n,alternative="greater"):
+    if n<=0: return 1.0
+    den=2**n
+    if alternative=="greater":
+        return min(1.0,sum(math.comb(n,i) for i in range(k,n+1))/den)
+    return min(1.0,sum(math.comb(n,i) for i in range(0,k+1))/den)
+
+def _v67_rule_status(n,discordant,net,p_help,p_harm):
+    if n<60: return "孵化Shadow"
+    if n>=200 and discordant>=30 and net<=-6 and p_harm<=.10: return "STOP"
+    if n>=120 and net<=0: return "降级Shadow"
+    if n>=200 and discordant>=30 and net>=6 and p_help<=.05: return "晋级候选"
+    if n>=60 and discordant>=12 and net>=2: return "继续候选"
+    return "继续Shadow"
+
+def _v67_cohort_start(group_id,rule_id,target):
+    with db_lock:
+        c=connect()
+        try:
+            row=c.execute("""SELECT MIN(CAST(draw_id AS INTEGER)) AS m FROM rule_counterfactual
+                             WHERE group_id=? AND rule_id=? AND rule_version=?""",
+                          (group_id,rule_id,V67_RULE_VERSION)).fetchone()
+        finally: c.close()
+    return str(row["m"]) if row and row["m"] is not None else str(target)
+
+def _lock_rule_counterfactual(target,group_id,base_codes,rule_id,rule_codes,history_cutoff_id):
+    cohort=_v67_cohort_start(group_id,rule_id,target)
+    with db_lock:
+        c=connect()
+        try:
+            c.execute("""INSERT OR IGNORE INTO rule_counterfactual
+              (draw_id,group_id,model_version,rule_id,rule_version,experiment_id,
+               cohort_start_draw,history_cutoff_id,locked_before_draw,
+               base_code_count,rule_code_count,base_codes,rule_codes)
+              VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)""",
+              (str(target),str(group_id),V67_MODEL_VERSION,str(rule_id),V67_RULE_VERSION,
+               f"v67-{group_id}",str(cohort),str(history_cutoff_id),
+               len(base_codes),len(rule_codes),
+               ",".join(str(int(x)) for x in base_codes),
+               ",".join(str(int(x)) for x in rule_codes)))
+            c.commit()
+        finally: c.close()
+
+def _settle_rule_counterfactual(issue,actual_special):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT group_id,rule_id,rule_version,base_codes,rule_codes
+                              FROM rule_counterfactual WHERE draw_id=? AND settled=0""",
+                           (str(issue),)).fetchall()
+            for row in rows:
+                base=set(_csv_nums(row["base_codes"]))
+                rule=set(_csv_nums(row["rule_codes"]))
+                bh=int(int(actual_special) in base); rh=int(int(actual_special) in rule)
+                rescue=int(rh and not bh); harm=int(bh and not rh)
+                sw=int(rh and bh); sl=int((not rh) and (not bh))
+                c.execute("""UPDATE rule_counterfactual SET settled=1,result_special=?,base_hit=?,rule_hit=?,
+                             rescue=?,harm=?,same_win=?,same_lose=?,net_contribution=?
+                             WHERE draw_id=? AND group_id=? AND rule_id=? AND rule_version=?""",
+                          (int(actual_special),bh,rh,rescue,harm,sw,sl,rescue-harm,
+                           str(issue),row["group_id"],row["rule_id"],row["rule_version"]))
+            c.commit()
+        finally: c.close()
+
+def _v67_rule_stats(group_id,rule_id):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT base_hit,rule_hit,rescue,harm,base_code_count,rule_code_count
+                              FROM rule_counterfactual WHERE group_id=? AND rule_id=? AND rule_version=? AND settled=1
+                              ORDER BY CAST(draw_id AS INTEGER) ASC""",
+                           (group_id,rule_id,V67_RULE_VERSION)).fetchall()
+        finally: c.close()
+    n=len(rows)
+    rescue=sum(int(x["rescue"] or 0) for x in rows); harm=sum(int(x["harm"] or 0) for x in rows)
+    base_hits=sum(int(x["base_hit"] or 0) for x in rows); rule_hits=sum(int(x["rule_hit"] or 0) for x in rows)
+    d=rescue+harm; net=rescue-harm
+    p_help=_binom_tail_half(rescue,d,"greater") if d else 1.0
+    p_harm=_binom_tail_half(rescue,d,"less") if d else 1.0
+    avgk=(sum(int(x["rule_code_count"] or 0) for x in rows)/n) if n else 0.0
+    random_rate=avgk/49.0 if avgk else 0.0
+    hit_rate=rule_hits/n if n else 0.0
+    eff=(hit_rate/random_rate) if random_rate else 0.0
+    return {"n":n,"base_hits":base_hits,"rule_hits":rule_hits,"rescue":rescue,"harm":harm,"net":net,
+            "discordant":d,"p_help":round(p_help,5),"p_harm":round(p_harm,5),
+            "status":_v67_rule_status(n,d,net,p_help,p_harm),
+            "avg_code_count":round(avgk,2),"random_rate":round(random_rate*100,2),
+            "rule_rate":round(hit_rate*100,2),"coverage_efficiency":round(eff,3)}
+
+def _v67_dashboard():
+    spec={
+      "F":["F_4VOTE","F_STRONG3","F_LIMIT2","F_LEGACY_V66"],
+      "A":["A_KILL_HEAD_ONLY","A_FIXED_ROUND_ONLY","A_LEGACY_V66"],
+      "B":["B_TAIL_ONLY","B_HEAD_ONLY","B_TAIL_HEAD","B_LEGACY_V66"],
+      "C":["C_TAIL_ONLY","C_COLDHEAD_ONLY","C_TAIL_COLDHEAD","C_LEGACY_V66"],
+      "D":["D_COLOR_ONLY","D_SIZE_ONLY","D_COLOR_SIZE","D_LEGACY_V66"]
+    }
+    return {g:{rid:_v67_rule_stats(g,rid) for rid in rs} for g,rs in spec.items()}
 def _stats20round_profile(profile,target_issue=None):
     """20期一轮 + 当前策略累计真实前瞻成绩。"""
     with db_lock:
@@ -9025,87 +9532,6 @@ def _profile_hit_stats(profile,window=60):
 
 
 
-
-def _raw_pool_topn(r, profile, n, strategy="20"):
-    score,_models,_perf=_pool_ensemble_score(r,profile,strategy)
-    ranked=sorted(range(1,50),key=lambda x:(-float(score.get(x,-1e9)),x))
-    return ranked[:int(n)],{"ranked49":ranked,"code_count":int(n)}
-
-def _exact_mcnemar_p(proc_only,raw_only):
-    a=int(proc_only); b=int(raw_only); n=a+b
-    if n<=0: return 1.0
-    k=min(a,b)
-    tail=sum(math.comb(n,i) for i in range(k+1))/(2.0**n)
-    return min(1.0,2.0*tail)
-
-def _paired_rule_stats(processed_profile, raw_profile, code_count, limit=240):
-    with db_lock:
-        c=connect()
-        try:
-            rows=c.execute("""SELECT target_issue,profile,hit24
-                              FROM prediction_log
-                              WHERE profile IN (?,?) AND settled=1
-                              ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           (processed_profile,raw_profile)).fetchall()
-        finally:
-            c.close()
-    by={}
-    for x in rows:
-        by.setdefault(str(x["target_issue"]),{})[str(x["profile"])]=int(x["hit24"] or 0)
-    issues=sorted(by,key=lambda q:int(q))[-int(limit):]
-
-    n=ph=rh=po=ro=both=miss=0
-    for q in issues:
-        d=by[q]
-        if processed_profile not in d or raw_profile not in d:
-            continue
-        n+=1
-        p=int(d[processed_profile]); r=int(d[raw_profile])
-        ph+=p; rh+=r
-        if p and r: both+=1
-        elif p and not r: po+=1
-        elif r and not p: ro+=1
-        else: miss+=1
-
-    discord=po+ro
-    pval=_exact_mcnemar_p(po,ro)
-    base=100.0*float(code_count)/49.0
-
-    if n<40:
-        verdict=f"样本收集中 {n}/40"
-        flag="collecting"
-    elif discord<12:
-        verdict=f"差异样本不足 {discord}/12"
-        flag="unclear"
-    elif ro>po and pval<=.10:
-        verdict="加工规则负增益"
-        flag="raw_better"
-    elif po>ro and pval<=.10:
-        verdict="加工规则有增益"
-        flag="processed_better"
-    else:
-        verdict="无显著差异"
-        flag="unclear"
-
-    return {
-      "n":n,"processed_hits":ph,"raw_hits":rh,
-      "processed_rate":round(100*ph/n,1) if n else 0.0,
-      "raw_rate":round(100*rh/n,1) if n else 0.0,
-      "random_baseline":round(base,1),
-      "processed_only":po,"raw_only":ro,
-      "both_hit":both,"both_miss":miss,
-      "discordant":discord,"p_value":round(pval,4),
-      "net":po-ro,"verdict":verdict,"flag":flag
-    }
-
-def _v66_validation_dashboard():
-    return {
-      "A":_paired_rule_stats(A27_V62_PROFILE,A27_RAW_V66_PROFILE,27),
-      "B":_paired_rule_stats(B27_V63_PROFILE,B27_RAW_V66_PROFILE,27),
-      "C":_paired_rule_stats(C22_V63_PROFILE,C22_RAW_V66_PROFILE,22),
-      "D":_paired_rule_stats(D16_V65_PROFILE,D16_RAW_V66_PROFILE,16),
-    }
-
 def _profiles_lifetime_stats(profiles):
     profiles=[p for p in profiles if p]
     if not profiles:
@@ -9164,7 +9590,7 @@ def _f_dynamic_current_stats(target_issue=None):
                               FROM prediction_log
                               WHERE profile=?
                               ORDER BY CAST(target_issue AS INTEGER) ASC""",
-                           (F_DYNAMIC_V66_PROFILE,)).fetchall()
+                           (F_DYNAMIC_V62_PROFILE,)).fetchall()
         finally:
             c.close()
 
@@ -9196,7 +9622,7 @@ def _f_dynamic_current_stats(target_issue=None):
     hits=sum(int(x.get("hit24") or 0) for x in settled)
     misses=max(0,n-hits)
 
-    lifetime=_profiles_lifetime_stats([F_DYNAMIC_V57_PROFILE,F_DYNAMIC_V59_PROFILE,F_DYNAMIC_V61_PROFILE,F_DYNAMIC_V62_PROFILE,F_DYNAMIC_V66_PROFILE])
+    lifetime=_profiles_lifetime_stats([F_DYNAMIC_V57_PROFILE,F_DYNAMIC_V59_PROFILE,F_DYNAMIC_V61_PROFILE,F_DYNAMIC_V62_PROFILE])
     return {
       "start":start_issue,
       "end":_issue_add(start_issue,19) if start_issue else "",
@@ -9664,6 +10090,7 @@ def settle_predictions(issue, nums, zs):
 
     try:
         _settle_strategy_audits(issue,actual_special,actual_z)
+        _settle_rule_counterfactual(issue,actual_special)
     except Exception as e:
         print(f"[AUDIT] settle failed: {e}",flush=True)
 
@@ -9738,41 +10165,47 @@ def record_shadow_predictions(r):
 
     try:
         best_profile,_=_select_profile(r)
-        c20,_m20=_predict20_hot(r,best_profile)
-        records.append((
-            target,"20码精选",
-            ",".join(str(n) for n in c20),
-            "","",py
-        ))
+        c20,_m20,_fsh=_predict_f_v67(r,best_profile)
+        records.append((target,"20码精选",",".join(str(n) for n in c20),"","",py))
         _record_strategy_audit(target,"20码精选",c20,_m20)
     except Exception as e:
         print(f"[20CODE] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
-    # C组22码：B组同算法、同近20期窗口，只缩为22码。
+    # C v67: BASE live; each rule is an atomic Shadow.
     try:
         best_profile,_=_select_profile(r)
-        c22c,_m22c=_predict22_dynamic_c(r,best_profile)
-        records.append((
-            target,C22_V63_PROFILE,
-            ",".join(str(n) for n in c22c),
-            "","", ""
-        ))
-        _record_strategy_audit(target,C22_V63_PROFILE,c22c,_m22c)
+        c22c,_m22c,csh=_predict_c_v67(r,best_profile)
+        records.append((target,C_BASE_V67_PROFILE,",".join(str(n) for n in c22c),"","",""))
+        records.append((target,C_TAIL_ONLY_V67_PROFILE,",".join(str(n) for n in csh["tail_only"]),"","",""))
+        records.append((target,C_COLDHEAD_ONLY_V67_PROFILE,",".join(str(n) for n in csh["coldhead_only"]),"","",""))
+        records.append((target,C_TAIL_COLDHEAD_V67_PROFILE,",".join(str(n) for n in csh["tail_coldhead"]),"","",""))
+        records.append((target,C_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in csh["legacy"]),"","",""))
+        _record_strategy_audit(target,C_BASE_V67_PROFILE,c22c,_m22c)
+        cutoff=str(r[0]["issue"]) if r else ""
+        _lock_rule_counterfactual(target,"C",c22c,"C_TAIL_ONLY",csh["tail_only"],cutoff)
+        _lock_rule_counterfactual(target,"C",c22c,"C_COLDHEAD_ONLY",csh["coldhead_only"],cutoff)
+        _lock_rule_counterfactual(target,"C",c22c,"C_TAIL_COLDHEAD",csh["tail_coldhead"],cutoff)
+        _lock_rule_counterfactual(target,"C",c22c,"C_LEGACY_V66",csh["legacy"],cutoff)
     except Exception as e:
-        print(f"[22C] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[22C-V67] lock failed: {type(e).__name__}: {e}",flush=True)
 
-    # D组16码：多策略池波色 + 最新10期波色，独立前瞻锁单。
+    # D v67: raw Top16 live; color/size are separate Shadows.
     try:
         best_profile,_=_select_profile(r)
-        c16d,_m16d=_predict16_dynamic_d(r,best_profile)
-        records.append((
-            target,D16_V65_PROFILE,
-            ",".join(str(n) for n in c16d),
-            "","", ""
-        ))
-        _record_strategy_audit(target,D16_V65_PROFILE,c16d,_m16d)
+        c16d,_m16d,dsh=_predict_d_v67(r,best_profile)
+        records.append((target,D_BASE_V67_PROFILE,",".join(str(n) for n in c16d),"","",""))
+        records.append((target,D_COLOR_ONLY_V67_PROFILE,",".join(str(n) for n in dsh["color_only"]),"","",""))
+        records.append((target,D_SIZE_ONLY_V67_PROFILE,",".join(str(n) for n in dsh["size_only"]),"","",""))
+        records.append((target,D_COLOR_SIZE_V67_PROFILE,",".join(str(n) for n in dsh["color_size"]),"","",""))
+        records.append((target,D_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in dsh["legacy"]),"","",""))
+        _record_strategy_audit(target,D_BASE_V67_PROFILE,c16d,_m16d)
+        cutoff=str(r[0]["issue"]) if r else ""
+        _lock_rule_counterfactual(target,"D",c16d,"D_COLOR_ONLY",dsh["color_only"],cutoff)
+        _lock_rule_counterfactual(target,"D",c16d,"D_SIZE_ONLY",dsh["size_only"],cutoff)
+        _lock_rule_counterfactual(target,"D",c16d,"D_COLOR_SIZE",dsh["color_size"],cutoff)
+        _lock_rule_counterfactual(target,"D",c16d,"D_LEGACY_V66",dsh["legacy"],cutoff)
     except Exception as e:
-        print(f"[16D] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[16D-V67] lock failed: {type(e).__name__}: {e}",flush=True)
 
     # 平特一肖：独立B组近20期算法，真实前瞻锁单。
     try:
@@ -9781,40 +10214,38 @@ def record_shadow_predictions(r):
     except Exception as e:
         print(f"[PINGTE-B20] locked prediction failed: {type(e).__name__}: {e}",flush=True)
 
-    # B组27码：每期动态重算，单独实盘锁单统计。
+    # B v67: raw Top27 live; tail/head effects split atomically.
     try:
         best_profile,_=_select_profile(r)
-        c27b,_m27b=_predict27_dynamic_b(r,best_profile)
-        records.append((
-            target,B27_V63_PROFILE,
-            ",".join(str(n) for n in c27b),
-            "","",py
-        ))
-        _record_strategy_audit(target,B27_V63_PROFILE,c27b,_m27b)
+        c27b,_m27b,bsh=_predict_b_v67(r,best_profile)
+        records.append((target,B_BASE_V67_PROFILE,",".join(str(n) for n in c27b),"","",py))
+        records.append((target,B_TAIL_ONLY_V67_PROFILE,",".join(str(n) for n in bsh["tail_only"]),"","",py))
+        records.append((target,B_HEAD_ONLY_V67_PROFILE,",".join(str(n) for n in bsh["head_only"]),"","",py))
+        records.append((target,B_TAIL_HEAD_V67_PROFILE,",".join(str(n) for n in bsh["tail_head"]),"","",py))
+        records.append((target,B_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in bsh["legacy"]),"","",py))
+        _record_strategy_audit(target,B_BASE_V67_PROFILE,c27b,_m27b)
+        cutoff=str(r[0]["issue"]) if r else ""
+        _lock_rule_counterfactual(target,"B",c27b,"B_TAIL_ONLY",bsh["tail_only"],cutoff)
+        _lock_rule_counterfactual(target,"B",c27b,"B_HEAD_ONLY",bsh["head_only"],cutoff)
+        _lock_rule_counterfactual(target,"B",c27b,"B_TAIL_HEAD",bsh["tail_head"],cutoff)
+        _lock_rule_counterfactual(target,"B",c27b,"B_LEGACY_V66",bsh["legacy"],cutoff)
     except Exception as e:
-        print(f"[27B] locked dynamic prediction failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[27B-V67] lock failed: {type(e).__name__}: {e}",flush=True)
 
     try:
         best_profile,_=_select_profile(r)
-        c27,_m27=_predict27_tenblock_v62(r,best_profile,target)
-        records.append((target,A27_V62_PROFILE,",".join(str(n) for n in c27),"","",py))
-        _record_strategy_audit(target,A27_V62_PROFILE,c27,_m27)
+        c27,_m27,ash=_predict_a_v67(r,best_profile,target)
+        records.append((target,A_BASE_V67_PROFILE,",".join(str(n) for n in c27),"","",py))
+        records.append((target,A_KILL_HEAD_V67_PROFILE,",".join(str(n) for n in ash["kill_head"]),"","",py))
+        records.append((target,A_FIXED_ROUND_V67_PROFILE,",".join(str(n) for n in ash["fixed_round"]),"","",py))
+        records.append((target,A_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in ash["legacy"]),"","",py))
+        _record_strategy_audit(target,A_BASE_V67_PROFILE,c27,_m27)
+        cutoff=str(r[0]["issue"]) if r else ""
+        _lock_rule_counterfactual(target,"A",c27,"A_KILL_HEAD_ONLY",ash["kill_head"],cutoff)
+        _lock_rule_counterfactual(target,"A",c27,"A_FIXED_ROUND_ONLY",ash["fixed_round"],cutoff)
+        _lock_rule_counterfactual(target,"A",c27,"A_LEGACY_V66",ash["legacy"],cutoff)
     except Exception as e:
-        print(f"[27A-V62] locked prediction failed: {type(e).__name__}: {e}",flush=True)
-
-    # v66同码数原始基准：开奖前锁定，绝不事后回填。
-    try:
-        best_profile,_=_select_profile(r)
-        rawA,_=_raw_pool_topn(r,best_profile,27,"27")
-        rawB,_=_raw_pool_topn(r,best_profile,27,"20")
-        rawC,_=_raw_pool_topn(r,best_profile,22,"20")
-        rawD,_=_raw_pool_topn(r,best_profile,16,"20")
-        records.append((target,A27_RAW_V66_PROFILE,",".join(str(n) for n in rawA),"","",""))
-        records.append((target,B27_RAW_V66_PROFILE,",".join(str(n) for n in rawB),"","",""))
-        records.append((target,C22_RAW_V66_PROFILE,",".join(str(n) for n in rawC),"","",""))
-        records.append((target,D16_RAW_V66_PROFILE,",".join(str(n) for n in rawD),"","",""))
-    except Exception as e:
-        print(f"[V66-RAW] baseline lock failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[27A-V67] lock failed: {type(e).__name__}: {e}",flush=True)
 
     # Parallel specialist pool: same 20-code target, different logic.
     try:
@@ -9824,31 +10255,20 @@ def record_shadow_predictions(r):
             ranked=sorted(range(1,50),key=lambda n:(-specialists[key].get(n,-1e9),n))
             codes=ranked[:20]
             records.append((target,prof,",".join(str(n) for n in codes),"","",py))
-        # F v59: fair same-count baseline + Top23 coverage reference.
-        c20f,_mf=_predict20_hot(r,best_profile)
-        raw_same=list(_mf.get("raw_same_count") or [])
-        raw23=list(_mf.get("raw_top23") or [])[:23]
-        ordered=list(_mf.get("selected_ordered") or c20f)
-        core20=list(_mf.get("core20_codes") or ordered[:20])
-        add21=_mf.get("add21_code")
-        add22=_mf.get("add22_code")
-        add23=_mf.get("add23_code")
-
+        # F v67: fixed Top22 live; each intervention is isolated in Shadow.
+        c20f,_mf,fsh=_predict_f_v67(r,best_profile)
         records.append((target,POOL_FINAL_PROFILE,",".join(str(n) for n in c20f),"","",py))
-        records.append((target,F_DYNAMIC_V66_PROFILE,",".join(str(n) for n in c20f),"","",py))
-        records.append((target,F_RAW_SAME_V66_PROFILE,",".join(str(n) for n in raw_same),"","",py))
-        records.append((target,F_RAW23_V66_PROFILE,",".join(str(n) for n in raw23),"","",py))
-
-        # Exact contribution tracking from v60 forward.
-        records.append((target,F_CORE20_V66_PROFILE,",".join(str(n) for n in core20),"","",py))
-        if add21 is not None:
-            records.append((target,F_ADD21_V66_PROFILE,str(int(add21)),"","",py))
-        if add22 is not None:
-            records.append((target,F_ADD22_V66_PROFILE,str(int(add22)),"","",py))
-        if add23 is not None:
-            records.append((target,F_ADD23_V66_PROFILE,str(int(add23)),"","",py))
-
-        _record_strategy_audit(target,F_DYNAMIC_V66_PROFILE,c20f,_mf)
+        records.append((target,F_BASE_V67_PROFILE,",".join(str(n) for n in c20f),"","",py))
+        records.append((target,F_4VOTE_V67_PROFILE,",".join(str(n) for n in fsh["4vote"]),"","",py))
+        records.append((target,F_STRONG3_V67_PROFILE,",".join(str(n) for n in fsh["strong3"]),"","",py))
+        records.append((target,F_LIMIT2_V67_PROFILE,",".join(str(n) for n in fsh["limit2"]),"","",py))
+        records.append((target,F_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in fsh["legacy"]),"","",py))
+        _record_strategy_audit(target,F_BASE_V67_PROFILE,c20f,_mf)
+        cutoff=str(r[0]["issue"]) if r else ""
+        _lock_rule_counterfactual(target,"F",c20f,"F_4VOTE",fsh["4vote"],cutoff)
+        _lock_rule_counterfactual(target,"F",c20f,"F_STRONG3",fsh["strong3"],cutoff)
+        _lock_rule_counterfactual(target,"F",c20f,"F_LIMIT2",fsh["limit2"],cutoff)
+        _lock_rule_counterfactual(target,"F",c20f,"F_LEGACY_V66",fsh["legacy"],cutoff)
     except Exception as e:
         print(f"[POOL] locked specialist models failed: {type(e).__name__}: {e}",flush=True)
 
@@ -9996,7 +10416,7 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v66",
+      "version":"v67",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -10423,25 +10843,34 @@ def build_model():
     latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
     try: next_issue=_next_issue_id(latest["issue"])
     except Exception: next_issue=""
-    c20,meta20=_predict20_hot(r,profile)
-    # A组v57：简化长码，纯十期前瞻模型Top27，一组固定10期
-    c27,meta27=_predict27_tenblock_v62(r,profile,next_issue)
-    # B组：只看最新10期，每一期实时重算
-    c27b,meta27b=_predict27_dynamic_b(r,profile)
-    # C组：只看最新10期，独立22位优化
-    c22c,meta22c=_predict22_dynamic_c(r,profile)
-    # D组：多策略池波色 + 最新10期波色
-    c16d,meta16d=_predict16_dynamic_d(r,profile)
-    stats20=_profile_hit_stats("20码精选",60)
-    statsF=_f_dynamic_current_stats(next_issue)
-    stats27=_stats27_a_v62()
-    stats27b=_stats27b_v63(next_issue)
-    stats22c=_stats20round_profile(C22_V63_PROFILE,next_issue)
-    stats22c["version_lifetime"]=_profile_lifetime_stats(C22_V63_PROFILE)
-    stats22c["lifetime"]=_profiles_lifetime_stats([C22_V54_PROFILE,C22_V58_PROFILE,C22_V62_PROFILE,C22_V63_PROFILE])
-    stats16d=_stats20round_profile(D16_V65_PROFILE,next_issue)
-    stats16d["version_lifetime"]=_profile_lifetime_stats(D16_V65_PROFILE)
-    stats16d["lifetime"]=_profiles_lifetime_stats([D16_V64_PROFILE,D16_V65_PROFILE])
+    c20,meta20,_fsh=_predict_f_v67(r,profile)
+    c27,meta27,_ash=_predict_a_v67(r,profile,next_issue)
+    c27b,meta27b,_bsh=_predict_b_v67(r,profile)
+    c22c,meta22c,_csh=_predict_c_v67(r,profile)
+    c16d,meta16d,_dsh=_predict_d_v67(r,profile)
+
+    stats20=_profile_hit_stats(F_BASE_V67_PROFILE,60)
+    statsF=_stats20round_profile(F_BASE_V67_PROFILE,next_issue)
+    statsF["lifetime"]=_profile_lifetime_stats(F_BASE_V67_PROFILE)
+
+    _a=_stats20round_profile(A_BASE_V67_PROFILE,next_issue)
+    stats27={"current":dict(_a),"last_complete":None,"rounds_completed":0,
+             "overall":_profile_hit_stats(A_BASE_V67_PROFILE,60),
+             "lifetime":_profile_lifetime_stats(A_BASE_V67_PROFILE),
+             "version_lifetime":_profile_lifetime_stats(A_BASE_V67_PROFILE)}
+
+    stats27b=_stats20round_profile(B_BASE_V67_PROFILE,next_issue)
+    stats27b["version_lifetime"]=_profile_lifetime_stats(B_BASE_V67_PROFILE)
+    stats27b["lifetime"]=_profile_lifetime_stats(B_BASE_V67_PROFILE)
+    stats27b["algorithm_window"]=10
+
+    stats22c=_stats20round_profile(C_BASE_V67_PROFILE,next_issue)
+    stats22c["version_lifetime"]=_profile_lifetime_stats(C_BASE_V67_PROFILE)
+    stats22c["lifetime"]=_profile_lifetime_stats(C_BASE_V67_PROFILE)
+
+    stats16d=_stats20round_profile(D_BASE_V67_PROFILE,next_issue)
+    stats16d["version_lifetime"]=_profile_lifetime_stats(D_BASE_V67_PROFILE)
+    stats16d["lifetime"]=_profile_lifetime_stats(D_BASE_V67_PROFILE)
     pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
@@ -10464,14 +10893,15 @@ def build_model():
         stats27=dict(stats27)
         stats27["live_round_reset"]=False
 
-    diag20=_strategy_diagnostics(F_DYNAMIC_V66_PROFILE,60)
-    diag27=_strategy_diagnostics(A27_V62_PROFILE,60)
+    diag20=_strategy_diagnostics(F_BASE_V67_PROFILE,60)
+    diag27=_strategy_diagnostics(A_BASE_V67_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
-    f_error_diag=_f_v66_compare_stats(240)
-    f_slot_stats=_f_v66_slot_stats()
-    rule_validation=_v66_validation_dashboard()
+    f_error_diag=_v67_rule_stats("F","F_LEGACY_V66")
+    f_slot_stats={}
+    v66_validation={}
+    v67_rules=_v67_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -10502,7 +10932,8 @@ def build_model():
       "stable_signals":stable_signals,
       "f_error_diag":f_error_diag,
       "f_slot_stats":f_slot_stats,
-      "rule_validation":rule_validation,
+      "v66_validation":v66_validation,
+      "v67_rules":v67_rules,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -10546,7 +10977,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v66：减法验收 · 同码数原始Top-N并行锁单"
+        "mode":"v67：冻结BASE + 原子Shadow验收"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -10676,7 +11107,10 @@ def health():
                     "telegram_mode":"webhook","webhook_base":WEBHOOK_BASE_URL,"count":count,
                     "last_error":auto_state.get("last_error",""),
                     "last_draw_issue":auto_state.get("last_draw_issue",""),
-                    "last_prediction_issue":auto_state.get("last_prediction_issue","")})
+                    "last_prediction_issue":auto_state.get("last_prediction_issue",""),
+                    "v67_rule_version":V67_RULE_VERSION,
+                    "migration_latest_issue":auto_state.get("migration_latest_issue",""),
+                    "migration_history_count":auto_state.get("migration_history_count",0)})
 
 @app.get("/api/prediction")
 def prediction():
@@ -10704,9 +11138,9 @@ def _build_stats_background():
 def stats_api():
     base=learner_validation_stats()
     base["code20"]=_profile_hit_stats("20码精选",60)
-    base["code27"]=_stats27_v7()
-    base["diag20"]=_strategy_diagnostics("20码精选",60)
-    base["diag27"]=_diagnostics27_v7(60)
+    base["code27"]={"overall":_profile_hit_stats(A_BASE_V67_PROFILE,60)}
+    base["diag20"]=_strategy_diagnostics(F_BASE_V67_PROFILE,60)
+    base["diag27"]=_strategy_diagnostics(A_BASE_V67_PROFILE,60)
     base["correction"]=_correction_status()
     return jsonify(base)
 
@@ -10778,8 +11212,8 @@ def complement_status():
 @app.get("/api/strategy-diagnostics")
 def strategy_diagnostics_api():
     return jsonify({
-      "code20":_strategy_diagnostics(F_DYNAMIC_V62_PROFILE,60),
-      "code27":_strategy_diagnostics(A27_V57_PROFILE,60),
+      "code20":_strategy_diagnostics(F_BASE_V67_PROFILE,60),
+      "code27":_strategy_diagnostics(A_BASE_V67_PROFILE,60),
       "correction":_correction_status()
     })
 
@@ -11007,6 +11441,19 @@ def boot():
 
     # Preserve latest bot-collected history before takeover.
     sync_best_available_history()
+    try:
+        _latest=latest_row()
+        with db_lock:
+            _c=connect()
+            try:
+                _n=int(_c.execute("SELECT COUNT(*) AS n FROM draws").fetchone()["n"])
+            finally:
+                _c.close()
+        auto_state["migration_latest_issue"]=str(_latest["issue"] if _latest else "")
+        auto_state["migration_history_count"]=_n
+        print(f"[MIGRATION] v67 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
+    except Exception as e:
+        print(f"[MIGRATION] audit failed: {e}",flush=True)
 
     # From v26 onward, also inherit learned prediction/score history.
     sync_previous_learning()
