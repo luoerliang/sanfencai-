@@ -285,8 +285,8 @@ D_SIZE_ONLY_V67_PROFILE="D_SIZE_ONLY_Shadow_v67"
 D_COLOR_SIZE_V67_PROFILE="D_COLOR_SIZE_Shadow_v67"
 D_LEGACY_V66_V67_PROFILE="D_LEGACY_V66_Shadow_v67"
 
-V67_RULE_VERSION="v67-r1"
-V67_MODEL_VERSION="v67-model-001"
+V67_RULE_VERSION="v67.1-r1"
+V67_MODEL_VERSION="v67.1-model-001"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -1104,8 +1104,8 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67冻结BASE + 原子Shadow同步锁单`;
-    calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67.1快速BASE + 原子Shadow同步锁单`;
+    calcState.textContent=d.recalculating?(d.fast_base_ready?'BASE已出码 · Shadow后台更新':'新期开奖已入库 · 快速BASE生成中'):'模型已更新';
     calcState.className=d.recalculating?'pill':'pill ok';
 
   }catch(e){
@@ -1495,7 +1495,9 @@ def _patch_live_cache_latest(issue, nums, zs):
             "latest_numbers": list(nums),
             "latest_special_zodiac": normalize_z(zs[6] if len(zs) >= 7 else ""),
             "latest_created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "recalculating": True
+            "recalculating": True,
+            "fast_base_ready": False,
+            "special20": [], "special24": [], "special27": [], "special27b": [], "special22c": [], "special16d": []
         })
         live_cache["issue"] = issue
         live_cache["data"] = data
@@ -1516,17 +1518,24 @@ def _auto_update_after_draw(issue, nums):
     auto_state["last_draw_issue"]=str(issue)
     auto_state["last_error"]=""
     try:
-        # 1) Train AI on the just-finished issue.
+        # 1) Visible BASE first.  Do not make the UI wait for AI/Shadow work.
+        try:
+            refresh_history_cache()
+        except Exception:
+            pass
+        rebuild_fast_live_cache()
+
+        # 2) Train AI on the just-finished issue in the same background worker.
         train_ai_after_new_draw(issue, nums)
         auto_state["last_learning_issue"]=str(issue)
 
-        # 2) Rebuild the live forecast for the NEXT issue.
+        # 3) Rebuild the full dashboard; official BASE is already visible.
         refresh_all_caches()
 
-        # 3) Refresh learner/60-issue stats.
+        # 4) Refresh learner/60-issue stats.
         _refresh_learning_and_stats()
 
-        # 4) Record next-issue shadow predictions if cache rebuild did not already do it.
+        # 5) Record next-issue status if cache rebuild did not already do it.
         try:
             rr=recent_rows(1200)
             if rr:
@@ -8370,6 +8379,173 @@ def _predict_d_v67(r,profile):
           "regime":"v67 D BASE Top16","audit_regime":"D67|base16"}
     return base,meta,{"color_only":color,"size_only":size,"color_size":both,"legacy":list(legacy)}
 
+
+# ===================== v67.1 fast live BASE layer =====================
+def _v671_recent10_ranked(r):
+    """Return B/C frozen BASE mother ranking using only latest 10 specials.
+
+    This is the ranking part of v63 B only: frequency/omission/wave/parity/
+    zodiac + 10% soft tail score.  It deliberately does NOT run kill-head,
+    cold-zodiac quotas or missing-tail replacement.  It is therefore fast
+    enough for the live display path and exactly matches the intended v67 BASE.
+    """
+    nums=list(range(1,50))
+    recent=list(r[:10])
+    residue=defaultdict(Counter); direct=defaultdict(Counter)
+    for x in recent:
+        for j in range(1,7):
+            n=x[f"n{j}"]; z=normalize_z(x[f"z{j}"] or "")
+            if n and z:
+                residue[(int(n)-1)%12][z]+=1; direct[int(n)][z]+=1
+        n=x["special"]; z=normalize_z(x["z7"] or "")
+        if n and z:
+            residue[(int(n)-1)%12][z]+=2; direct[int(n)][z]+=2
+    residue_z={k:c.most_common(1)[0][0] for k,c in residue.items() if c}
+    zmap={}
+    for n in nums:
+        z=residue_z.get((n-1)%12)
+        if not z and direct.get(n): z=direct[n].most_common(1)[0][0]
+        if z: zmap[n]=z
+
+    freq=Counter(); wave_w=Counter(); parity_w=Counter(); zodiac_w=Counter(); tail20=Counter()
+    totalw=0.0; gap={n:10 for n in nums}
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        w=exp_weight(i,3.4); totalw+=w
+        freq[n]+=w; wave_w[wave_of(n)]+=w; parity_w[parity_of(n)]+=w; tail20[n%10]+=w
+        z=normalize_z(x["z7"] or "")
+        if z: zodiac_w[z]+=w
+        if gap[n]==10: gap[n]=i
+    freq_n=_norm_values(freq,nums); gap_n=_norm_values(gap,nums)
+    wave_share={w:(wave_w[w]/totalw if totalw else 1/3) for w in ["红","蓝","绿"]}
+    parity_share={q:(parity_w[q]/totalw if totalw else .5) for q in ["单","双"]}
+    zodiac_share={z:(zodiac_w[z]/totalw if totalw else 1/12) for z in ALL_ZODIACS}
+
+    w4=Counter(); p4=Counter(); z4=Counter(); t4=Counter()
+    for i,x in enumerate(recent[:4]):
+        try: n=int(x["special"])
+        except Exception: continue
+        ww=exp_weight(i,1.7)
+        w4[wave_of(n)]+=ww; p4[parity_of(n)]+=ww; t4[n%10]+=ww
+        z=normalize_z(x["z7"] or "")
+        if z: z4[z]+=ww
+    sw=sum(w4.values()) or 1.0; sp=sum(p4.values()) or 1.0; sz=sum(z4.values()) or 1.0
+    st10=sum(tail20.values()) or 1.0; st4=sum(t4.values()) or 1.0
+
+    base_score={}
+    for n in nums:
+        z=zmap.get(n)
+        wave_live=.65*wave_share.get(wave_of(n),1/3)+.35*(w4.get(wave_of(n),0)/sw)
+        parity_live=.65*parity_share.get(parity_of(n),.5)+.35*(p4.get(parity_of(n),0)/sp)
+        zodiac_live=.70*zodiac_share.get(z,1/12)+.30*(z4.get(z,0)/sz if z else 0)
+        base_score[n]=.34*freq_n.get(n,.5)+.20*gap_n.get(n,.5)+.16*wave_live+.12*parity_live+.18*zodiac_live
+    base_score=_norm_values(base_score,nums)
+    tail_raw={t:.72*(tail20.get(t,0.0)/st10)+.28*(t4.get(t,0.0)/st4) for t in range(10)}
+    tail_strength=_norm_values(tail_raw,range(10))
+    score=_norm_values({n:.90*base_score.get(n,.5)+.10*tail_strength.get(n%10,.5) for n in nums},nums)
+    ranked=sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
+    seen={int(x["special"])%10 for x in recent if x["special"]}
+    return ranked,{"window_issues":[str(x["issue"]) for x in recent],"missing_tails":[t for t in range(10) if t not in seen],"tail_weight_pct":10.0}
+
+def _v671_live_bases(r,profile,next_issue=""):
+    """Compute only the five official v67 BASE lists; no Shadow/legacy work."""
+    pool20,_m20,_p20=_pool_ensemble_score(r,profile,"20")
+    rank20=sorted(range(1,50),key=lambda n:(-pool20.get(n,-1e9),n))
+    f=rank20[:22]; d=rank20[:16]
+
+    pool27,_m27,_p27=_pool_ensemble_score(r,profile,"27")
+    rank27=sorted(range(1,50),key=lambda n:(-pool27.get(n,-1e9),n))
+    a=rank27[:27]
+
+    rank10,bmeta=_v671_recent10_ranked(r)
+    b=rank10[:27]; c=rank10[:22]
+
+    fm={"mode":"v67.1 F固定22原始集成Top22","code_count":22,"ranked49":rank20,
+        "dynamic_count":22,"regime":"v67.1 F BASE固定Top22","audit_regime":"F671|base22",
+        "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
+    am={"mode":"v67.1 A原始Top27","ranked49":rank27,"raw_top27":a,"code_count":27,
+        "killed_head":"","head_decision":{"active":False,"reason":"Live不杀码"},
+        "block_start":"","block_end":"","round_position":1,"regime":"v67.1 A BASE Top27","audit_regime":"A671|base27"}
+    bm=dict(bmeta); bm.update({"mode":"v67.1 B原始近10Top27","ranked49":rank10,"code_count":27,
+        "killed_head":"","missing_tail_rescue":{},"regime":"v67.1 B BASE近10 Top27","audit_regime":"B671|base27"})
+    cm={"mode":"v67.1 C原始近10Top22","ranked49":rank10,"code_count":22,"killed_head":"",
+        "coldest3":[],"missing_tails":bmeta.get("missing_tails") or [],"missing_tail_rescue":{},
+        "regime":"v67.1 C BASE近10 Top22","audit_regime":"C671|base22"}
+    dm={"mode":"v67.1 D原始Top16","ranked49":rank20,"code_count":16,
+        "fused_wave":{},"fused_size":{},"regime":"v67.1 D BASE Top16","audit_regime":"D671|base16"}
+    return (f,fm),(a,am),(b,bm),(c,cm),(d,dm)
+
+def _v671_fast_live_snapshot():
+    """Fast prediction snapshot used immediately after every new draw.
+
+    It avoids complement backtests, legacy rules and all atomic Shadows.  Those
+    still run in the background and never block the five visible BASE lists.
+    """
+    r=recent_rows(1200)
+    if not r: return None
+    profile,profile_scores=_select_profile(r)
+    latest=r[0]
+    next_issue=_next_issue_id(latest["issue"])
+    (c20,m20),(c27,m27),(c27b,m27b),(c22,m22),(c16,m16)=_v671_live_bases(r,profile,next_issue)
+    latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
+    trend=_trend_profiles(r)
+    pingte_one,pingte_meta=_predict_pingte_yixiao_b20(r)
+    data={
+      "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
+      "latest_numbers":latest_numbers,"latest_special_zodiac":normalize_z(latest["z7"] or ""),
+      "latest_created_at":latest["created_at"] or "",
+      "special20":[f"{n:02d}" for n in sorted(c20)],"special24":[f"{n:02d}" for n in sorted(c20)],
+      "special27":[f"{n:02d}" for n in sorted(c27)],"special27b":[f"{n:02d}" for n in sorted(c27b)],
+      "special22c":[f"{n:02d}" for n in sorted(c22)],"special16d":[f"{n:02d}" for n in sorted(c16)],
+      "strategy20":m20,"strategy27":m27,"strategy27b":m27b,"strategy22c":m22,"strategy16d":m16,
+      "stats20":_profile_hit_stats(F_BASE_V67_PROFILE,60),
+      "statsF":_stats20round_profile(F_BASE_V67_PROFILE,next_issue),
+      "stats27":{"current":_stats20round_profile(A_BASE_V67_PROFILE,next_issue),"last_complete":None,
+                 "overall":_profile_hit_stats(A_BASE_V67_PROFILE,60),"lifetime":_profile_lifetime_stats(A_BASE_V67_PROFILE)},
+      "stats27b":_stats20round_profile(B_BASE_V67_PROFILE,next_issue),
+      "stats22c":_stats20round_profile(C_BASE_V67_PROFILE,next_issue),
+      "stats16d":_stats20round_profile(D_BASE_V67_PROFILE,next_issue),
+      "v67_rules":_v67_dashboard(),"model_pool":{},"stable_signals":{},
+      "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
+      "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,"pingte_b20_stats":_pingte_b20_stats(),
+      "profile":profile,"profile_scores":profile_scores,"calibration_n":model_state.get("calibration_n",0),
+      "trend":{"wave":{k:round(v*100,1) for k,v in trend["wave"].items()},
+               "size":{k:round(v*100,1) for k,v in trend["size"].items()},
+               "parity":{k:round(v*100,1) for k,v in trend["parity"].items()},
+               "wave_parity":{k:round(v*100,1) for k,v in trend["wave_parity"].items()}},
+      "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
+                  "long_prior_ready":bool(long_prior.get("ready")),"mode":"v67.1 快速BASE已显示 · Shadow后台验收"},
+      "learning":{"enabled":True,"best_profile":learner_cache.get("best_profile","平衡"),
+                  "settled":learner_cache.get("settled",0),"target":60,"ai_live":ai_live_validation_stats(60),
+                  "fusion":get_dynamic_ai_mix(),"auto":dict(auto_state)},
+      "complement":{},"strategy":{"cold_rebound_now":False,"cold_zodiacs":[],"latest_zodiac":normalize_z(latest["z7"] or ""),
+                  "nmy_samples":0,"nmy_conditional_pct":0.0,"nmy_baseline_pct":0.0,"nmy_lift_pct":0.0,
+                  "head_advice":"BASE已更新，Shadow后台计算","head_strength":{}},
+      "telegram":bool(BOT_TOKEN),"recalculating":True,"fast_base_ready":True,"stale_prediction":False
+    }
+    # Add lifetime wrappers expected by UI.
+    for key,prof in [("statsF",F_BASE_V67_PROFILE),("stats27b",B_BASE_V67_PROFILE),("stats22c",C_BASE_V67_PROFILE),("stats16d",D_BASE_V67_PROFILE)]:
+        data[key]["lifetime"]=_profile_lifetime_stats(prof)
+    return data
+
+def rebuild_fast_live_cache():
+    t0=time.time()
+    try:
+        data=_v671_fast_live_snapshot()
+        if not data: return None
+        # Never overwrite a newer draw with an older snapshot.
+        latest=latest_row(); latest_issue=str(latest["issue"] if latest else "")
+        if str(data.get("issue") or "")!=latest_issue:
+            return None
+        with live_cache_lock:
+            live_cache["data"]=data; live_cache["issue"]=data.get("issue")
+        print(f"[FAST] BASE ready issue={data.get('issue')} next={data.get('next_issue')} in {time.time()-t0:.2f}s",flush=True)
+        return data
+    except Exception as e:
+        print(f"[FAST] BASE failed: {type(e).__name__}: {e}",flush=True)
+        return None
+
 def _binom_tail_half(k,n,alternative="greater"):
     if n<=0: return 1.0
     den=2**n
@@ -10843,11 +11019,7 @@ def build_model():
     latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
     try: next_issue=_next_issue_id(latest["issue"])
     except Exception: next_issue=""
-    c20,meta20,_fsh=_predict_f_v67(r,profile)
-    c27,meta27,_ash=_predict_a_v67(r,profile,next_issue)
-    c27b,meta27b,_bsh=_predict_b_v67(r,profile)
-    c22c,meta22c,_csh=_predict_c_v67(r,profile)
-    c16d,meta16d,_dsh=_predict_d_v67(r,profile)
+    (c20,meta20),(c27,meta27),(c27b,meta27b),(c22c,meta22c),(c16d,meta16d)=_v671_live_bases(r,profile,next_issue)
 
     stats20=_profile_hit_stats(F_BASE_V67_PROFILE,60)
     statsF=_stats20round_profile(F_BASE_V67_PROFILE,next_issue)
@@ -10977,7 +11149,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v67：冻结BASE + 原子Shadow验收"
+        "mode":"v67.1：快速BASE显示 + 原子Shadow验收"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -11012,10 +11184,18 @@ def rebuild_live_cache():
     try:
         data=build_model()
         model_state["recalc_finished_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
-        with live_cache_lock:
-            live_cache["data"]=data
-            live_cache["issue"]=data.get("issue") if isinstance(data,dict) else None
-        print(f"[CACHE] model rebuilt issue={data.get('issue')} in {time.time()-t0:.2f}s",flush=True)
+        latest=latest_row()
+        latest_issue=str(latest["issue"] if latest else "")
+        built_issue=str(data.get("issue") if isinstance(data,dict) else "")
+        if built_issue and built_issue==latest_issue:
+            with live_cache_lock:
+                live_cache["data"]=data
+                live_cache["issue"]=data.get("issue") if isinstance(data,dict) else None
+            print(f"[CACHE] model rebuilt issue={data.get('issue')} in {time.time()-t0:.2f}s",flush=True)
+        else:
+            print(f"[CACHE] discard stale build issue={built_issue} latest={latest_issue}",flush=True)
+            threading.Thread(target=rebuild_fast_live_cache,daemon=True,name="fast-base-catchup").start()
+            return live_cache.get("data")
         try:
             rr=recent_rows(1200)
             threading.Thread(
@@ -11480,6 +11660,7 @@ def boot():
         print(f"[BOOT] history cache failed: {type(e).__name__}: {e}",flush=True)
     initialize_quick_live_cache()
     background_state["boot_ready"]=True
+    threading.Thread(target=rebuild_fast_live_cache,daemon=True,name="initial-fast-base").start()
 
     # Webhook can now receive new draws.
     if BOT_TOKEN:
