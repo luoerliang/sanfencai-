@@ -285,8 +285,8 @@ D_SIZE_ONLY_V67_PROFILE="D_SIZE_ONLY_Shadow_v67"
 D_COLOR_SIZE_V67_PROFILE="D_COLOR_SIZE_Shadow_v67"
 D_LEGACY_V66_V67_PROFILE="D_LEGACY_V66_Shadow_v67"
 
-V67_RULE_VERSION="v67-r1"
-V67_MODEL_VERSION="v67-model-001"
+V67_RULE_VERSION="v67.4-r1"
+V67_MODEL_VERSION="v67.4-model-001"
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -650,7 +650,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     <div class="sectionHead">
       <div>
         <div id="fDynamicTitle" class="sectionTitle">F组 · 固定22码</div>
-        <div class="sectionHint">v67正式：原始集成Top22固定；4票/强3/2票/旧v66全部Shadow</div>
+        <div class="sectionHint">v67.4正式：即时中性Top22固定；4票/强3/2票/旧v66全部Shadow</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -712,8 +712,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard dCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">D组16码 · 原始Top16</div>
-        <div class="sectionHint">v67正式：原始Top16；波色、大小、波色+大小分别Shadow</div>
+        <div class="sectionTitle">D组16码 · 中性BASE Top16</div>
+        <div class="sectionHint">v67.4：五组BASE即时生成；正式BASE不使用波色/大小硬规则；Shadow后台验收</div>
       </div>
       <button class="copyBtn" onclick="copy16D()">复制D组</button>
     </div>
@@ -1026,7 +1026,9 @@ async function loadMain(){
     const dLife=s16.lifetime||{};
     code16DLifetime.textContent=`累计实盘：中 ${dLife.hits??0}期 · 错 ${dLife.misses??0}期`;
     const df=m16.fused_wave||{}, ds=m16.fused_size||{}, vd=(((d.v67_rules||{}).D||{}).D_COLOR_SIZE)||{};
-    code16DMeta.textContent=`v67 BASE Top16 · 波色+大小Shadow ${vd.n??0}期 · 救${vd.rescue??0}/伤${vd.harm??0}/净${vd.net??0}`;
+    const dwc=m16.wave_counts||{};
+    const dalarm=m16.anomaly?` · ⚠ ${m16.anomaly}`:'';
+    code16DMeta.textContent=`v67.3中性BASE 红${dwc['红']??0}/蓝${dwc['蓝']??0}/绿${dwc['绿']??0} · 波色+大小Shadow ${vd.n??0}期 · 救${vd.rescue??0}/伤${vd.harm??0}/净${vd.net??0}${dalarm}`;
 
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
@@ -1104,8 +1106,8 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67冻结BASE + 原子Shadow同步锁单`;
-    calcState.textContent=d.recalculating?'新期开奖已入库 · 模型重算中':'模型已更新';
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67.4即时BASE + 原子Shadow同步锁单`;
+    calcState.textContent=d.fast_fallback_used?'BASE已出码 · 应急排名 · 完整模型后台恢复':(d.recalculating?(d.fast_base_ready?'BASE已出码 · Shadow后台更新':'新期开奖已入库 · BASE自愈生成中'):'模型已更新');
     calcState.className=d.recalculating?'pill':'pill ok';
 
   }catch(e){
@@ -1482,25 +1484,47 @@ def latest_row():
     return _db_retry(_read)
 
 def _patch_live_cache_latest(issue, nums, zs):
-    """Update visible latest result immediately, without waiting for the heavy model."""
-    with live_cache_lock:
-        data = dict(live_cache.get("data") or {})
-        try:
-            next_issue = _next_issue_id(issue)
-        except Exception:
-            next_issue = ""
-        data.update({
-            "issue": issue,
-            "next_issue": next_issue,
-            "latest_numbers": list(nums),
-            "latest_special_zodiac": normalize_z(zs[6] if len(zs) >= 7 else ""),
-            "latest_created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "recalculating": True
-        })
-        live_cache["issue"] = issue
-        live_cache["data"] = data
-        live_cache["building"] = False
+    """v67.4: a new draw must never blank F/A/B/C/D.
 
+    The previous versions explicitly replaced all code arrays with [] here.
+    That is the exact reason the page showed the new issue number but '--码'.
+    We now publish a fresh lightweight BASE immediately after the draw is in DB.
+    """
+    try:
+        snap=_v674_minimal_snapshot()
+    except Exception as e:
+        snap=None
+        print(f"[PATCH674] minimal snapshot failed: {type(e).__name__}: {e}",flush=True)
+
+    if isinstance(snap,dict) and str(snap.get("issue") or "")==str(issue):
+        snap["latest_numbers"]=list(nums)
+        snap["latest_special_zodiac"]=normalize_z(zs[6] if len(zs)>=7 else "")
+        snap["latest_created_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
+        snap["recalculating"]=True
+        snap["fast_base_ready"]=True
+        with live_cache_lock:
+            live_cache["issue"]=str(issue)
+            live_cache["data"]=snap
+            live_cache["building"]=False
+        return
+
+    # Last-resort: keep the last visible codes rather than clearing them.
+    # Mark them stale so the API immediately rebuilds on the next request.
+    with live_cache_lock:
+        data=dict(live_cache.get("data") or {})
+        try:
+            next_issue=_next_issue_id(issue)
+        except Exception:
+            next_issue=""
+        data.update({
+            "issue":str(issue),"next_issue":next_issue,"latest_numbers":list(nums),
+            "latest_special_zodiac":normalize_z(zs[6] if len(zs)>=7 else ""),
+            "latest_created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
+            "recalculating":True,"fast_base_ready":False,"stale_prediction":True
+        })
+        live_cache["issue"]=str(issue)
+        live_cache["data"]=data
+        live_cache["building"]=False
 
 def _refresh_learning_and_stats():
     """Refresh all derived learning/status values after AI/model work."""
@@ -1516,17 +1540,24 @@ def _auto_update_after_draw(issue, nums):
     auto_state["last_draw_issue"]=str(issue)
     auto_state["last_error"]=""
     try:
-        # 1) Train AI on the just-finished issue.
+        # 1) Visible BASE first.  Do not make the UI wait for AI/Shadow work.
+        try:
+            refresh_history_cache()
+        except Exception:
+            pass
+        rebuild_fast_live_cache()
+
+        # 2) Train AI on the just-finished issue in the same background worker.
         train_ai_after_new_draw(issue, nums)
         auto_state["last_learning_issue"]=str(issue)
 
-        # 2) Rebuild the live forecast for the NEXT issue.
+        # 3) Rebuild the full dashboard; official BASE is already visible.
         refresh_all_caches()
 
-        # 3) Refresh learner/60-issue stats.
+        # 4) Refresh learner/60-issue stats.
         _refresh_learning_and_stats()
 
-        # 4) Record next-issue shadow predictions if cache rebuild did not already do it.
+        # 5) Record next-issue status if cache rebuild did not already do it.
         try:
             rr=recent_rows(1200)
             if rr:
@@ -8349,26 +8380,530 @@ def _predict_c_v67(r,profile):
           "shadow_killed_head":killed}
     return base,meta,{"tail_only":tail,"coldhead_only":coldhead,"tail_coldhead":tail_cold,"legacy":list(legacy)}
 
-def _predict_d_v67(r,profile):
+def _d_neutral_score_from_pool(r, profile):
+    """D v67.3 neutral mother ranking.
+
+    Live D must not contain the very wave/size signals that its Shadows are
+    supposed to test.  Therefore T (trend, contains wave_parity) and W (wave)
+    are excluded from D BASE.  Z/C/P/A keep their learned real-performance
+    weights, renormalized only inside these four models.
+    """
     nums=list(range(1,50))
-    pool_score,_models,_perf=_pool_ensemble_score(r,profile,"20")
-    ranked=sorted(nums,key=lambda n:(-pool_score.get(n,-1e9),n))
+    models=_specialist_model_scores(r,profile,"20")
+    perf=_pool_performance()
+    raww=perf.get("weights") or {}
+    keys=("Z","C","P","A")
+    total=sum(max(0.0,float(raww.get(k,0.0))) for k in keys)
+    if total<=0:
+        weights={k:1.0/len(keys) for k in keys}
+    else:
+        weights={k:max(0.0,float(raww.get(k,0.0)))/total for k in keys}
+    score={
+        n:sum(float(weights[k])*float((models.get(k) or {}).get(n,.5)) for k in keys)
+        for n in nums
+    }
+    return _norm_values(score,nums),models,weights
+
+def _predict_d_v67(r,profile):
+    """D v67.3: neutral BASE first; Shadows are isolated and optional.
+
+    A Shadow failure must never prevent the pre-draw D BASE from being locked.
+    """
+    nums=list(range(1,50))
+    neutral_score,_neutral_models,neutral_weights=_d_neutral_score_from_pool(r,profile)
+    ranked=sorted(nums,key=lambda n:(-neutral_score.get(n,-1e9),n))
     base=ranked[:16]
-    _soft,soft_meta=_predict16_d_v66(r,profile)
-    legacy,lmeta=_predict16_dynamic_d(r,profile)
-    fw={k:float(v)/100.0 for k,v in (soft_meta.get("fused_wave") or {}).items()}
-    fs={k:float(v)/100.0 for k,v in (soft_meta.get("fused_size") or {}).items()}
-    def take(wave_w,size_w):
-        base_w=max(0.0,1.0-wave_w-size_w)
-        sc={n:base_w*float(pool_score.get(n,.5))+wave_w*fw.get(wave_of(n),.5)+size_w*fs.get(size_of(n),.5) for n in nums}
-        return sorted(nums,key=lambda n:(-sc[n],n))[:16]
-    color=take(.16,0.0)
-    size=take(0.0,.16)
-    both=take(.10,.10)
-    meta={"mode":"v67 D原始Top16","ranked49":ranked,"code_count":16,
-          "fused_wave":soft_meta.get("fused_wave") or {},"fused_size":soft_meta.get("fused_size") or {},
-          "regime":"v67 D BASE Top16","audit_regime":"D67|base16"}
-    return base,meta,{"color_only":color,"size_only":size,"color_size":both,"legacy":list(legacy)}
+    wave_counts=dict(Counter(wave_of(n) for n in base))
+    max_wave=max(wave_counts.values()) if wave_counts else 0
+    anomaly=("D BASE波色集中告警：单一波色>=14/16，仅诊断、不强制配额" if max_wave>=14 else "")
+
+    meta={
+      "mode":"v67.3 D中性BASE Top16",
+      "ranked49":ranked,"code_count":16,
+      "fused_wave":{},"fused_size":{},
+      "wave_counts":wave_counts,
+      "neutral_weights_pct":{k:round(100*v,1) for k,v in neutral_weights.items()},
+      "anomaly":anomaly,
+      "regime":"v67.3 D中性BASE Top16（Z/C/P/A）",
+      "audit_regime":"D673|neutral-base16",
+      "shadow_errors":[]
+    }
+    shadows={}
+
+    # Old v66 soft layer is Shadow-only.  Correctly receive all four returns.
+    try:
+        _soft,soft_meta,_old_codes,_old_meta=_predict16_d_v66(r,profile)
+        fw={k:float(v)/100.0 for k,v in (soft_meta.get("fused_wave") or {}).items()}
+        fs={k:float(v)/100.0 for k,v in (soft_meta.get("fused_size") or {}).items()}
+        meta["fused_wave"]=soft_meta.get("fused_wave") or {}
+        meta["fused_size"]=soft_meta.get("fused_size") or {}
+
+        def take(wave_w,size_w):
+            base_w=max(0.0,1.0-wave_w-size_w)
+            sc={n:base_w*float(neutral_score.get(n,.5))
+                  +wave_w*fw.get(wave_of(n),.5)
+                  +size_w*fs.get(size_of(n),.5) for n in nums}
+            return sorted(nums,key=lambda n:(-sc[n],n))[:16]
+
+        shadows["color_only"]=take(.16,0.0)
+        shadows["size_only"]=take(0.0,.16)
+        shadows["color_size"]=take(.10,.10)
+    except Exception as e:
+        meta["shadow_errors"].append(f"soft:{type(e).__name__}:{e}")
+
+    try:
+        legacy,_lmeta=_predict16_dynamic_d(r,profile)
+        shadows["legacy"]=list(legacy)
+    except Exception as e:
+        meta["shadow_errors"].append(f"legacy:{type(e).__name__}:{e}")
+
+    return base,meta,shadows
+
+
+
+# ===================== v67.4 immediate frozen BASE =====================
+# Keep references to the older v67 rule implementations.  They are used ONLY
+# to generate Shadows; the official BASE is now a lightweight, deterministic,
+# attribute-neutral ranking so display, locking and settlement always agree.
+_v673_predict_f_shadow_impl = _predict_f_v67
+_v673_predict_a_shadow_impl = _predict_a_v67
+_v673_predict_b_shadow_impl = _predict_b_v67
+_v673_predict_c_shadow_impl = _predict_c_v67
+_v673_predict_d_shadow_impl = _predict_d_v67
+
+def _v674_ranked(r, window=60):
+    """Fast neutral ranker for official BASE.
+
+    Uses only pre-draw special-number frequency and omission across the chosen
+    window.  No wave/color, size, head, zodiac, tail rescue or kill rule is used.
+    """
+    nums=list(range(1,50))
+    recent=list(r[:max(1,int(window))])
+    if not recent:
+        return nums[:]
+    freq=Counter()
+    gap={n:len(recent) for n in nums}
+    for i,x in enumerate(recent):
+        try:
+            n=int(x["special"])
+        except Exception:
+            continue
+        # Mild recency weighting, deliberately simple and frozen.
+        w=exp_weight(i, max(2.0, float(window)/6.0))
+        freq[n]+=w
+        if gap[n]==len(recent):
+            gap[n]=i
+    fn=_norm_values(freq,nums)
+    gn=_norm_values(gap,nums)
+    score={n:.60*float(fn.get(n,.5))+.40*float(gn.get(n,.5)) for n in nums}
+    return sorted(nums,key=lambda n:(-score[n],n))
+
+def _v674_official_bases(r):
+    long_rank=_v674_ranked(r,60)
+    short_rank=_v674_ranked(r,10)
+    return {
+      "F":long_rank[:22],
+      "A":long_rank[:27],
+      "B":short_rank[:27],
+      "C":short_rank[:22],
+      "D":long_rank[:16],
+      "rank_long":long_rank,
+      "rank_short":short_rank,
+    }
+
+def _v674_default_shadows(base, keys):
+    return {k:list(base) for k in keys}
+
+def _predict_f_v67(r, profile):
+    b=_v674_official_bases(r)
+    base=list(b["F"]); ranked=list(b["rank_long"])
+    shadows=_v674_default_shadows(base,["4vote","strong3","limit2","legacy"])
+    shadow_error=""
+    try:
+        _oldbase,_oldmeta,oldsh=_v673_predict_f_shadow_impl(r,profile)
+        for k in shadows:
+            vals=list((oldsh or {}).get(k) or [])
+            if len(vals)==22: shadows[k]=vals
+    except Exception as e:
+        shadow_error=f"{type(e).__name__}:{e}"
+    meta={"mode":"v67.4 F即时中性Top22","code_count":22,"ranked49":ranked,
+          "dynamic_count":22,"regime":"v67.4 F BASE中性Top22","audit_regime":"F674|neutral22",
+          "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0},
+          "shadow_error":shadow_error}
+    return base,meta,shadows
+
+def _predict_a_v67(r,profile,target_issue):
+    b=_v674_official_bases(r)
+    base=list(b["A"]); ranked=list(b["rank_long"])
+    shadows=_v674_default_shadows(base,["kill_head","fixed_round","legacy"])
+    shadow_error=""
+    try:
+        _oldbase,_oldmeta,oldsh=_v673_predict_a_shadow_impl(r,profile,target_issue)
+        for k in shadows:
+            vals=list((oldsh or {}).get(k) or [])
+            if len(vals)==27: shadows[k]=vals
+    except Exception as e:
+        shadow_error=f"{type(e).__name__}:{e}"
+    meta={"mode":"v67.4 A即时中性Top27","ranked49":ranked,"raw_top27":base,
+          "code_count":27,"killed_head":"","head_decision":{"active":False,"reason":"BASE不杀码"},
+          "block_start":"","block_end":"","round_position":1,
+          "regime":"v67.4 A BASE中性Top27","audit_regime":"A674|neutral27",
+          "shadow_error":shadow_error}
+    return base,meta,shadows
+
+def _predict_b_v67(r,profile):
+    b=_v674_official_bases(r)
+    base=list(b["B"]); ranked=list(b["rank_short"])
+    shadows=_v674_default_shadows(base,["tail_only","head_only","tail_head","legacy"])
+    shadow_error=""
+    try:
+        _oldbase,_oldmeta,oldsh=_v673_predict_b_shadow_impl(r,profile)
+        for k in shadows:
+            vals=list((oldsh or {}).get(k) or [])
+            if len(vals)==27: shadows[k]=vals
+    except Exception as e:
+        shadow_error=f"{type(e).__name__}:{e}"
+    meta={"mode":"v67.4 B即时近10中性Top27","ranked49":ranked,"code_count":27,
+          "killed_head":"","missing_tail_rescue":{},
+          "regime":"v67.4 B BASE近10中性Top27","audit_regime":"B674|neutral10-27",
+          "shadow_error":shadow_error}
+    return base,meta,shadows
+
+def _predict_c_v67(r,profile):
+    b=_v674_official_bases(r)
+    base=list(b["C"]); ranked=list(b["rank_short"])
+    shadows=_v674_default_shadows(base,["tail_only","coldhead_only","tail_coldhead","legacy"])
+    shadow_error=""
+    try:
+        _oldbase,_oldmeta,oldsh=_v673_predict_c_shadow_impl(r,profile)
+        for k in shadows:
+            vals=list((oldsh or {}).get(k) or [])
+            if len(vals)==22: shadows[k]=vals
+    except Exception as e:
+        shadow_error=f"{type(e).__name__}:{e}"
+    meta={"mode":"v67.4 C即时近10中性Top22","ranked49":ranked,"code_count":22,
+          "killed_head":"","coldest3":[],"missing_tails":[],"missing_tail_rescue":{},
+          "regime":"v67.4 C BASE近10中性Top22","audit_regime":"C674|neutral10-22",
+          "shadow_error":shadow_error}
+    return base,meta,shadows
+
+def _predict_d_v67(r,profile):
+    b=_v674_official_bases(r)
+    base=list(b["D"]); ranked=list(b["rank_long"])
+    wave_counts=dict(Counter(wave_of(n) for n in base))
+    max_wave=max(wave_counts.values()) if wave_counts else 0
+    anomaly=("D BASE波色集中告警：单一波色>=14/16，仅诊断、不强制配额" if max_wave>=14 else "")
+    shadows=_v674_default_shadows(base,["color_only","size_only","color_size","legacy"])
+    shadow_error=""
+    try:
+        _oldbase,_oldmeta,oldsh=_v673_predict_d_shadow_impl(r,profile)
+        for k in shadows:
+            vals=list((oldsh or {}).get(k) or [])
+            if len(vals)==16: shadows[k]=vals
+    except Exception as e:
+        shadow_error=f"{type(e).__name__}:{e}"
+    meta={"mode":"v67.4 D即时中性Top16","ranked49":ranked,"code_count":16,
+          "fused_wave":{},"fused_size":{},"wave_counts":wave_counts,
+          "neutral_weights_pct":{},"anomaly":anomaly,
+          "regime":"v67.4 D BASE中性Top16（不含波色/大小）",
+          "audit_regime":"D674|neutral16","shadow_errors":[shadow_error] if shadow_error else []}
+    return base,meta,shadows
+
+
+# ===================== v67.1 fast live BASE layer =====================
+def _v671_recent10_ranked(r):
+    """Return B/C frozen BASE mother ranking using only latest 10 specials.
+
+    This is the ranking part of v63 B only: frequency/omission/wave/parity/
+    zodiac + 10% soft tail score.  It deliberately does NOT run kill-head,
+    cold-zodiac quotas or missing-tail replacement.  It is therefore fast
+    enough for the live display path and exactly matches the intended v67 BASE.
+    """
+    nums=list(range(1,50))
+    recent=list(r[:10])
+    residue=defaultdict(Counter); direct=defaultdict(Counter)
+    for x in recent:
+        for j in range(1,7):
+            n=x[f"n{j}"]; z=normalize_z(x[f"z{j}"] or "")
+            if n and z:
+                residue[(int(n)-1)%12][z]+=1; direct[int(n)][z]+=1
+        n=x["special"]; z=normalize_z(x["z7"] or "")
+        if n and z:
+            residue[(int(n)-1)%12][z]+=2; direct[int(n)][z]+=2
+    residue_z={k:c.most_common(1)[0][0] for k,c in residue.items() if c}
+    zmap={}
+    for n in nums:
+        z=residue_z.get((n-1)%12)
+        if not z and direct.get(n): z=direct[n].most_common(1)[0][0]
+        if z: zmap[n]=z
+
+    freq=Counter(); wave_w=Counter(); parity_w=Counter(); zodiac_w=Counter(); tail20=Counter()
+    totalw=0.0; gap={n:10 for n in nums}
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        w=exp_weight(i,3.4); totalw+=w
+        freq[n]+=w; wave_w[wave_of(n)]+=w; parity_w[parity_of(n)]+=w; tail20[n%10]+=w
+        z=normalize_z(x["z7"] or "")
+        if z: zodiac_w[z]+=w
+        if gap[n]==10: gap[n]=i
+    freq_n=_norm_values(freq,nums); gap_n=_norm_values(gap,nums)
+    wave_share={w:(wave_w[w]/totalw if totalw else 1/3) for w in ["红","蓝","绿"]}
+    parity_share={q:(parity_w[q]/totalw if totalw else .5) for q in ["单","双"]}
+    zodiac_share={z:(zodiac_w[z]/totalw if totalw else 1/12) for z in ALL_ZODIACS}
+
+    w4=Counter(); p4=Counter(); z4=Counter(); t4=Counter()
+    for i,x in enumerate(recent[:4]):
+        try: n=int(x["special"])
+        except Exception: continue
+        ww=exp_weight(i,1.7)
+        w4[wave_of(n)]+=ww; p4[parity_of(n)]+=ww; t4[n%10]+=ww
+        z=normalize_z(x["z7"] or "")
+        if z: z4[z]+=ww
+    sw=sum(w4.values()) or 1.0; sp=sum(p4.values()) or 1.0; sz=sum(z4.values()) or 1.0
+    st10=sum(tail20.values()) or 1.0; st4=sum(t4.values()) or 1.0
+
+    base_score={}
+    for n in nums:
+        z=zmap.get(n)
+        wave_live=.65*wave_share.get(wave_of(n),1/3)+.35*(w4.get(wave_of(n),0)/sw)
+        parity_live=.65*parity_share.get(parity_of(n),.5)+.35*(p4.get(parity_of(n),0)/sp)
+        zodiac_live=.70*zodiac_share.get(z,1/12)+.30*(z4.get(z,0)/sz if z else 0)
+        base_score[n]=.34*freq_n.get(n,.5)+.20*gap_n.get(n,.5)+.16*wave_live+.12*parity_live+.18*zodiac_live
+    base_score=_norm_values(base_score,nums)
+    tail_raw={t:.72*(tail20.get(t,0.0)/st10)+.28*(t4.get(t,0.0)/st4) for t in range(10)}
+    tail_strength=_norm_values(tail_raw,range(10))
+    score=_norm_values({n:.90*base_score.get(n,.5)+.10*tail_strength.get(n%10,.5) for n in nums},nums)
+    ranked=sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
+    seen={int(x["special"])%10 for x in recent if x["special"]}
+    return ranked,{"window_issues":[str(x["issue"]) for x in recent],"missing_tails":[t for t in range(10) if t not in seen],"tail_weight_pct":10.0}
+
+def _v671_live_bases(r,profile,next_issue=""):
+    """v67.4 official BASEs.  This path is intentionally O(history) and never
+    calls specialist pools, AI, Shadow rules or backtests."""
+    b=_v674_official_bases(r)
+    f=list(b["F"]); a=list(b["A"]); bb=list(b["B"]); c=list(b["C"]); d=list(b["D"])
+    rank_long=list(b["rank_long"]); rank_short=list(b["rank_short"])
+
+    fm={"mode":"v67.4 F即时中性Top22","code_count":22,"ranked49":rank_long,
+        "dynamic_count":22,"regime":"v67.4 F BASE中性Top22","audit_regime":"F674|neutral22",
+        "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
+    am={"mode":"v67.4 A即时中性Top27","ranked49":rank_long,"raw_top27":a,"code_count":27,
+        "killed_head":"","head_decision":{"active":False,"reason":"BASE不杀码"},
+        "block_start":"","block_end":"","round_position":1,
+        "regime":"v67.4 A BASE中性Top27","audit_regime":"A674|neutral27"}
+    bm={"mode":"v67.4 B即时近10中性Top27","ranked49":rank_short,"code_count":27,
+        "killed_head":"","missing_tail_rescue":{},
+        "window_issues":[str(x["issue"]) for x in list(r[:10])],
+        "regime":"v67.4 B BASE近10中性Top27","audit_regime":"B674|neutral10-27"}
+    cm={"mode":"v67.4 C即时近10中性Top22","ranked49":rank_short,"code_count":22,
+        "killed_head":"","coldest3":[],"missing_tails":[],"missing_tail_rescue":{},
+        "regime":"v67.4 C BASE近10中性Top22","audit_regime":"C674|neutral10-22"}
+    dwc=dict(Counter(wave_of(n) for n in d))
+    danom=("D BASE波色集中告警：单一波色>=14/16，仅诊断、不强制配额"
+           if (max(dwc.values()) if dwc else 0)>=14 else "")
+    dm={"mode":"v67.4 D即时中性Top16","ranked49":rank_long,"code_count":16,
+        "fused_wave":{},"fused_size":{},"wave_counts":dwc,"neutral_weights_pct":{},
+        "anomaly":danom,"regime":"v67.4 D BASE中性Top16（不含波色/大小）",
+        "audit_regime":"D674|neutral16"}
+    return (f,fm),(a,am),(bb,bm),(c,cm),(d,dm)
+
+def _v672_simple_ranked(r, window=60):
+    """Emergency ranking used only if the normal v67 BASE scorer errors.
+
+    It never uses the current draw's result as a target and only reads rows that
+    already exist before the next issue.  It is deliberately simple and exists
+    to prevent a blank dashboard; the full v67 BASE rebuild may replace it later.
+    """
+    nums=list(range(1,50))
+    recent=list(r[:max(1,int(window))])
+    freq=Counter(); gap={n:len(recent) for n in nums}
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        w=exp_weight(i,4.0)
+        freq[n]+=w
+        if gap.get(n,len(recent))==len(recent): gap[n]=i
+    fn=_norm_values(freq,nums)
+    gn=_norm_values(gap,nums)
+    score={n:.56*fn.get(n,.5)+.44*gn.get(n,.5) for n in nums}
+    return sorted(nums,key=lambda n:(-score.get(n,-1e9),n))
+
+
+def _v672_safe_live_bases(r,profile,next_issue=""):
+    """Get the official v67 BASE lists; fall back only on an actual exception."""
+    try:
+        return _v671_live_bases(r,profile,next_issue), False, ""
+    except Exception as e:
+        # Never leave the visible page blank because one model component failed.
+        rank60=_v672_simple_ranked(r,60)
+        try:
+            rank10,bmeta=_v671_recent10_ranked(r)
+        except Exception:
+            rank10=_v672_simple_ranked(r,10)
+            bmeta={"window_issues":[str(x["issue"]) for x in list(r[:10])],"missing_tails":[],"tail_weight_pct":0.0}
+        f=rank60[:22]; a=rank60[:27]; d=rank60[:16]; b=rank10[:27]; c=rank10[:22]
+        fm={"mode":"v67.2应急BASE Top22","code_count":22,"ranked49":rank60,
+            "dynamic_count":22,"regime":"v67.2应急BASE","audit_regime":"F672|fallback",
+            "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
+        am={"mode":"v67.2应急A Top27","ranked49":rank60,"raw_top27":a,"code_count":27,
+            "killed_head":"","head_decision":{"active":False,"reason":"应急BASE不杀码"},
+            "block_start":"","block_end":"","round_position":1,"regime":"v67.2应急A","audit_regime":"A672|fallback"}
+        bm=dict(bmeta); bm.update({"mode":"v67.2应急B近10 Top27","ranked49":rank10,"code_count":27,
+            "killed_head":"","missing_tail_rescue":{},"regime":"v67.2应急B","audit_regime":"B672|fallback"})
+        cm={"mode":"v67.2应急C近10 Top22","ranked49":rank10,"code_count":22,"killed_head":"",
+            "coldest3":[],"missing_tails":bmeta.get("missing_tails") or [],"missing_tail_rescue":{},
+            "regime":"v67.2应急C","audit_regime":"C672|fallback"}
+        dm={"mode":"v67.2应急D Top16","ranked49":rank60,"code_count":16,
+            "fused_wave":{},"fused_size":{},"regime":"v67.2应急D","audit_regime":"D672|fallback"}
+        return ((f,fm),(a,am),(b,bm),(c,cm),(d,dm)), True, f"{type(e).__name__}: {e}"
+
+
+def _v672_safe_call(fn, default):
+    try:
+        return fn()
+    except Exception:
+        return default
+
+def _v671_fast_live_snapshot():
+    """Robust visible snapshot: BASE codes are mandatory; everything else is optional."""
+    r=recent_rows(1200)
+    if not r:
+        return None
+    latest=r[0]
+    try:
+        next_issue=_next_issue_id(latest["issue"])
+    except Exception:
+        next_issue=""
+
+    try:
+        profile,profile_scores=_select_profile(r)
+    except Exception:
+        profile=model_state.get("profile") or "平衡"
+        profile_scores=dict(model_state.get("profile_scores") or {})
+
+    bases,fallback_used,fallback_error=_v672_safe_live_bases(r,profile,next_issue)
+    (c20,m20),(c27,m27),(c27b,m27b),(c22,m22),(c16,m16)=bases
+    latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
+
+    trend=_v672_safe_call(lambda:_trend_profiles(r),{"wave":{},"size":{},"parity":{},"wave_parity":{}})
+    pingte_pair=_v672_safe_call(lambda:_predict_pingte_yixiao_b20(r),("",{"samples":0}))
+    pingte_one,pingte_meta=pingte_pair
+
+    def _pct_map(obj,key):
+        try: return {k:round(v*100,1) for k,v in (obj.get(key) or {}).items()}
+        except Exception: return {}
+
+    data={
+      "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
+      "latest_numbers":latest_numbers,"latest_special_zodiac":normalize_z(latest["z7"] or ""),
+      "latest_created_at":latest["created_at"] or "",
+      "special20":[f"{n:02d}" for n in sorted(c20)],"special24":[f"{n:02d}" for n in sorted(c20)],
+      "special27":[f"{n:02d}" for n in sorted(c27)],"special27b":[f"{n:02d}" for n in sorted(c27b)],
+      "special22c":[f"{n:02d}" for n in sorted(c22)],"special16d":[f"{n:02d}" for n in sorted(c16)],
+      "strategy20":m20,"strategy27":m27,"strategy27b":m27b,"strategy22c":m22,"strategy16d":m16,
+      "stats20":_v672_safe_call(lambda:_profile_hit_stats(F_BASE_V67_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+      "statsF":_v672_safe_call(lambda:_stats20round_profile(F_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats27":{"current":_v672_safe_call(lambda:_stats20round_profile(A_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+                 "last_complete":None,"overall":_v672_safe_call(lambda:_profile_hit_stats(A_BASE_V67_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+                 "lifetime":_v672_safe_call(lambda:_profile_lifetime_stats(A_BASE_V67_PROFILE),{"n":0,"hits":0,"misses":0,"rate":0.0})},
+      "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
+      "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
+      "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+      "profile":profile,"profile_scores":profile_scores,"calibration_n":model_state.get("calibration_n",0),
+      "trend":{"wave":_pct_map(trend,"wave"),"size":_pct_map(trend,"size"),
+               "parity":_pct_map(trend,"parity"),"wave_parity":_pct_map(trend,"wave_parity")},
+      "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
+                  "long_prior_ready":bool(long_prior.get("ready")),
+                  "mode":"v67.2 BASE已显示 · Shadow后台验收" + (" · 应急排名" if fallback_used else "")},
+      "learning":{"enabled":True,"best_profile":learner_cache.get("best_profile","平衡"),
+                  "settled":learner_cache.get("settled",0),"target":60,
+                  "ai_live":_v672_safe_call(lambda:ai_live_validation_stats(60),{}),
+                  "fusion":_v672_safe_call(lambda:get_dynamic_ai_mix(),{}),"auto":dict(auto_state)},
+      "complement":{},"strategy":{"cold_rebound_now":False,"cold_zodiacs":[],"latest_zodiac":normalize_z(latest["z7"] or ""),
+                  "nmy_samples":0,"nmy_conditional_pct":0.0,"nmy_baseline_pct":0.0,"nmy_lift_pct":0.0,
+                  "head_advice":"BASE已更新，Shadow后台计算","head_strength":{}},
+      "telegram":bool(BOT_TOKEN),"recalculating":True,"fast_base_ready":True,"stale_prediction":False,
+      "fast_fallback_used":bool(fallback_used),"fast_fallback_error":fallback_error
+    }
+    # Optional wrappers must never blank the five BASE lists.
+    for key,prof in [("statsF",F_BASE_V67_PROFILE),("stats27b",B_BASE_V67_PROFILE),("stats22c",C_BASE_V67_PROFILE),("stats16d",D_BASE_V67_PROFILE)]:
+        try: data[key]["lifetime"]=_profile_lifetime_stats(prof)
+        except Exception: data[key]["lifetime"]={"n":0,"hits":0,"misses":0,"rate":0.0}
+    return data
+
+def _v674_minimal_snapshot():
+    """Synchronous no-blank snapshot.  Must stay independent from heavy model code."""
+    r=recent_rows(120)
+    if not r:
+        return None
+    latest=r[0]
+    try:
+        next_issue=_next_issue_id(latest["issue"])
+    except Exception:
+        next_issue=""
+    (c20,m20),(c27,m27),(c27b,m27b),(c22,m22),(c16,m16)=_v671_live_bases(r,"平衡",next_issue)
+    latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
+    empty_stat={"n":0,"hits":0,"misses":0,"rate":0.0}
+    return {
+      "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
+      "latest_numbers":latest_numbers,
+      "latest_special_zodiac":normalize_z(latest["z7"] or ""),
+      "latest_created_at":latest["created_at"] or "",
+      "special20":[f"{n:02d}" for n in sorted(c20)],
+      "special24":[f"{n:02d}" for n in sorted(c20)],
+      "special27":[f"{n:02d}" for n in sorted(c27)],
+      "special27b":[f"{n:02d}" for n in sorted(c27b)],
+      "special22c":[f"{n:02d}" for n in sorted(c22)],
+      "special16d":[f"{n:02d}" for n in sorted(c16)],
+      "strategy20":m20,"strategy27":m27,"strategy27b":m27b,"strategy22c":m22,"strategy16d":m16,
+      "stats20":dict(empty_stat),"statsF":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
+      "stats27":{"current":{"n":0,"hits":0,"misses":0},"last_complete":None,
+                 "overall":dict(empty_stat),"lifetime":dict(empty_stat)},
+      "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
+      "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
+      "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
+      "v67_rules":{},"model_pool":{},"stable_signals":{},
+      "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
+      "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
+      "profile":"v67.4即时BASE","profile_scores":{},"calibration_n":0,
+      "trend":{"wave":{},"size":{},"parity":{},"wave_parity":{}},
+      "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
+                  "long_prior_ready":bool(long_prior.get("ready")),
+                  "mode":"v67.4 即时BASE已出码 · Shadow后台验收"},
+      "learning":{"enabled":True,"best_profile":"冻结BASE","settled":0,"target":60,
+                  "ai_live":{},"fusion":{},"auto":dict(auto_state)},
+      "complement":{},"strategy":{"cold_rebound_now":False,"cold_zodiacs":[],
+          "latest_zodiac":normalize_z(latest["z7"] or ""),"nmy_samples":0,
+          "nmy_conditional_pct":0.0,"nmy_baseline_pct":0.0,"nmy_lift_pct":0.0,
+          "head_advice":"即时BASE已生成；Shadow后台计算","head_strength":{}},
+      "telegram":bool(BOT_TOKEN),"recalculating":True,"fast_base_ready":True,
+      "stale_prediction":False,"fast_fallback_used":False,"fast_fallback_error":""
+    }
+
+def rebuild_fast_live_cache():
+    t0=time.time()
+    try:
+        data=_v674_minimal_snapshot()
+        if not data:
+            return None
+        latest=latest_row()
+        latest_issue=str(latest["issue"] if latest else "")
+        if str(data.get("issue") or "")!=latest_issue:
+            return None
+        with live_cache_lock:
+            live_cache["data"]=data
+            live_cache["issue"]=data.get("issue")
+            live_cache["building"]=False
+        print(f"[FAST674] BASE ready issue={data.get('issue')} next={data.get('next_issue')} in {time.time()-t0:.3f}s",flush=True)
+        return data
+    except Exception as e:
+        print(f"[FAST674] BASE failed: {type(e).__name__}: {e}",flush=True)
+        return None
 
 def _binom_tail_half(k,n,alternative="greater"):
     if n<=0: return 1.0
@@ -10189,23 +10724,31 @@ def record_shadow_predictions(r):
     except Exception as e:
         print(f"[22C-V67] lock failed: {type(e).__name__}: {e}",flush=True)
 
-    # D v67: raw Top16 live; color/size are separate Shadows.
+    # D v67.3: neutral BASE always locks first; each Shadow is isolated.
     try:
         best_profile,_=_select_profile(r)
         c16d,_m16d,dsh=_predict_d_v67(r,best_profile)
         records.append((target,D_BASE_V67_PROFILE,",".join(str(n) for n in c16d),"","",""))
-        records.append((target,D_COLOR_ONLY_V67_PROFILE,",".join(str(n) for n in dsh["color_only"]),"","",""))
-        records.append((target,D_SIZE_ONLY_V67_PROFILE,",".join(str(n) for n in dsh["size_only"]),"","",""))
-        records.append((target,D_COLOR_SIZE_V67_PROFILE,",".join(str(n) for n in dsh["color_size"]),"","",""))
-        records.append((target,D_LEGACY_V66_V67_PROFILE,",".join(str(n) for n in dsh["legacy"]),"","",""))
         _record_strategy_audit(target,D_BASE_V67_PROFILE,c16d,_m16d)
         cutoff=str(r[0]["issue"]) if r else ""
-        _lock_rule_counterfactual(target,"D",c16d,"D_COLOR_ONLY",dsh["color_only"],cutoff)
-        _lock_rule_counterfactual(target,"D",c16d,"D_SIZE_ONLY",dsh["size_only"],cutoff)
-        _lock_rule_counterfactual(target,"D",c16d,"D_COLOR_SIZE",dsh["color_size"],cutoff)
-        _lock_rule_counterfactual(target,"D",c16d,"D_LEGACY_V66",dsh["legacy"],cutoff)
+        shadow_specs=[
+          ("color_only",D_COLOR_ONLY_V67_PROFILE,"D_COLOR_ONLY"),
+          ("size_only",D_SIZE_ONLY_V67_PROFILE,"D_SIZE_ONLY"),
+          ("color_size",D_COLOR_SIZE_V67_PROFILE,"D_COLOR_SIZE"),
+          ("legacy",D_LEGACY_V66_V67_PROFILE,"D_LEGACY_V66"),
+        ]
+        for key,shadow_profile,rule_id in shadow_specs:
+            vals=list(dsh.get(key) or [])
+            if len(vals)!=16:
+                print(f"[16D-V67.3] skip broken Shadow {key}: len={len(vals)}",flush=True)
+                continue
+            records.append((target,shadow_profile,",".join(str(n) for n in vals),"","",""))
+            try:
+                _lock_rule_counterfactual(target,"D",c16d,rule_id,vals,cutoff)
+            except Exception as se:
+                print(f"[16D-V67.3] shadow lock {key} failed: {type(se).__name__}: {se}",flush=True)
     except Exception as e:
-        print(f"[16D-V67] lock failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[16D-V67.3] BASE lock failed: {type(e).__name__}: {e}",flush=True)
 
     # 平特一肖：独立B组近20期算法，真实前瞻锁单。
     try:
@@ -10787,45 +11330,18 @@ def backtest_stats(r, sample=60):
     return val
 
 def initialize_quick_live_cache():
-    """Populate latest draw immediately without loading the full database."""
+    """v67.4 boot cache: publish five BASE lists immediately; never placeholders."""
     try:
-        r=recent_rows(1)
-        if not r:
+        data=_v674_minimal_snapshot()
+        if not data:
             return
-        latest=r[0]
-        latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
-        try:
-            next_issue=_next_issue_id(latest["issue"])
-        except Exception:
-            next_issue=""
-        data={
-          "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
-          "latest_numbers":latest_numbers,
-          "latest_special_zodiac":normalize_z(latest["z7"] or ""),
-          "latest_created_at":latest["created_at"] or "",
-          "special24":[],"special22c":[],"main4":[],"zodiac4":[],"zodiac_pairs":[],
-          "pingte_yixiao":"",
-          "pingte_samples":0,
-          "profile":model_state.get("profile") or "平衡",
-          "profile_scores":{},
-          "forecast":{"target_issue":next_issue,"transition_samples":0,
-                      "exact_previous_number_samples":0,
-                      "mode":"模型后台初始化中"},
-          "strategy":{"cold_rebound_now":False,"cold_zodiacs":[],
-                      "latest_zodiac":normalize_z(latest["z7"] or ""),
-                      "nmy_samples":0,"nmy_conditional_pct":0.0,"nmy_baseline_pct":0.0,
-                      "nmy_lift_pct":0.0,"head_advice":"模型后台初始化中","head_strength":{}},
-          "trend":{"wave":{},"size":{},"parity":{}},
-          "telegram":bool(BOT_TOKEN),
-          "recalculating":True
-        }
         with live_cache_lock:
-            live_cache["issue"]=latest["issue"]
+            live_cache["issue"]=data.get("issue")
             live_cache["data"]=data
             live_cache["building"]=False
-        print(f"[BOOT] quick cache ready issue={latest['issue']}",flush=True)
+        print(f"[BOOT674] immediate BASE ready issue={data.get('issue')} next={data.get('next_issue')}",flush=True)
     except Exception as e:
-        print(f"[BOOT] quick cache failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[BOOT674] immediate BASE failed: {type(e).__name__}: {e}",flush=True)
 
 def build_model():
     model_state["recalc_started_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
@@ -10843,11 +11359,7 @@ def build_model():
     latest_numbers=[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]]
     try: next_issue=_next_issue_id(latest["issue"])
     except Exception: next_issue=""
-    c20,meta20,_fsh=_predict_f_v67(r,profile)
-    c27,meta27,_ash=_predict_a_v67(r,profile,next_issue)
-    c27b,meta27b,_bsh=_predict_b_v67(r,profile)
-    c22c,meta22c,_csh=_predict_c_v67(r,profile)
-    c16d,meta16d,_dsh=_predict_d_v67(r,profile)
+    (c20,meta20),(c27,meta27),(c27b,meta27b),(c22c,meta22c),(c16d,meta16d)=_v671_live_bases(r,profile,next_issue)
 
     stats20=_profile_hit_stats(F_BASE_V67_PROFILE,60)
     statsF=_stats20round_profile(F_BASE_V67_PROFILE,next_issue)
@@ -10977,7 +11489,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v67：冻结BASE + 原子Shadow验收"
+        "mode":"v67.4：即时BASE锁单 + 原子Shadow验收"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -11012,10 +11524,18 @@ def rebuild_live_cache():
     try:
         data=build_model()
         model_state["recalc_finished_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
-        with live_cache_lock:
-            live_cache["data"]=data
-            live_cache["issue"]=data.get("issue") if isinstance(data,dict) else None
-        print(f"[CACHE] model rebuilt issue={data.get('issue')} in {time.time()-t0:.2f}s",flush=True)
+        latest=latest_row()
+        latest_issue=str(latest["issue"] if latest else "")
+        built_issue=str(data.get("issue") if isinstance(data,dict) else "")
+        if built_issue and built_issue==latest_issue:
+            with live_cache_lock:
+                live_cache["data"]=data
+                live_cache["issue"]=data.get("issue") if isinstance(data,dict) else None
+            print(f"[CACHE] model rebuilt issue={data.get('issue')} in {time.time()-t0:.2f}s",flush=True)
+        else:
+            print(f"[CACHE] discard stale build issue={built_issue} latest={latest_issue}",flush=True)
+            threading.Thread(target=rebuild_fast_live_cache,daemon=True,name="fast-base-catchup").start()
+            return live_cache.get("data")
         try:
             rr=recent_rows(1200)
             threading.Thread(
@@ -11034,8 +11554,17 @@ def rebuild_live_cache():
         with live_cache_lock:
             live_cache["building"]=False
 
+def _visible_base_ready(data):
+    if not isinstance(data,dict): return False
+    return (len(data.get("special20") or [])>=16 and
+            len(data.get("special27") or [])>=20 and
+            len(data.get("special27b") or [])>=20 and
+            len(data.get("special22c") or [])>=16 and
+            len(data.get("special16d") or [])>=12)
+
+
 def model():
-    """Return live snapshot and self-heal if DB has moved ahead of cache."""
+    """Return the newest BASE immediately; blank same-issue caches self-heal."""
     with live_cache_lock:
         data=live_cache.get("data")
         building=live_cache.get("building")
@@ -11044,47 +11573,49 @@ def model():
     except Exception:
         latest=None
 
-    if data is not None and latest is not None:
-        cached_issue=str(data.get("issue") or "")
-        latest_issue=str(latest["issue"] or "")
-        if cached_issue != latest_issue:
+    latest_issue=str(latest["issue"] or "") if latest is not None else ""
+    cached_issue=str((data or {}).get("issue") or "")
+
+    # Critical v67.2 fix: a quick-cache row with the correct issue but empty
+    # code arrays is NOT considered healthy.  Build the five BASE lists now.
+    needs_fast = (data is None or not _visible_base_ready(data) or
+                  (latest_issue and cached_issue!=latest_issue))
+    if needs_fast and latest is not None:
+        fresh=rebuild_fast_live_cache()
+        if isinstance(fresh,dict) and str(fresh.get("issue") or "")==latest_issue and _visible_base_ready(fresh):
             if not building:
-                threading.Thread(target=rebuild_live_cache,daemon=True,name="stale-cache-self-heal").start()
-            stale=dict(data)
-            stale["issue"]=latest_issue
-            stale["next_issue"]=_next_issue_id(latest_issue)
-            stale["recalculating"]=True
-            stale["stale_prediction"]=True
-            stale["special20"]=[]
-            stale["special27"]=[]
-            stale["special27b"]=[]
-            stale["special22c"]=[]
-            stale["special16d"]=[]
-            stale["special24"]=[]
-            fc=dict(stale.get("forecast") or {})
-            fc["target_issue"]=_next_issue_id(latest_issue)
-            fc["mode"]="新期开奖已入库 · 正在重算下一期"
-            stale["forecast"]=fc
-            return stale
+                threading.Thread(target=rebuild_live_cache,daemon=True,name="full-model-after-fast").start()
+            return fresh
 
-    if data is not None:
-        ans=dict(data)
-        ans["stale_prediction"]=False
-        return ans
+    # If the background fast path happened between reads, use it.
+    with live_cache_lock:
+        data=live_cache.get("data")
+        building=live_cache.get("building")
+    if isinstance(data,dict):
+        cached_issue=str(data.get("issue") or "")
+        if (not latest_issue or cached_issue==latest_issue) and _visible_base_ready(data):
+            ans=dict(data); ans["stale_prediction"]=False
+            return ans
 
-    if not building:
-        return rebuild_live_cache() or {
-          "issue":str(latest["issue"]) if latest else None,
-          "next_issue":_next_issue_id(latest["issue"]) if latest else "",
-          "count":0,"recalculating":True,"stale_prediction":True,
-          "special20":[],"special27":[],"special27b":[],"special22c":[],"special16d":[],"special24":[]
-        }
+    # Last attempt: return a direct robust snapshot instead of blank arrays.
+    if latest is not None:
+        try:
+            direct=_v674_minimal_snapshot()
+            if direct and _visible_base_ready(direct):
+                with live_cache_lock:
+                    live_cache["data"]=direct; live_cache["issue"]=direct.get("issue")
+                return direct
+        except Exception as e:
+            print(f"[MODEL] direct BASE fallback failed: {type(e).__name__}: {e}",flush=True)
 
+    # Only if history itself is unavailable do we return blanks.
     return {
-      "issue":str(latest["issue"]) if latest else None,
-      "next_issue":_next_issue_id(latest["issue"]) if latest else "",
-      "count":0,"recalculating":True,"stale_prediction":True,
-      "special20":[],"special27":[],"special27b":[],"special22c":[],"special16d":[],"special24":[]
+      "issue":latest_issue or None,
+      "next_issue":_next_issue_id(latest_issue) if latest_issue else "",
+      "count":history_cache.get("total",0),"recalculating":True,"stale_prediction":True,
+      "special20":[],"special27":[],"special27b":[],"special22c":[],"special16d":[],"special24":[],
+      "forecast":{"target_issue":_next_issue_id(latest_issue) if latest_issue else "",
+                  "mode":"历史数据暂不可读，等待自动恢复"}
     }
 
 
@@ -11480,6 +12011,7 @@ def boot():
         print(f"[BOOT] history cache failed: {type(e).__name__}: {e}",flush=True)
     initialize_quick_live_cache()
     background_state["boot_ready"]=True
+    threading.Thread(target=rebuild_fast_live_cache,daemon=True,name="initial-fast-base").start()
 
     # Webhook can now receive new draws.
     if BOT_TOKEN:
