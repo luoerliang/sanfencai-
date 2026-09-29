@@ -287,6 +287,21 @@ D_LEGACY_V66_V67_PROFILE="D_LEGACY_V66_Shadow_v67"
 
 V67_RULE_VERSION="v67.4-r1"
 V67_MODEL_VERSION="v67.4-model-001"
+
+# ===================== v68 probabilistic rankers =====================
+F_BASE_V68_PROFILE="F_R1_TOP22_v68"
+A_BASE_V68_PROFILE="A_R1_TOP27_v68"
+B_BASE_V68_PROFILE="B_R2_TOP27_v68"
+C_BASE_V68_PROFILE="C_R2_TOP22_v68"
+D_BASE_V68_PROFILE="D_R3_TOP16_v68"
+V68_MODEL_VERSION="v68-prob-001"
+V68_CONTROL_RULE_VERSION="v68-v674-control-r1"
+V68_PROMOTION_MIN_N=300
+V68_PRIMARY_ALPHA=0.0167  # 3 primary rankers, conservative Bonferroni-style gate
+V68_UNIFORM_LOGLOSS=math.log(49.0)
+V68_UNIFORM_BRIER=48.0/49.0
+v68_wf_lock=threading.RLock()
+v68_wf_cache={"ts":0.0,"data":None}
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -649,8 +664,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div id="fDynamicTitle" class="sectionTitle">F组 · 固定22码</div>
-        <div class="sectionHint">v67.4正式：即时中性Top22固定；4票/强3/2票/旧v66全部Shadow</div>
+        <div id="fDynamicTitle" class="sectionTitle">F组22码 · R1 Top22</div>
+        <div class="sectionHint">v68正式：R1完整49码概率排序的Top22；A与F共享R1，只是切线不同</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -666,8 +681,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">A组27码 · 原始Top27</div>
-        <div id="code27Hint" class="sectionHint">v67正式只用原始Top27；杀头和10期固定分别做Shadow</div>
+        <div class="sectionTitle">A组27码 · R1 Top27</div>
+        <div id="code27Hint" class="sectionHint">v68正式：R1完整49码概率排序Top27；不再把A当独立模型</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -683,8 +698,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">B组27码 · 每期动态</div>
-        <div class="sectionHint">v67正式：近10期原始Top27；缺尾/杀头拆开Shadow</div>
+        <div class="sectionTitle">B组27码 · R2 Top27</div>
+        <div class="sectionHint">v68正式：R2短窗概率排序Top27；C与B共享R2，只是切线不同</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
@@ -701,8 +716,22 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">v67 原子规则验收</div>
-        <div class="sectionHint">Live只用BASE；所有规则先Shadow。60/120/200期固定检查，不追着开奖结果改参数。</div>
+        <div class="sectionTitle">v68 · 49码概率排名验收</div>
+        <div class="sectionHint">R1→F22/A27 · R2→C22/B27 · R3→D16。正式评价看同码数随机基准、真实特码排名、Log loss/Brier；不是只看“中/错”。</div>
+      </div>
+    </div>
+    <div id="v68ProbGrid" class="strategyGrid"></div>
+    <div class="pillrow">
+      <span id="v68Dependence" class="pill">等待概率排名</span>
+      <span class="pill">晋级门槛：前瞻样本≥300只是最低条件；还必须通过同覆盖基准与概率评分</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
+      <div>
+        <div class="sectionTitle">旧v67原子Shadow（保留历史）</div>
+        <div class="sectionHint">旧规则继续保存前瞻证据，但不会因为短期救回就升回Live；v68正式评价转到概率排名层。</div>
       </div>
     </div>
     <div id="v67RuleGrid" class="strategyGrid"></div>
@@ -712,8 +741,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard dCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">D组16码 · 中性BASE Top16</div>
-        <div class="sectionHint">v67.4：五组BASE即时生成；正式BASE不使用波色/大小硬规则；Shadow后台验收</div>
+        <div class="sectionTitle">D组16码 · R3 Top16</div>
+        <div class="sectionHint">v68正式：独立R3多尺度概率Top16；不使用波色/大小硬配额</div>
       </div>
       <button class="copyBtn" onclick="copy16D()">复制D组</button>
     </div>
@@ -728,8 +757,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard cPingCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">C组22码 · 平特一肖</div>
-        <div class="sectionHint">v67正式：近10期原始Top22；缺尾/冷头拆开Shadow</div>
+        <div class="sectionTitle">C组22码 · R2 Top22</div>
+        <div class="sectionHint">v68正式：R2短窗概率排序Top22；缺尾/杀头仍只留旧Shadow研究</div>
       </div>
       <button class="copyBtn" onclick="copy22C()">复制C组</button>
     </div>
@@ -834,7 +863,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v67冻结实验版：F固定原始Top22；A/B原始Top27；C原始Top22；D原始Top16作为唯一Live。4票、强3、2票、杀头、固定轮、缺尾、冷头、波色、大小全部拆成独立Shadow。每期同一历史截止点、开奖前同时锁单；开奖后自动记救回/误伤/净贡献。60期只初筛，120期可降级，200期且差异样本≥30才允许晋级候选。修改任何规则即新版本重新计数。</div>
+  <div class="foot">v68概率前瞻实验版：F固定原始Top22；A/B原始Top27；C原始Top22；D原始Top16作为唯一Live。4票、强3、2票、杀头、固定轮、缺尾、冷头、波色、大小全部拆成独立Shadow。每期同一历史截止点、开奖前同时锁单；开奖后自动记救回/误伤/净贡献。60期只初筛，120期可降级，200期且差异样本≥30才允许晋级候选。修改任何规则即新版本重新计数。</div>
 </div>
 
 <script>
@@ -940,7 +969,7 @@ async function loadMain(){
     SPECIAL20=d.special20||d.special24||[]; sp.innerHTML=balls(SPECIAL20);
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
     SPECIAL27B=d.special27b||[]; sp27b.innerHTML=balls(SPECIAL27B);
-    fDynamicTitle.textContent=d.stale_prediction?'F动态 · 重算中':`F动态 · 当前${SPECIAL20.length||'--'}码`;
+    fDynamicTitle.textContent=d.stale_prediction?'F组R1 · 重算中':`F组${SPECIAL20.length||'--'}码 · R1 Top22`;
     const mp=d.model_pool||{}, ms=mp.stats||{}, stable=d.stable_signals||{};
     const modelNames=['趋势','生肖','冷热','波色','单双','纠错'];
     modelPoolRows.innerHTML=modelNames.map(k=>{
@@ -968,15 +997,15 @@ async function loadMain(){
     const m20=d.strategy20||{}, m27=d.strategy27||{}, m27b=d.strategy27b||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{}, s27b=d.stats27b||{};
     const cs=m20.consensus||{};
     const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
-    code20Brief.textContent=`F=22码固定BASE · 原始集成Top22 · 不再动态扩缩码`;
-    code20Fusion.textContent=`4票绝保 / 强3票 / 2票限制 / 旧v66 全部Shadow独立验收`;
+    code20Brief.textContent=`v68 R1 · 49码概率排序 → Top22`;
+    code20Fusion.textContent=`A27与F22共享R1母排序 · 不把两者重复算成两票`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fLife=sF.lifetime||{};
     code20Lifetime.textContent=`累计实盘：中 ${fLife.hits??0}期 · 错 ${fLife.misses??0}期`;
     const fed=d.f_error_diag||{};
     const fss=d.f_slot_stats||{}, fc20=fss.core20||{}, f21=fss.add21||{}, f22=fss.add22||{}, f23=fss.add23||{};
     const vf=((d.v67_rules||{}).F||{}).F_4VOTE||{};
-    fErrorRescueInfo.textContent=`v67 F四票Shadow ${vf.n??0}期：救${vf.rescue??0} / 伤${vf.harm??0} / 净${vf.net??0} · ${vf.status||'孵化Shadow'}`;
+    fErrorRescueInfo.textContent=`旧v67 F四票Shadow ${vf.n??0}期：救${vf.rescue??0} / 伤${vf.harm??0} / 净${vf.net??0} · ${vf.status||'Shadow'}`;
     const cur27=s27.current||{}, last27=s27.last_complete||null;
     const r28=m27.rescue28||{}, th=m27.ten_horizon||{}, f20=m27.filter20||{}, trg=m27.trend_trigger||{};
     const kw=(m27.killed_wave_parity||[]).join('、')||'无';
@@ -1003,7 +1032,7 @@ async function loadMain(){
     const aLife=s27.lifetime||{};
     code27Lifetime.textContent=`累计实盘：中 ${aLife.hits??0}期 · 错 ${aLife.misses??0}期`;
     const ah=m27.head_decision||{};
-    code27Stats.textContent=`v67正式只用原始Top27 · 杀头与10期固定分别Shadow`;
+    code27Stats.textContent=`v68 R1 Top27 · 与F同一母排序，仅增加5个覆盖位`;
 
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
@@ -1019,7 +1048,7 @@ async function loadMain(){
     const bColdCodes=m27b.cold3_codes||{};
     const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
     const vb=(((d.v67_rules||{}).B||{}).B_TAIL_ONLY)||{};
-    code27BMeta.textContent=`v67 BASE · 缺尾Shadow ${vb.n??0}期 · 救${vb.rescue??0} / 伤${vb.harm??0} / 净${vb.net??0} · ${vb.status||'孵化'}`;
+    code27BMeta.textContent=`v68 R2 Top27 · C22与B27共享母排序 · 旧缺尾Shadow净${vb.net??0}`;
     SPECIAL16D=d.special16d||[]; sp16d.innerHTML=balls(SPECIAL16D);
     const s16=d.stats16d||{}, m16=d.strategy16d||{};
     code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
@@ -1028,7 +1057,7 @@ async function loadMain(){
     const df=m16.fused_wave||{}, ds=m16.fused_size||{}, vd=(((d.v67_rules||{}).D||{}).D_COLOR_SIZE)||{};
     const dwc=m16.wave_counts||{};
     const dalarm=m16.anomaly?` · ⚠ ${m16.anomaly}`:'';
-    code16DMeta.textContent=`v67.3中性BASE 红${dwc['红']??0}/蓝${dwc['蓝']??0}/绿${dwc['绿']??0} · 波色+大小Shadow ${vd.n??0}期 · 救${vd.rescue??0}/伤${vd.harm??0}/净${vd.net??0}${dalarm}`;
+    code16DMeta.textContent=`v68 R3 Top16 · 红${dwc['红']??0}/蓝${dwc['蓝']??0}/绿${dwc['绿']??0}仅诊断 · 旧波色+大小Shadow净${vd.net??0}${dalarm}`;
 
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
@@ -1036,7 +1065,32 @@ async function loadMain(){
     const cLife=s22.lifetime||{};
     code22CLifetime.textContent=`累计实盘：中 ${cLife.hits??0}期 · 错 ${cLife.misses??0}期`;
     const vc=(((d.v67_rules||{}).C||{}).C_TAIL_ONLY)||{};
-    code22CMeta.textContent=`v67 BASE · 缺尾Shadow ${vc.n??0}期 · 救${vc.rescue??0}/伤${vc.harm??0}/净${vc.net??0}`;
+    code22CMeta.textContent=`v68 R2 Top22 · 旧缺尾Shadow ${vc.n??0}期 · 净${vc.net??0}`;
+
+    const v68=d.v68_prob||{}, vfwd=v68.forward||{}, vcur=v68.rankers||{}, vctl=v68.control_vs_v674||{};
+    const rNames={R1:'R1 长窗概率 · F22/A27',R2:'R2 短窗概率 · C22/B27',R3:'R3 多尺度概率 · D16'};
+    const primary={R1:'top22',R2:'top22',R3:'top16'};
+    if(document.getElementById('v68ProbGrid')){
+      v68ProbGrid.innerHTML=['R1','R2','R3'].map(rid=>{
+        const x=vfwd[rid]||{}, k=x[primary[rid]]||{}, c=vcur[rid]||{};
+        const wf=((v68.walkforward||{})[rid]||{}), wk=wf[primary[rid]]||{};
+        const top=(c.top5||[]).slice(0,3).map(z=>`${fmt(z.n)}:${z.p}%`).join(' · ')||'--';
+        return `<div class="strategyBox"><div class="strategyTitle">${rNames[rid]}</div><div class="strategyMain">正式前瞻 ${x.n??0}期 · ${x.status||'前瞻积累'}<br>主切线 命中${k.rate??0}% / 随机${k.random??0}% · Lift ${k.lift_pct??0}%<br>真号均排 ${x.avg_rank??0} · LogLoss ${x.log_loss??0}<br>当前Top3概率 ${top}${wf.n?`<br>历史WF ${wf.n}期 · Lift ${wk.lift_pct??0}%（仅研究）`:''}</div></div>`;
+      }).join('');
+    }
+    const r1f=vfwd.R1||{}, r2f=vfwd.R2||{}, r3f=vfwd.R3||{};
+    if(r1f.n){ code20Lifetime.textContent+=` · 同码随机44.9% · R1Top22 Lift ${(r1f.top22||{}).lift_pct??0}%`; code27Lifetime.textContent+=` · 随机55.1% · Lift ${(r1f.top27||{}).lift_pct??0}%`; }
+    if(r2f.n){ code27BCumulative.textContent+=` · 随机55.1% · Lift ${(r2f.top27||{}).lift_pct??0}%`; code22CLifetime.textContent+=` · 随机44.9% · Lift ${(r2f.top22||{}).lift_pct??0}%`; }
+    if(r3f.n){ code16DLifetime.textContent+=` · 随机32.7% · Lift ${(r3f.top16||{}).lift_pct??0}%`; }
+    const dep=v68.dependence||{};
+    if(document.getElementById('v68Dependence')) v68Dependence.textContent=`排序相关 R1/R2 ${dep.R1_R2??0} · R1/R3 ${dep.R1_R3??0} · R2/R3 ${dep.R2_R3??0} ｜ F⊂A、C⊂B是设计切线，不算独立共识`;
+    const cf=(vctl.F||{}), ca=(vctl.A||{}), cb=(vctl.B||{}), cc=(vctl.C||{}), cd=(vctl.D||{});
+    // Same-code-count v67.4 control comparisons are prospective only.
+    if(cf.n) code20Fusion.textContent+=` · 对v67.4 ${cf.n}期 净${cf.net>=0?'+':''}${cf.net}`;
+    if(ca.n) code27Stats.textContent+=` · 对v67.4 ${ca.n}期 净${ca.net>=0?'+':''}${ca.net}`;
+    if(cb.n) code27BMeta.textContent+=` · 对v67.4净${cb.net>=0?'+':''}${cb.net}`;
+    if(cc.n) code22CMeta.textContent+=` · 对v67.4净${cc.net>=0?'+':''}${cc.net}`;
+    if(cd.n) code16DMeta.textContent+=` · 对v67.4净${cd.net>=0?'+':''}${cd.net}`;
 
     const vr=d.v67_rules||{};
     const vrNames={
@@ -1049,7 +1103,7 @@ async function loadMain(){
     const vrRows=[];
     Object.keys(vrNames).forEach(g=>Object.keys(vrNames[g]).forEach(k=>{
       const x=(vr[g]||{})[k]||{};
-      vrRows.push(`<div class="strategyBox"><div class="strategyTitle">${vrNames[g][k]}</div><div class="strategyMain">${x.n??0}期 · 救${x.rescue??0} 伤${x.harm??0} 净${x.net??0}<br>${x.status||'孵化Shadow'} · 效率${x.coverage_efficiency??0}</div></div>`);
+      vrRows.push(`<div class="strategyBox"><div class="strategyTitle">${vrNames[g][k]}</div><div class="strategyMain">${x.n??0}期 · 救${x.rescue??0} 伤${x.harm??0} · 净${x.net??0}<br>${x.status||'孵化Shadow'} · discordant ${x.discordant??0}</div></div>`);
     }));
     if(document.getElementById('v67RuleGrid')) v67RuleGrid.innerHTML=vrRows.join('');
 
@@ -1076,7 +1130,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`v67冻结实验<br>F固定22码`;
+    learningState.innerHTML=`v68概率前瞻实验<br>F固定22码`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -1139,7 +1193,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`v67冻结实验<br>F固定22码`;
+    learningState.innerHTML=`v68概率前瞻实验<br>F固定22码`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -1248,6 +1302,29 @@ def init_db():
         )""")
         c.execute("""CREATE INDEX IF NOT EXISTS idx_rule_cf_rule
                      ON rule_counterfactual(group_id,rule_id,rule_version,settled,draw_id)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS v68_forecast(
+          target_issue TEXT NOT NULL,
+          ranker_id TEXT NOT NULL,
+          model_version TEXT NOT NULL,
+          history_cutoff_id TEXT NOT NULL,
+          locked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          probs_json TEXT NOT NULL,
+          ranked49 TEXT NOT NULL,
+          top16 TEXT NOT NULL,
+          top22 TEXT NOT NULL,
+          top27 TEXT NOT NULL,
+          settled INTEGER DEFAULT 0,
+          actual_special INTEGER,
+          actual_rank INTEGER,
+          log_loss REAL,
+          brier REAL,
+          hit16 INTEGER,
+          hit22 INTEGER,
+          hit27 INTEGER,
+          PRIMARY KEY(target_issue,ranker_id,model_version)
+        )""")
+        c.execute("""CREATE INDEX IF NOT EXISTS idx_v68_forecast_ranker
+                     ON v68_forecast(ranker_id,model_version,settled,target_issue)""")
         c.execute("""CREATE TABLE IF NOT EXISTS learner_scores(
           profile TEXT PRIMARY KEY,
           weight REAL DEFAULT 1.0,
@@ -1494,7 +1571,7 @@ def _patch_live_cache_latest(issue, nums, zs):
         snap=_v674_minimal_snapshot()
     except Exception as e:
         snap=None
-        print(f"[PATCH674] minimal snapshot failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[PATCH68] minimal snapshot failed: {type(e).__name__}: {e}",flush=True)
 
     if isinstance(snap,dict) and str(snap.get("issue") or "")==str(issue):
         snap["latest_numbers"]=list(nums)
@@ -8610,6 +8687,294 @@ def _predict_d_v67(r,profile):
     return base,meta,shadows
 
 
+
+# ===================== v68: 49-number calibrated-probability architecture =====================
+def _v68_weighted_posterior(r, window, half_life, alpha_each=1.25):
+    """Dirichlet-smoothed predictive distribution using ONLY prior draws.
+
+    The result is a genuine 49-class probability vector that sums to 1.
+    No zodiac/wave/head/tail/size kill rule is allowed in the official BASE.
+    """
+    nums=list(range(1,50))
+    recent=list(r[:max(1,int(window))])
+    counts={n:0.0 for n in nums}
+    total=0.0
+    hl=max(1e-6,float(half_life))
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        if not (1 <= n <= 49): continue
+        w=0.5**(float(i)/hl)
+        counts[n]+=w; total+=w
+    den=total+49.0*float(alpha_each)
+    if den<=0:
+        return {n:1.0/49.0 for n in nums}
+    return {n:(counts[n]+float(alpha_each))/den for n in nums}
+
+def _v68_mix_prob(*weighted):
+    nums=list(range(1,50))
+    out={n:0.0 for n in nums}; sw=0.0
+    for weight,prob in weighted:
+        w=max(0.0,float(weight)); sw+=w
+        for n in nums: out[n]+=w*float((prob or {}).get(n,0.0))
+    if sw<=0: return {n:1.0/49.0 for n in nums}
+    out={n:max(1e-15,v/sw) for n,v in out.items()}
+    z=sum(out.values()) or 1.0
+    return {n:v/z for n,v in out.items()}
+
+def _v68_ranker_probs(r, ranker_id):
+    rid=str(ranker_id).upper()
+    # Parameters are frozen in v68-prob-001.  They are not tuned after a loss streak.
+    if rid=="R1":
+        # Long-horizon ranker for F/A: recent signal + long shrinkage.
+        p60=_v68_weighted_posterior(r,60,20,1.35)
+        p240=_v68_weighted_posterior(r,240,80,1.60)
+        return _v68_mix_prob((.55,p60),(.45,p240))
+    if rid=="R2":
+        # Short-horizon ranker for C/B: latest 10 is kept, but shrunk toward 40 draws.
+        p10=_v68_weighted_posterior(r,10,4,1.50)
+        p40=_v68_weighted_posterior(r,40,14,1.55)
+        return _v68_mix_prob((.70,p10),(.30,p40))
+    if rid=="R3":
+        # Independent multiscale ranker for D.  No wave/size quotas or attributes.
+        p20=_v68_weighted_posterior(r,20,7,1.45)
+        p80=_v68_weighted_posterior(r,80,28,1.55)
+        p240=_v68_weighted_posterior(r,240,85,1.70)
+        return _v68_mix_prob((.25,p20),(.35,p80),(.40,p240))
+    return {n:1.0/49.0 for n in range(1,50)}
+
+def _v68_ranked(prob):
+    return sorted(range(1,50),key=lambda n:(-float((prob or {}).get(n,0.0)),n))
+
+def _v68_prob_meta(prob,ranked):
+    ent=-sum(float(prob[n])*math.log(max(float(prob[n]),1e-15)) for n in range(1,50))
+    return {
+      "entropy":round(ent,6),
+      "entropy_pct":round(100.0*ent/math.log(49.0),2),
+      "max_prob_pct":round(100.0*max(float(prob[n]) for n in range(1,50)),3),
+      "top5":[{"n":int(n),"p":round(100.0*float(prob[n]),3)} for n in ranked[:5]],
+    }
+
+def _v68_official_bases(r):
+    p1=_v68_ranker_probs(r,"R1"); r1=_v68_ranked(p1)
+    p2=_v68_ranker_probs(r,"R2"); r2=_v68_ranked(p2)
+    p3=_v68_ranker_probs(r,"R3"); r3=_v68_ranked(p3)
+    return {
+      "F":r1[:22],"A":r1[:27],"C":r2[:22],"B":r2[:27],"D":r3[:16],
+      "rankers":{"R1":{"prob":p1,"ranked":r1},"R2":{"prob":p2,"ranked":r2},"R3":{"prob":p3,"ranked":r3}}
+    }
+
+def _v68_live_bases(r,profile="",next_issue=""):
+    b=_v68_official_bases(r)
+    r1=b["rankers"]["R1"]["ranked"]; r2=b["rankers"]["R2"]["ranked"]; r3=b["rankers"]["R3"]["ranked"]
+    p1=b["rankers"]["R1"]["prob"]; p2=b["rankers"]["R2"]["prob"]; p3=b["rankers"]["R3"]["prob"]
+    f,a,bb,c,d=list(b["F"]),list(b["A"]),list(b["B"]),list(b["C"]),list(b["D"])
+    fm={"mode":"v68 R1概率Top22","code_count":22,"ranked49":r1,"dynamic_count":22,
+        "regime":"v68 R1 Top22","audit_regime":"F68|R1-top22","ranker_id":"R1",
+        "prob_meta":_v68_prob_meta(p1,r1),"consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
+    am={"mode":"v68 R1概率Top27","ranked49":r1,"raw_top27":a,"code_count":27,
+        "killed_head":"","head_decision":{"active":False,"reason":"v68 BASE不杀码"},
+        "block_start":"","block_end":"","round_position":1,"ranker_id":"R1",
+        "regime":"v68 R1 Top27","audit_regime":"A68|R1-top27","prob_meta":_v68_prob_meta(p1,r1)}
+    bm={"mode":"v68 R2概率Top27","ranked49":r2,"code_count":27,"ranker_id":"R2",
+        "killed_head":"","missing_tail_rescue":{},"window_issues":[str(x["issue"]) for x in list(r[:10])],
+        "regime":"v68 R2 Top27","audit_regime":"B68|R2-top27","prob_meta":_v68_prob_meta(p2,r2)}
+    cm={"mode":"v68 R2概率Top22","ranked49":r2,"code_count":22,"ranker_id":"R2",
+        "killed_head":"","coldest3":[],"missing_tails":[],"missing_tail_rescue":{},
+        "regime":"v68 R2 Top22","audit_regime":"C68|R2-top22","prob_meta":_v68_prob_meta(p2,r2)}
+    dwc=dict(Counter(wave_of(n) for n in d)); maxwave=max(dwc.values()) if dwc else 0
+    dm={"mode":"v68 R3概率Top16","ranked49":r3,"code_count":16,"ranker_id":"R3",
+        "fused_wave":{},"fused_size":{},"wave_counts":dwc,"neutral_weights_pct":{},
+        "anomaly":("D R3波色集中告警：>=14/16，仅诊断" if maxwave>=14 else ""),
+        "regime":"v68 R3 Top16（不含波色/大小硬规则）","audit_regime":"D68|R3-top16",
+        "prob_meta":_v68_prob_meta(p3,r3)}
+    return (f,fm),(a,am),(bb,bm),(c,cm),(d,dm)
+
+def _v68_lock_forecasts(target,r):
+    if not r: return
+    b=_v68_official_bases(r); cutoff=str(r[0]["issue"])
+    with db_lock:
+        c=connect()
+        try:
+            for rid in ("R1","R2","R3"):
+                prob=b["rankers"][rid]["prob"]; ranked=b["rankers"][rid]["ranked"]
+                c.execute("""INSERT OR IGNORE INTO v68_forecast
+                  (target_issue,ranker_id,model_version,history_cutoff_id,probs_json,ranked49,top16,top22,top27)
+                  VALUES (?,?,?,?,?,?,?,?,?)""",
+                  (str(target),rid,V68_MODEL_VERSION,cutoff,
+                   json.dumps({str(n):float(prob[n]) for n in range(1,50)},separators=(",",":")),
+                   ",".join(map(str,ranked)),",".join(map(str,ranked[:16])),
+                   ",".join(map(str,ranked[:22])),",".join(map(str,ranked[:27]))))
+            c.commit()
+        finally: c.close()
+
+def _v68_settle_forecasts(issue,actual_special):
+    a=int(actual_special)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT ranker_id,probs_json,ranked49,top16,top22,top27
+                              FROM v68_forecast WHERE target_issue=? AND model_version=? AND settled=0""",
+                           (str(issue),V68_MODEL_VERSION)).fetchall()
+            for row in rows:
+                try: probs={int(k):float(v) for k,v in json.loads(row["probs_json"]).items()}
+                except Exception: probs={n:1.0/49.0 for n in range(1,50)}
+                ranked=_csv_nums(row["ranked49"])
+                rank=(ranked.index(a)+1) if a in ranked else 49
+                pa=max(float(probs.get(a,1.0/49.0)),1e-15)
+                ll=-math.log(pa)
+                br=sum((float(probs.get(n,0.0))-(1.0 if n==a else 0.0))**2 for n in range(1,50))
+                h16=int(a in set(_csv_nums(row["top16"]))); h22=int(a in set(_csv_nums(row["top22"]))); h27=int(a in set(_csv_nums(row["top27"])))
+                c.execute("""UPDATE v68_forecast SET settled=1,actual_special=?,actual_rank=?,log_loss=?,brier=?,hit16=?,hit22=?,hit27=?
+                             WHERE target_issue=? AND ranker_id=? AND model_version=?""",
+                          (a,rank,float(ll),float(br),h16,h22,h27,str(issue),row["ranker_id"],V68_MODEL_VERSION))
+            c.commit()
+        finally: c.close()
+
+def _v68_binom_tail_ge(k,n,p):
+    if n<=0: return 1.0
+    p=min(max(float(p),1e-12),1-1e-12); k=max(0,min(int(k),int(n)))
+    logs=[]
+    for i in range(k,n+1):
+        logs.append(math.lgamma(n+1)-math.lgamma(i+1)-math.lgamma(n-i+1)+i*math.log(p)+(n-i)*math.log(1-p))
+    m=max(logs) if logs else 0.0
+    return min(1.0,math.exp(m)*sum(math.exp(x-m) for x in logs)) if logs else 1.0
+
+def _v68_wilson(h,n,z=1.96):
+    if n<=0: return (0.0,1.0)
+    ph=h/n; den=1+z*z/n
+    mid=(ph+z*z/(2*n))/den
+    half=z*math.sqrt(ph*(1-ph)/n+z*z/(4*n*n))/den
+    return (max(0.0,mid-half),min(1.0,mid+half))
+
+def _v68_k_metrics(h,n,k):
+    rate=(h/n) if n else 0.0; base=k/49.0
+    lo,hi=_v68_wilson(h,n)
+    return {"k":k,"hits":h,"n":n,"rate":round(rate*100,2),"random":round(base*100,2),
+            "lift_pct":round((rate/base-1)*100,2) if base else 0.0,
+            "excess_pp":round((rate-base)*100,2),"ci95":[round(lo*100,2),round(hi*100,2)],
+            "p_one_sided":round(_v68_binom_tail_ge(h,n,base),6) if n else 1.0}
+
+def _v68_ranker_stats(rid,limit=5000):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT actual_rank,log_loss,brier,hit16,hit22,hit27
+                              FROM v68_forecast WHERE ranker_id=? AND model_version=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC LIMIT ?""",
+                           (str(rid),V68_MODEL_VERSION,int(limit))).fetchall()
+        finally: c.close()
+    n=len(rows)
+    h16=sum(int(x["hit16"] or 0) for x in rows); h22=sum(int(x["hit22"] or 0) for x in rows); h27=sum(int(x["hit27"] or 0) for x in rows)
+    avg_rank=(sum(float(x["actual_rank"] or 49) for x in rows)/n) if n else 0.0
+    avg_ll=(sum(float(x["log_loss"] or 0) for x in rows)/n) if n else 0.0
+    avg_br=(sum(float(x["brier"] or 0) for x in rows)/n) if n else 0.0
+    primary_k=22 if str(rid) in ("R1","R2") else 16
+    primary_h=h22 if primary_k==22 else h16
+    pm=_v68_k_metrics(primary_h,n,primary_k)
+    if n<V68_PROMOTION_MIN_N:
+        status=f"前瞻积累 {n}/{V68_PROMOTION_MIN_N}"
+    elif pm["p_one_sided"] < V68_PRIMARY_ALPHA and pm["ci95"][0] > pm["random"] and avg_ll < V68_UNIFORM_LOGLOSS*.995 and avg_rank < 24.5:
+        status="晋级研究候选（仍需人工确认）"
+    elif pm["ci95"][1] < pm["random"]:
+        status="低于同码数基准"
+    else:
+        status="未证明优势"
+    return {"n":n,"avg_rank":round(avg_rank,2),"log_loss":round(avg_ll,5),"brier":round(avg_br,5),
+            "uniform_log_loss":round(V68_UNIFORM_LOGLOSS,5),"uniform_brier":round(V68_UNIFORM_BRIER,5),
+            "top16":_v68_k_metrics(h16,n,16),"top22":_v68_k_metrics(h22,n,22),"top27":_v68_k_metrics(h27,n,27),
+            "primary_k":primary_k,"status":status}
+
+def _v68_rank_corr(rank_a,rank_b):
+    pa={n:i+1 for i,n in enumerate(rank_a)}; pb={n:i+1 for i,n in enumerate(rank_b)}
+    xs=[pa[n] for n in range(1,50)]; ys=[pb[n] for n in range(1,50)]
+    mx=sum(xs)/49.0; my=sum(ys)/49.0
+    num=sum((x-mx)*(y-my) for x,y in zip(xs,ys)); dx=sum((x-mx)**2 for x in xs); dy=sum((y-my)**2 for y in ys)
+    return (num/math.sqrt(dx*dy)) if dx>0 and dy>0 else 0.0
+
+def _v68_lock_v674_controls(target,r):
+    """Prospective same-code-count comparison: old v67.4 is BASE, v68 is the rule/candidate."""
+    if not r: return
+    old=_v674_official_bases(r); new=_v68_official_bases(r); cutoff=str(r[0]["issue"])
+    with db_lock:
+        c=connect()
+        try:
+            for g in ("F","A","B","C","D"):
+                base=list(old[g]); rule=list(new[g])
+                c.execute("""INSERT OR IGNORE INTO rule_counterfactual
+                  (draw_id,group_id,model_version,rule_id,rule_version,experiment_id,
+                   cohort_start_draw,history_cutoff_id,locked_before_draw,
+                   base_code_count,rule_code_count,base_codes,rule_codes)
+                  VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)""",
+                  (str(target),f"V68{g}",V68_MODEL_VERSION,"V68_VS_V674",V68_CONTROL_RULE_VERSION,
+                   f"v68-{g}-vs-v674",str(target),cutoff,len(base),len(rule),
+                   ",".join(map(str,base)),",".join(map(str,rule))))
+            c.commit()
+        finally: c.close()
+
+def _v68_control_stat(g):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT rescue,harm,base_hit,rule_hit FROM rule_counterfactual
+                              WHERE group_id=? AND rule_id='V68_VS_V674' AND rule_version=? AND settled=1
+                              ORDER BY CAST(draw_id AS INTEGER) ASC""",
+                           (f"V68{g}",V68_CONTROL_RULE_VERSION)).fetchall()
+        finally: c.close()
+    n=len(rows); gain=sum(int(x["rescue"] or 0) for x in rows); loss=sum(int(x["harm"] or 0) for x in rows)
+    oldh=sum(int(x["base_hit"] or 0) for x in rows); newh=sum(int(x["rule_hit"] or 0) for x in rows)
+    d=gain+loss; p=_binom_tail_half(gain,d,"greater") if d else 1.0
+    return {"n":n,"v674_hits":oldh,"v68_hits":newh,"gain":gain,"loss":loss,"net":gain-loss,"discordant":d,"p_help":round(p,5)}
+
+def _v68_walkforward(max_samples=600):
+    """Research-only historical walk-forward. Never written into live forward counts."""
+    now=time.time()
+    with v68_wf_lock:
+        if v68_wf_cache.get("data") is not None and now-float(v68_wf_cache.get("ts",0))<300:
+            return v68_wf_cache["data"]
+    rows=list(reversed(recent_rows(max(900,int(max_samples)+260))))  # chronological
+    eval_rows=rows[-(int(max_samples)+240):] if len(rows)>int(max_samples)+240 else rows
+    acc={rid:{"n":0,"rank":0.0,"ll":0.0,"br":0.0,"h16":0,"h22":0,"h27":0} for rid in ("R1","R2","R3")}
+    for i in range(240,len(eval_rows)):
+        prior=list(reversed(eval_rows[max(0,i-240):i]))
+        try: actual=int(eval_rows[i]["special"])
+        except Exception: continue
+        for rid in ("R1","R2","R3"):
+            p=_v68_ranker_probs(prior,rid); ranked=_v68_ranked(p); a=acc[rid]
+            a["n"]+=1; a["rank"]+=ranked.index(actual)+1; a["ll"]+=-math.log(max(p.get(actual,1/49),1e-15))
+            a["br"]+=sum((p.get(n,0.0)-(1.0 if n==actual else 0.0))**2 for n in range(1,50))
+            a["h16"]+=int(actual in ranked[:16]); a["h22"]+=int(actual in ranked[:22]); a["h27"]+=int(actual in ranked[:27])
+    out={}
+    for rid,a in acc.items():
+        n=a["n"]
+        out[rid]={"n":n,"avg_rank":round(a["rank"]/n,2) if n else 0.0,
+                  "log_loss":round(a["ll"]/n,5) if n else 0.0,"brier":round(a["br"]/n,5) if n else 0.0,
+                  "top16":_v68_k_metrics(a["h16"],n,16),"top22":_v68_k_metrics(a["h22"],n,22),"top27":_v68_k_metrics(a["h27"],n,27),
+                  "label":"历史Walk-forward（研究，不计正式前瞻）"}
+    with v68_wf_lock:
+        v68_wf_cache["ts"]=now; v68_wf_cache["data"]=out
+    return out
+
+def _v68_dashboard(r=None,include_walkforward=False):
+    if r is None: r=recent_rows(300)
+    b=_v68_official_bases(r) if r else {"rankers":{}}
+    cur={}
+    for rid in ("R1","R2","R3"):
+        rr=(b.get("rankers") or {}).get(rid) or {}; p=rr.get("prob") or {}; ranked=rr.get("ranked") or []
+        cur[rid]=dict(_v68_prob_meta(p,ranked),ranked49=ranked,top16=ranked[:16],top22=ranked[:22],top27=ranked[:27]) if ranked else {}
+    r1=cur.get("R1",{}).get("ranked49",[]); r2=cur.get("R2",{}).get("ranked49",[]); r3=cur.get("R3",{}).get("ranked49",[])
+    data={"model_version":V68_MODEL_VERSION,
+          "rankers":cur,
+          "forward":{rid:_v68_ranker_stats(rid) for rid in ("R1","R2","R3")},
+          "control_vs_v674":{g:_v68_control_stat(g) for g in ("F","A","B","C","D")},
+          "dependence":{"R1_R2":round(_v68_rank_corr(r1,r2),4) if r1 and r2 else 0.0,
+                        "R1_R3":round(_v68_rank_corr(r1,r3),4) if r1 and r3 else 0.0,
+                        "R2_R3":round(_v68_rank_corr(r2,r3),4) if r2 and r3 else 0.0,
+                        "note":"F/A是R1的Top22/Top27切线；C/B是R2切线，不计为独立模型"}}
+    if include_walkforward:
+        data["walkforward"]=_v68_walkforward(600)
+    return data
+
 # ===================== v67.1 fast live BASE layer =====================
 def _v671_recent10_ranked(r):
     """Return B/C frozen BASE mother ranking using only latest 10 specials.
@@ -8679,34 +9044,8 @@ def _v671_recent10_ranked(r):
     return ranked,{"window_issues":[str(x["issue"]) for x in recent],"missing_tails":[t for t in range(10) if t not in seen],"tail_weight_pct":10.0}
 
 def _v671_live_bases(r,profile,next_issue=""):
-    """v67.4 official BASEs.  This path is intentionally O(history) and never
-    calls specialist pools, AI, Shadow rules or backtests."""
-    b=_v674_official_bases(r)
-    f=list(b["F"]); a=list(b["A"]); bb=list(b["B"]); c=list(b["C"]); d=list(b["D"])
-    rank_long=list(b["rank_long"]); rank_short=list(b["rank_short"])
-
-    fm={"mode":"v67.4 F即时中性Top22","code_count":22,"ranked49":rank_long,
-        "dynamic_count":22,"regime":"v67.4 F BASE中性Top22","audit_regime":"F674|neutral22",
-        "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
-    am={"mode":"v67.4 A即时中性Top27","ranked49":rank_long,"raw_top27":a,"code_count":27,
-        "killed_head":"","head_decision":{"active":False,"reason":"BASE不杀码"},
-        "block_start":"","block_end":"","round_position":1,
-        "regime":"v67.4 A BASE中性Top27","audit_regime":"A674|neutral27"}
-    bm={"mode":"v67.4 B即时近10中性Top27","ranked49":rank_short,"code_count":27,
-        "killed_head":"","missing_tail_rescue":{},
-        "window_issues":[str(x["issue"]) for x in list(r[:10])],
-        "regime":"v67.4 B BASE近10中性Top27","audit_regime":"B674|neutral10-27"}
-    cm={"mode":"v67.4 C即时近10中性Top22","ranked49":rank_short,"code_count":22,
-        "killed_head":"","coldest3":[],"missing_tails":[],"missing_tail_rescue":{},
-        "regime":"v67.4 C BASE近10中性Top22","audit_regime":"C674|neutral10-22"}
-    dwc=dict(Counter(wave_of(n) for n in d))
-    danom=("D BASE波色集中告警：单一波色>=14/16，仅诊断、不强制配额"
-           if (max(dwc.values()) if dwc else 0)>=14 else "")
-    dm={"mode":"v67.4 D即时中性Top16","ranked49":rank_long,"code_count":16,
-        "fused_wave":{},"fused_size":{},"wave_counts":dwc,"neutral_weights_pct":{},
-        "anomaly":danom,"regime":"v67.4 D BASE中性Top16（不含波色/大小）",
-        "audit_regime":"D674|neutral16"}
-    return (f,fm),(a,am),(bb,bm),(c,cm),(d,dm)
+    # Compatibility name used by old cache code; official live output is v68.
+    return _v68_live_bases(r,profile,next_issue)
 
 def _v672_simple_ranked(r, window=60):
     """Emergency ranking used only if the normal v67 BASE scorer errors.
@@ -8743,19 +9082,19 @@ def _v672_safe_live_bases(r,profile,next_issue=""):
             rank10=_v672_simple_ranked(r,10)
             bmeta={"window_issues":[str(x["issue"]) for x in list(r[:10])],"missing_tails":[],"tail_weight_pct":0.0}
         f=rank60[:22]; a=rank60[:27]; d=rank60[:16]; b=rank10[:27]; c=rank10[:22]
-        fm={"mode":"v67.2应急BASE Top22","code_count":22,"ranked49":rank60,
-            "dynamic_count":22,"regime":"v67.2应急BASE","audit_regime":"F672|fallback",
+        fm={"mode":"v68应急BASE Top22","code_count":22,"ranked49":rank60,
+            "dynamic_count":22,"regime":"v68应急BASE","audit_regime":"F68|fallback",
             "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
-        am={"mode":"v67.2应急A Top27","ranked49":rank60,"raw_top27":a,"code_count":27,
+        am={"mode":"v68应急A Top27","ranked49":rank60,"raw_top27":a,"code_count":27,
             "killed_head":"","head_decision":{"active":False,"reason":"应急BASE不杀码"},
-            "block_start":"","block_end":"","round_position":1,"regime":"v67.2应急A","audit_regime":"A672|fallback"}
-        bm=dict(bmeta); bm.update({"mode":"v67.2应急B近10 Top27","ranked49":rank10,"code_count":27,
-            "killed_head":"","missing_tail_rescue":{},"regime":"v67.2应急B","audit_regime":"B672|fallback"})
-        cm={"mode":"v67.2应急C近10 Top22","ranked49":rank10,"code_count":22,"killed_head":"",
+            "block_start":"","block_end":"","round_position":1,"regime":"v68应急A","audit_regime":"A68|fallback"}
+        bm=dict(bmeta); bm.update({"mode":"v68应急B Top27","ranked49":rank10,"code_count":27,
+            "killed_head":"","missing_tail_rescue":{},"regime":"v68应急B","audit_regime":"B68|fallback"})
+        cm={"mode":"v68应急C Top22","ranked49":rank10,"code_count":22,"killed_head":"",
             "coldest3":[],"missing_tails":bmeta.get("missing_tails") or [],"missing_tail_rescue":{},
-            "regime":"v67.2应急C","audit_regime":"C672|fallback"}
-        dm={"mode":"v67.2应急D Top16","ranked49":rank60,"code_count":16,
-            "fused_wave":{},"fused_size":{},"regime":"v67.2应急D","audit_regime":"D672|fallback"}
+            "regime":"v68应急C","audit_regime":"C68|fallback"}
+        dm={"mode":"v68应急D Top16","ranked49":rank60,"code_count":16,
+            "fused_wave":{},"fused_size":{},"regime":"v68应急D","audit_regime":"D68|fallback"}
         return ((f,fm),(a,am),(b,bm),(c,cm),(d,dm)), True, f"{type(e).__name__}: {e}"
 
 
@@ -8802,15 +9141,15 @@ def _v671_fast_live_snapshot():
       "special27":[f"{n:02d}" for n in sorted(c27)],"special27b":[f"{n:02d}" for n in sorted(c27b)],
       "special22c":[f"{n:02d}" for n in sorted(c22)],"special16d":[f"{n:02d}" for n in sorted(c16)],
       "strategy20":m20,"strategy27":m27,"strategy27b":m27b,"strategy22c":m22,"strategy16d":m16,
-      "stats20":_v672_safe_call(lambda:_profile_hit_stats(F_BASE_V67_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
-      "statsF":_v672_safe_call(lambda:_stats20round_profile(F_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats27":{"current":_v672_safe_call(lambda:_stats20round_profile(A_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-                 "last_complete":None,"overall":_v672_safe_call(lambda:_profile_hit_stats(A_BASE_V67_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
-                 "lifetime":_v672_safe_call(lambda:_profile_lifetime_stats(A_BASE_V67_PROFILE),{"n":0,"hits":0,"misses":0,"rate":0.0})},
-      "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V67_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "stats20":_v672_safe_call(lambda:_profile_hit_stats(F_BASE_V68_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+      "statsF":_v672_safe_call(lambda:_stats20round_profile(F_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats27":{"current":_v672_safe_call(lambda:_stats20round_profile(A_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+                 "last_complete":None,"overall":_v672_safe_call(lambda:_profile_hit_stats(A_BASE_V68_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+                 "lifetime":_v672_safe_call(lambda:_profile_lifetime_stats(A_BASE_V68_PROFILE),{"n":0,"hits":0,"misses":0,"rate":0.0})},
+      "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
       "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
@@ -8819,7 +9158,7 @@ def _v671_fast_live_snapshot():
                "parity":_pct_map(trend,"parity"),"wave_parity":_pct_map(trend,"wave_parity")},
       "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
                   "long_prior_ready":bool(long_prior.get("ready")),
-                  "mode":"v67.2 BASE已显示 · Shadow后台验收" + (" · 应急排名" if fallback_used else "")},
+                  "mode":"v68 概率BASE已显示 · Shadow/评估后台运行" + (" · 应急排名" if fallback_used else "")},
       "learning":{"enabled":True,"best_profile":learner_cache.get("best_profile","平衡"),
                   "settled":learner_cache.get("settled",0),"target":60,
                   "ai_live":_v672_safe_call(lambda:ai_live_validation_stats(60),{}),
@@ -8831,7 +9170,7 @@ def _v671_fast_live_snapshot():
       "fast_fallback_used":bool(fallback_used),"fast_fallback_error":fallback_error
     }
     # Optional wrappers must never blank the five BASE lists.
-    for key,prof in [("statsF",F_BASE_V67_PROFILE),("stats27b",B_BASE_V67_PROFILE),("stats22c",C_BASE_V67_PROFILE),("stats16d",D_BASE_V67_PROFILE)]:
+    for key,prof in [("statsF",F_BASE_V68_PROFILE),("stats27b",B_BASE_V68_PROFILE),("stats22c",C_BASE_V68_PROFILE),("stats16d",D_BASE_V68_PROFILE)]:
         try: data[key]["lifetime"]=_profile_lifetime_stats(prof)
         except Exception: data[key]["lifetime"]={"n":0,"hits":0,"misses":0,"rate":0.0}
     return data
@@ -8867,14 +9206,14 @@ def _v674_minimal_snapshot():
       "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
-      "v67_rules":{},"model_pool":{},"stable_signals":{},
+      "v67_rules":{},"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
-      "profile":"v67.4即时BASE","profile_scores":{},"calibration_n":0,
+      "profile":"v68概率BASE","profile_scores":{},"calibration_n":0,
       "trend":{"wave":{},"size":{},"parity":{},"wave_parity":{}},
       "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
                   "long_prior_ready":bool(long_prior.get("ready")),
-                  "mode":"v67.4 即时BASE已出码 · Shadow后台验收"},
+                  "mode":"v68 49码概率BASE已出码 · 前瞻概率验收"},
       "learning":{"enabled":True,"best_profile":"冻结BASE","settled":0,"target":60,
                   "ai_live":{},"fusion":{},"auto":dict(auto_state)},
       "complement":{},"strategy":{"cold_rebound_now":False,"cold_zodiacs":[],
@@ -8899,10 +9238,10 @@ def rebuild_fast_live_cache():
             live_cache["data"]=data
             live_cache["issue"]=data.get("issue")
             live_cache["building"]=False
-        print(f"[FAST674] BASE ready issue={data.get('issue')} next={data.get('next_issue')} in {time.time()-t0:.3f}s",flush=True)
+        print(f"[FAST68] BASE ready issue={data.get('issue')} next={data.get('next_issue')} in {time.time()-t0:.3f}s",flush=True)
         return data
     except Exception as e:
-        print(f"[FAST674] BASE failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[FAST68] BASE failed: {type(e).__name__}: {e}",flush=True)
         return None
 
 def _binom_tail_half(k,n,alternative="greater"):
@@ -10628,6 +10967,10 @@ def settle_predictions(issue, nums, zs):
         _settle_rule_counterfactual(issue,actual_special)
     except Exception as e:
         print(f"[AUDIT] settle failed: {e}",flush=True)
+    try:
+        _v68_settle_forecasts(issue,actual_special)
+    except Exception as e:
+        print(f"[V68] forecast settle failed: {type(e).__name__}: {e}",flush=True)
 
     if rows:
         with pool_perf_lock:
@@ -10682,6 +11025,23 @@ def record_shadow_predictions(r):
         ))
     except Exception as e:
         print(f"[AI] locked prediction failed: {type(e).__name__}: {e}",flush=True)
+
+    # v68 official BASE: three probability rankers, five display cut-lines.
+    # These records start a NEW cohort; old v67 profile histories are never mixed in.
+    try:
+        vb=_v68_official_bases(r)
+        records.extend([
+          (target,F_BASE_V68_PROFILE,",".join(map(str,vb["F"])),"","",py),
+          (target,A_BASE_V68_PROFILE,",".join(map(str,vb["A"])),"","",py),
+          (target,B_BASE_V68_PROFILE,",".join(map(str,vb["B"])),"","",py),
+          (target,C_BASE_V68_PROFILE,",".join(map(str,vb["C"])),"","",py),
+          (target,D_BASE_V68_PROFILE,",".join(map(str,vb["D"])),"","",py),
+        ])
+        _v68_lock_forecasts(target,r)
+        _v68_lock_v674_controls(target,r)
+        print(f"[V68] locked probability forecasts target={target} cutoff={r[0]['issue']}",flush=True)
+    except Exception as e:
+        print(f"[V68] lock failed: {type(e).__name__}: {e}",flush=True)
 
     # New final complement forecast gets its own profile and starts honest
     # forward validation from this version onward. Old samples are never faked.
@@ -11339,9 +11699,9 @@ def initialize_quick_live_cache():
             live_cache["issue"]=data.get("issue")
             live_cache["data"]=data
             live_cache["building"]=False
-        print(f"[BOOT674] immediate BASE ready issue={data.get('issue')} next={data.get('next_issue')}",flush=True)
+        print(f"[BOOT68] immediate BASE ready issue={data.get('issue')} next={data.get('next_issue')}",flush=True)
     except Exception as e:
-        print(f"[BOOT674] immediate BASE failed: {type(e).__name__}: {e}",flush=True)
+        print(f"[BOOT68] immediate BASE failed: {type(e).__name__}: {e}",flush=True)
 
 def build_model():
     model_state["recalc_started_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
@@ -11361,28 +11721,28 @@ def build_model():
     except Exception: next_issue=""
     (c20,meta20),(c27,meta27),(c27b,meta27b),(c22c,meta22c),(c16d,meta16d)=_v671_live_bases(r,profile,next_issue)
 
-    stats20=_profile_hit_stats(F_BASE_V67_PROFILE,60)
-    statsF=_stats20round_profile(F_BASE_V67_PROFILE,next_issue)
-    statsF["lifetime"]=_profile_lifetime_stats(F_BASE_V67_PROFILE)
+    stats20=_profile_hit_stats(F_BASE_V68_PROFILE,60)
+    statsF=_stats20round_profile(F_BASE_V68_PROFILE,next_issue)
+    statsF["lifetime"]=_profile_lifetime_stats(F_BASE_V68_PROFILE)
 
-    _a=_stats20round_profile(A_BASE_V67_PROFILE,next_issue)
+    _a=_stats20round_profile(A_BASE_V68_PROFILE,next_issue)
     stats27={"current":dict(_a),"last_complete":None,"rounds_completed":0,
-             "overall":_profile_hit_stats(A_BASE_V67_PROFILE,60),
-             "lifetime":_profile_lifetime_stats(A_BASE_V67_PROFILE),
-             "version_lifetime":_profile_lifetime_stats(A_BASE_V67_PROFILE)}
+             "overall":_profile_hit_stats(A_BASE_V68_PROFILE,60),
+             "lifetime":_profile_lifetime_stats(A_BASE_V68_PROFILE),
+             "version_lifetime":_profile_lifetime_stats(A_BASE_V68_PROFILE)}
 
-    stats27b=_stats20round_profile(B_BASE_V67_PROFILE,next_issue)
-    stats27b["version_lifetime"]=_profile_lifetime_stats(B_BASE_V67_PROFILE)
-    stats27b["lifetime"]=_profile_lifetime_stats(B_BASE_V67_PROFILE)
+    stats27b=_stats20round_profile(B_BASE_V68_PROFILE,next_issue)
+    stats27b["version_lifetime"]=_profile_lifetime_stats(B_BASE_V68_PROFILE)
+    stats27b["lifetime"]=_profile_lifetime_stats(B_BASE_V68_PROFILE)
     stats27b["algorithm_window"]=10
 
-    stats22c=_stats20round_profile(C_BASE_V67_PROFILE,next_issue)
-    stats22c["version_lifetime"]=_profile_lifetime_stats(C_BASE_V67_PROFILE)
-    stats22c["lifetime"]=_profile_lifetime_stats(C_BASE_V67_PROFILE)
+    stats22c=_stats20round_profile(C_BASE_V68_PROFILE,next_issue)
+    stats22c["version_lifetime"]=_profile_lifetime_stats(C_BASE_V68_PROFILE)
+    stats22c["lifetime"]=_profile_lifetime_stats(C_BASE_V68_PROFILE)
 
-    stats16d=_stats20round_profile(D_BASE_V67_PROFILE,next_issue)
-    stats16d["version_lifetime"]=_profile_lifetime_stats(D_BASE_V67_PROFILE)
-    stats16d["lifetime"]=_profile_lifetime_stats(D_BASE_V67_PROFILE)
+    stats16d=_stats20round_profile(D_BASE_V68_PROFILE,next_issue)
+    stats16d["version_lifetime"]=_profile_lifetime_stats(D_BASE_V68_PROFILE)
+    stats16d["lifetime"]=_profile_lifetime_stats(D_BASE_V68_PROFILE)
     pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
@@ -11405,8 +11765,8 @@ def build_model():
         stats27=dict(stats27)
         stats27["live_round_reset"]=False
 
-    diag20=_strategy_diagnostics(F_BASE_V67_PROFILE,60)
-    diag27=_strategy_diagnostics(A_BASE_V67_PROFILE,60)
+    diag20=_strategy_diagnostics(F_BASE_V68_PROFILE,60)
+    diag27=_strategy_diagnostics(A_BASE_V68_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
@@ -11414,6 +11774,7 @@ def build_model():
     f_slot_stats={}
     v66_validation={}
     v67_rules=_v67_dashboard()
+    v68_prob=_v68_dashboard(r,True)
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -11446,6 +11807,7 @@ def build_model():
       "f_slot_stats":f_slot_stats,
       "v66_validation":v66_validation,
       "v67_rules":v67_rules,
+      "v68_prob":v68_prob,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -11489,7 +11851,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v67.4：即时BASE锁单 + 原子Shadow验收"
+        "mode":"v68：49码概率排名 + 真前瞻锁单 + 同覆盖基准验收"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
