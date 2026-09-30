@@ -302,6 +302,20 @@ V68_UNIFORM_LOGLOSS=math.log(49.0)
 V68_UNIFORM_BRIER=48.0/49.0
 v68_wf_lock=threading.RLock()
 v68_wf_cache={"ts":0.0,"data":None}
+
+# ===================== v69 Null-First evidence gate =====================
+F_BASE_V69_PROFILE="F_R1_CHALLENGER_TOP22_v69"
+A_BASE_V69_PROFILE="A_R1_CHALLENGER_TOP27_v69"
+B_BASE_V69_PROFILE="B_R2_CHALLENGER_TOP27_v69"
+C_BASE_V69_PROFILE="C_R2_CHALLENGER_TOP22_v69"
+D_BASE_V69_PROFILE="D_R1_CHALLENGER_TOP16_v69"
+V69_MODEL_VERSION="v69-null-first-001"
+V69_PRIMARY_ALPHA=0.025   # two frozen challengers: R1 / R2
+V69_PROMOTION_MIN_N=300
+V69_UNIFORM_LOGLOSS=math.log(49.0)
+V69_UNIFORM_BRIER=48.0/49.0
+V69_GATE_LAMBDA=0.0      # no evidence => official probability stays Uniform
+
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -664,8 +678,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div id="fDynamicTitle" class="sectionTitle">F组22码 · R1 Top22</div>
-        <div class="sectionHint">v68正式：R1完整49码概率排序的Top22；A与F共享R1，只是切线不同</div>
+        <div id="fDynamicTitle" class="sectionTitle">F组22码 · R1冻结挑战者</div>
+        <div class="sectionHint">v69：Uniform是正式概率基线；这里显示冻结R1的Top22研究切线，不代表已证明优势</div>
       </div>
       <button class="copyBtn" onclick="copySpecial()">一键复制</button>
     </div>
@@ -681,8 +695,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">A组27码 · R1 Top27</div>
-        <div id="code27Hint" class="sectionHint">v68正式：R1完整49码概率排序Top27；不再把A当独立模型</div>
+        <div class="sectionTitle">A组27码 · R1冻结挑战者</div>
+        <div id="code27Hint" class="sectionHint">v69：R1 Top27研究切线；与F共享母排序，不作为第二份独立证据</div>
       </div>
       <button class="copyBtn" onclick="copy27()">一键复制</button>
     </div>
@@ -698,8 +712,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">B组27码 · R2 Top27</div>
-        <div class="sectionHint">v68正式：R2短窗概率排序Top27；C与B共享R2，只是切线不同</div>
+        <div class="sectionTitle">B组27码 · R2冻结挑战者</div>
+        <div class="sectionHint">v69：R2 Top27研究切线；Uniform仍是正式概率基线</div>
       </div>
       <button class="copyBtn" onclick="copy27B()">一键复制</button>
     </div>
@@ -716,8 +730,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">v68 · 49码概率排名验收</div>
-        <div class="sectionHint">R1→F22/A27 · R2→C22/B27 · R3→D16。正式评价看同码数随机基准、真实特码排名、Log loss/Brier；不是只看“中/错”。</div>
+        <div class="sectionTitle">v69 · Null-First证据门控</div>
+        <div class="sectionHint">Uniform 1/49为正式冠军基线；R1/R2冻结为挑战者。先看ΔLogLoss/Brier、Top-N Lift和真实排名，再决定是否有资格偏离随机。</div>
       </div>
     </div>
     <div id="v68ProbGrid" class="strategyGrid"></div>
@@ -730,8 +744,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">旧v67原子Shadow（保留历史）</div>
-        <div class="sectionHint">旧规则继续保存前瞻证据，但不会因为短期救回就升回Live；v68正式评价转到概率排名层。</div>
+        <div class="sectionTitle">旧v67原子Shadow（Holm全局验收）</div>
+        <div class="sectionHint">救回/误伤继续保留；不再用“净+2就候选”。所有Shadow一起做多重比较校正，只有校正后证据通过才允许晋级审查。</div>
       </div>
     </div>
     <div id="v67RuleGrid" class="strategyGrid"></div>
@@ -741,8 +755,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard dCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">D组16码 · R3 Top16</div>
-        <div class="sectionHint">v68正式：独立R3多尺度概率Top16；不使用波色/大小硬配额</div>
+        <div class="sectionTitle">D组16码 · R1 Top16研究切线</div>
+        <div class="sectionHint">v69取消R3独立席位：D只是R1母排序的Top16切线，不再制造第三个高度重复模型</div>
       </div>
       <button class="copyBtn" onclick="copy16D()">复制D组</button>
     </div>
@@ -757,8 +771,8 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card numberCard cPingCard">
     <div class="sectionHead">
       <div>
-        <div class="sectionTitle">C组22码 · R2 Top22</div>
-        <div class="sectionHint">v68正式：R2短窗概率排序Top22；缺尾/杀头仍只留旧Shadow研究</div>
+        <div class="sectionTitle">C组22码 · R2冻结挑战者</div>
+        <div class="sectionHint">v69：R2 Top22研究切线；旧缺尾/杀头继续只作Shadow并接受Holm校正</div>
       </div>
       <button class="copyBtn" onclick="copy22C()">复制C组</button>
     </div>
@@ -863,7 +877,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v68概率前瞻实验版：F固定原始Top22；A/B原始Top27；C原始Top22；D原始Top16作为唯一Live。4票、强3、2票、杀头、固定轮、缺尾、冷头、波色、大小全部拆成独立Shadow。每期同一历史截止点、开奖前同时锁单；开奖后自动记救回/误伤/净贡献。60期只初筛，120期可降级，200期且差异样本≥30才允许晋级候选。修改任何规则即新版本重新计数。</div>
+  <div class="foot">v69 Null-First证据门控版：Uniform(1/49)成为数据库中的正式冠军基线；R1/R2按v68参数永久冻结，只作为挑战者继续前瞻。F/A/D共享R1切线，C/B共享R2切线，取消R3独立席位。页面核心改看ΔLogLoss、Brier、真实排名、同覆盖Lift；ΔLogLoss&lt;0才表示概率质量优于Uniform。旧Shadow统一使用discordant精确检验并做Holm多重比较校正，不再因净+2/+8自动升候选。任何新窗口/权重/规则都必须新model_version重新计数，禁止用开奖结果事后回填。</div>
 </div>
 
 <script>
@@ -969,7 +983,7 @@ async function loadMain(){
     SPECIAL20=d.special20||d.special24||[]; sp.innerHTML=balls(SPECIAL20);
     SPECIAL27=d.special27||[]; sp27.innerHTML=balls(SPECIAL27);
     SPECIAL27B=d.special27b||[]; sp27b.innerHTML=balls(SPECIAL27B);
-    fDynamicTitle.textContent=d.stale_prediction?'F组R1 · 重算中':`F组${SPECIAL20.length||'--'}码 · R1 Top22`;
+    fDynamicTitle.textContent=d.stale_prediction?'F组R1挑战者 · 重算中':`F组${SPECIAL20.length||'--'}码 · R1冻结挑战者`;
     const mp=d.model_pool||{}, ms=mp.stats||{}, stable=d.stable_signals||{};
     const modelNames=['趋势','生肖','冷热','波色','单双','纠错'];
     modelPoolRows.innerHTML=modelNames.map(k=>{
@@ -997,8 +1011,8 @@ async function loadMain(){
     const m20=d.strategy20||{}, m27=d.strategy27||{}, m27b=d.strategy27b||{}, s20=d.stats20||{}, sF=d.statsF||{}, s27=d.stats27||{}, s27b=d.stats27b||{};
     const cs=m20.consensus||{};
     const fRange=(sF.start&&sF.end)?`${sF.start}—${sF.end}`:'--';
-    code20Brief.textContent=`v68 R1 · 49码概率排序 → Top22`;
-    code20Fusion.textContent=`A27与F22共享R1母排序 · 不把两者重复算成两票`;
+    code20Brief.textContent=`v69 R1冻结挑战者 → Top22 · Uniform为正式概率基线`;
+    code20Fusion.textContent=`Null-First：无证据时 λ=0，不授权概率偏离1/49`;
     code20Record.textContent=`本轮20期 · 已开 ${sF.n??0}/20期 · 中 ${sF.hits??0}期 · 错 ${sF.misses??0}期`;
     const fLife=sF.lifetime||{};
     code20Lifetime.textContent=`累计实盘：中 ${fLife.hits??0}期 · 错 ${fLife.misses??0}期`;
@@ -1032,7 +1046,7 @@ async function loadMain(){
     const aLife=s27.lifetime||{};
     code27Lifetime.textContent=`累计实盘：中 ${aLife.hits??0}期 · 错 ${aLife.misses??0}期`;
     const ah=m27.head_decision||{};
-    code27Stats.textContent=`v68 R1 Top27 · 与F同一母排序，仅增加5个覆盖位`;
+    code27Stats.textContent=`v69 R1 Top27研究切线 · 与F/D共享母排序`;
 
     const wb=(m27b.window_issues||[]);
     const wfirst=wb.length?wb[wb.length-1]:'--';
@@ -1048,7 +1062,7 @@ async function loadMain(){
     const bColdCodes=m27b.cold3_codes||{};
     const bColdTxt=bCold.map(z=>`${z}:${(bColdCodes[z]||[]).map(fmt).join('/')||'--'}`).join(' · ')||'--';
     const vb=(((d.v67_rules||{}).B||{}).B_TAIL_ONLY)||{};
-    code27BMeta.textContent=`v68 R2 Top27 · C22与B27共享母排序 · 旧缺尾Shadow净${vb.net??0}`;
+    code27BMeta.textContent=`v69 R2 Top27研究切线 · C22与B27共享母排序 · 旧规则只Shadow`;
     SPECIAL16D=d.special16d||[]; sp16d.innerHTML=balls(SPECIAL16D);
     const s16=d.stats16d||{}, m16=d.strategy16d||{};
     code16DRound.textContent=`本轮 ${s16.start||'--'}—${s16.end||'--'} · 已开 ${s16.n??0}/20 · 中 ${s16.hits??0} · 错 ${s16.misses??0}`;
@@ -1057,7 +1071,7 @@ async function loadMain(){
     const df=m16.fused_wave||{}, ds=m16.fused_size||{}, vd=(((d.v67_rules||{}).D||{}).D_COLOR_SIZE)||{};
     const dwc=m16.wave_counts||{};
     const dalarm=m16.anomaly?` · ⚠ ${m16.anomaly}`:'';
-    code16DMeta.textContent=`v68 R3 Top16 · 红${dwc['红']??0}/蓝${dwc['蓝']??0}/绿${dwc['绿']??0}仅诊断 · 旧波色+大小Shadow净${vd.net??0}${dalarm}`;
+    code16DMeta.textContent=`v69 D=R1 Top16研究切线 · 不再设R3 · 波色/大小只Shadow${dalarm}`;
 
     SPECIAL22C=d.special22c||[]; sp22c.innerHTML=balls(SPECIAL22C);
     const s22=d.stats22c||{}, m22=d.strategy22c||{};
@@ -1065,34 +1079,29 @@ async function loadMain(){
     const cLife=s22.lifetime||{};
     code22CLifetime.textContent=`累计实盘：中 ${cLife.hits??0}期 · 错 ${cLife.misses??0}期`;
     const vc=(((d.v67_rules||{}).C||{}).C_TAIL_ONLY)||{};
-    code22CMeta.textContent=`v68 R2 Top22 · 旧缺尾Shadow ${vc.n??0}期 · 净${vc.net??0}`;
+    code22CMeta.textContent=`v69 R2 Top22研究切线 · 旧缺尾/杀头只Shadow`;
 
-    const v68=d.v68_prob||{}, vfwd=v68.forward||{}, vcur=v68.rankers||{}, vctl=v68.control_vs_v674||{};
-    const rNames={R1:'R1 长窗概率 · F22/A27',R2:'R2 短窗概率 · C22/B27',R3:'R3 多尺度概率 · D16'};
-    const primary={R1:'top22',R2:'top22',R3:'top16'};
+    const v69=d.v69_null||{}, vfwd=v69.forward||{}, vcur=v69.rankers||{};
+    const rNames={R1:'R1 冻结挑战者 · F22/A27/D16',R2:'R2 冻结挑战者 · C22/B27'};
+    const primary={R1:'top22',R2:'top22'};
     if(document.getElementById('v68ProbGrid')){
-      v68ProbGrid.innerHTML=['R1','R2','R3'].map(rid=>{
+      const u=v69.uniform||{};
+      const uniformBox=`<div class="strategyBox"><div class="strategyTitle">Uniform 正式基线</div><div class="strategyMain">1/49 · LogLoss ${u.log_loss??3.89182}<br>Brier ${u.brier??0.97959} · ΔLogLoss 0<br>${u.status||'正式基线冠军'}</div></div>`;
+      const challengers=['R1','R2'].map(rid=>{
         const x=vfwd[rid]||{}, k=x[primary[rid]]||{}, c=vcur[rid]||{};
-        const wf=((v68.walkforward||{})[rid]||{}), wk=wf[primary[rid]]||{};
         const top=(c.top5||[]).slice(0,3).map(z=>`${fmt(z.n)}:${z.p}%`).join(' · ')||'--';
-        return `<div class="strategyBox"><div class="strategyTitle">${rNames[rid]}</div><div class="strategyMain">正式前瞻 ${x.n??0}期 · ${x.status||'前瞻积累'}<br>主切线 命中${k.rate??0}% / 随机${k.random??0}% · Lift ${k.lift_pct??0}%<br>真号均排 ${x.avg_rank??0} · LogLoss ${x.log_loss??0}<br>当前Top3概率 ${top}${wf.n?`<br>历史WF ${wf.n}期 · Lift ${wk.lift_pct??0}%（仅研究）`:''}</div></div>`;
+        const dll=Number(x.delta_log_loss||0), cum=Number(x.cum_delta_log_loss||0);
+        return `<div class="strategyBox"><div class="strategyTitle">${rNames[rid]}</div><div class="strategyMain">v69前瞻 ${x.n??0}期 · ${x.status||'研究中'}<br>Top22 ${k.rate??0}% / 随机${k.random??44.9}% · Lift ${k.lift_pct??0}%<br>ΔLogLoss ${dll>=0?'+':''}${dll.toFixed(5)}（负数才好） · 累计 ${cum>=0?'+':''}${cum.toFixed(3)}<br>真号均排 ${x.avg_rank??0} · Top3 ${top}</div></div>`;
       }).join('');
+      v68ProbGrid.innerHTML=uniformBox+challengers;
     }
-    const r1f=vfwd.R1||{}, r2f=vfwd.R2||{}, r3f=vfwd.R3||{};
-    if(r1f.n){ code20Lifetime.textContent+=` · 同码随机44.9% · R1Top22 Lift ${(r1f.top22||{}).lift_pct??0}%`; code27Lifetime.textContent+=` · 随机55.1% · Lift ${(r1f.top27||{}).lift_pct??0}%`; }
-    if(r2f.n){ code27BCumulative.textContent+=` · 随机55.1% · Lift ${(r2f.top27||{}).lift_pct??0}%`; code22CLifetime.textContent+=` · 随机44.9% · Lift ${(r2f.top22||{}).lift_pct??0}%`; }
-    if(r3f.n){ code16DLifetime.textContent+=` · 随机32.7% · Lift ${(r3f.top16||{}).lift_pct??0}%`; }
-    const dep=v68.dependence||{};
-    if(document.getElementById('v68Dependence')) v68Dependence.textContent=`排序相关 R1/R2 ${dep.R1_R2??0} · R1/R3 ${dep.R1_R3??0} · R2/R3 ${dep.R2_R3??0} ｜ F⊂A、C⊂B是设计切线，不算独立共识`;
-    const cf=(vctl.F||{}), ca=(vctl.A||{}), cb=(vctl.B||{}), cc=(vctl.C||{}), cd=(vctl.D||{});
-    // Same-code-count v67.4 control comparisons are prospective only.
-    if(cf.n) code20Fusion.textContent+=` · 对v67.4 ${cf.n}期 净${cf.net>=0?'+':''}${cf.net}`;
-    if(ca.n) code27Stats.textContent+=` · 对v67.4 ${ca.n}期 净${ca.net>=0?'+':''}${ca.net}`;
-    if(cb.n) code27BMeta.textContent+=` · 对v67.4净${cb.net>=0?'+':''}${cb.net}`;
-    if(cc.n) code22CMeta.textContent+=` · 对v67.4净${cc.net>=0?'+':''}${cc.net}`;
-    if(cd.n) code16DMeta.textContent+=` · 对v67.4净${cd.net>=0?'+':''}${cd.net}`;
+    const r1f=vfwd.R1||{}, r2f=vfwd.R2||{};
+    if(r1f.n){ code20Lifetime.textContent+=` · R1 Top22 Lift ${(r1f.top22||{}).lift_pct??0}% · ΔLL ${r1f.delta_log_loss??0}`; code27Lifetime.textContent+=` · R1 Top27 Lift ${(r1f.top27||{}).lift_pct??0}%`; code16DLifetime.textContent+=` · D=R1 Top16 Lift ${(r1f.top16||{}).lift_pct??0}%`; }
+    if(r2f.n){ code27BCumulative.textContent+=` · R2 Top27 Lift ${(r2f.top27||{}).lift_pct??0}%`; code22CLifetime.textContent+=` · R2 Top22 Lift ${(r2f.top22||{}).lift_pct??0}%`; }
+    const dep=v69.dependence||{};
+    if(document.getElementById('v68Dependence')) v68Dependence.textContent=`正式冠军：${v69.champion||'Uniform 1/49'} · gate λ=${v69.gate_lambda??0} · R1/R2相关 ${dep.R1_R2??0} ｜ D只是R1切线，不再设R3`;
 
-    const vr=d.v67_rules||{};
+    const vr=d.v69_shadow||d.v67_rules||{};
     const vrNames={
       F:{F_4VOTE:'F·4票绝保',F_STRONG3:'F·强3票',F_LIMIT2:'F·2票限制',F_LEGACY_V66:'F·旧v66'},
       A:{A_KILL_HEAD_ONLY:'A·杀头',A_FIXED_ROUND_ONLY:'A·10期固定',A_LEGACY_V66:'A·旧v66'},
@@ -1103,7 +1112,7 @@ async function loadMain(){
     const vrRows=[];
     Object.keys(vrNames).forEach(g=>Object.keys(vrNames[g]).forEach(k=>{
       const x=(vr[g]||{})[k]||{};
-      vrRows.push(`<div class="strategyBox"><div class="strategyTitle">${vrNames[g][k]}</div><div class="strategyMain">${x.n??0}期 · 救${x.rescue??0} 伤${x.harm??0} · 净${x.net??0}<br>${x.status||'孵化Shadow'} · discordant ${x.discordant??0}</div></div>`);
+      vrRows.push(`<div class="strategyBox"><div class="strategyTitle">${vrNames[g][k]}</div><div class="strategyMain">${x.n??0}期 · 救${x.rescue??0} 伤${x.harm??0} · 净${x.net??0}<br>${x.status_v69||x.status||'研究中'} · Holm p ${x.p_holm??'--'} · discordant ${x.discordant??0}</div></div>`);
     }));
     if(document.getElementById('v67RuleGrid')) v67RuleGrid.innerHTML=vrRows.join('');
 
@@ -1130,7 +1139,7 @@ async function loadMain(){
     const ail=lr.ai_live||{};
     const au=lr.auto||{};
     const fu=lr.fusion||{};
-    learningState.innerHTML=`v68概率前瞻实验<br>F固定22码`;
+    learningState.innerHTML=`v69 Null-First证据门控<br>F固定22码`;
     learningProgress.innerHTML=`${fu.reason||'动态评估中'}<br>AI实盘 ${fu.ai_rate60??ail.hit24??0}% · 最近12期 ${fu.ai_rate12??0}%`;
     const cp=d.complement||{};
     compBoth.textContent=`${cp.both_hit??0}/${cp.n??0}`;
@@ -1142,7 +1151,7 @@ async function loadMain(){
     const dg20=d.diagnostics20||{}, dg27=d.diagnostics27||{}, cr=d.correction||{};
     const rb=dg20.rank_buckets||{}, fr=dg20.failure_reasons||{};
     regimeState.innerHTML=`F：${m20.regime||'BASE'}<br>A：${m27.regime||'BASE'}`;
-    corr20State.innerHTML=`v67 Live不启用纠错替换<br>BASE 100% · 规则只Shadow`;
+    corr20State.innerHTML=`Uniform正式概率基线<br>R1/R2仅冻结挑战者 · 规则只Shadow`;
     rank20State.innerHTML=`1-10 ${rb['1-10']??0} · 11-20 ${rb['11-20']??0}<br>21-27 ${rb['21-27']??0} · 28+ ${rb['28+']??0}`;
     const kh=dg27.head_kill_by_head||{}, k0=kh['0头']||{}, k4=kh['4头']||{};
     const r27=dg27.rule_failure_reasons||{};
@@ -1160,7 +1169,7 @@ async function loadMain(){
     latestZodiac.textContent=d.latest_special_zodiac?`特码生肖 ${d.latest_special_zodiac}`:'特码生肖 --';
     lastIngest.textContent=d.latest_created_at?`最后录入 ${d.latest_created_at}`:'实时录入';
     tg.textContent=d.telegram?'Telegram 已连接':'Telegram 未配置';
-    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v67.4即时BASE + 原子Shadow同步锁单`;
+    adaptiveInfo.textContent=`前瞻预测：${d.next_issue||'--'}期 · v69 Null-First · Uniform+R1/R2同步锁单`;
     calcState.textContent=d.fast_fallback_used?'BASE已出码 · 应急排名 · 完整模型后台恢复':(d.recalculating?(d.fast_base_ready?'BASE已出码 · Shadow后台更新':'新期开奖已入库 · BASE自愈生成中'):'模型已更新');
     calcState.className=d.recalculating?'pill':'pill ok';
 
@@ -1193,7 +1202,7 @@ async function loadAutoStatus(){
     const a=await r.json();
     const n=a.ai_live||{};
     const f=a.fusion||{};
-    learningState.innerHTML=`v68概率前瞻实验<br>F固定22码`;
+    learningState.innerHTML=`v69 Null-First证据门控<br>F固定22码`;
     learningProgress.innerHTML=`${f.reason||'动态评估中'}<br>${a.remote_backup_enabled?'学习数据：Supabase免费外部备份':(a.persistent?'学习数据：持久盘自动备份':'⚠ 学习数据：仅临时盘，重部署有丢失风险')}`;
   }catch(e){}
 }
@@ -8975,6 +8984,215 @@ def _v68_dashboard(r=None,include_walkforward=False):
         data["walkforward"]=_v68_walkforward(600)
     return data
 
+
+# ===================== v69: Null-First / evidence-gated architecture =====================
+def _v69_uniform_prob():
+    return {n:1.0/49.0 for n in range(1,50)}
+
+def _v69_shrink_to_uniform(prob, lam=V69_GATE_LAMBDA):
+    lam=min(1.0,max(0.0,float(lam)))
+    u=1.0/49.0
+    out={n:(1.0-lam)*u+lam*float((prob or {}).get(n,u)) for n in range(1,50)}
+    z=sum(out.values()) or 1.0
+    return {n:v/z for n,v in out.items()}
+
+def _v69_challenger_bases(r):
+    """Frozen challengers from v68. No tuning in v69.
+
+    Uniform is the official probability champion. R1/R2 are research challengers.
+    D16 is explicitly an R1 cut-line, NOT an independent third model.
+    """
+    p1=_v68_ranker_probs(r,"R1"); r1=_v68_ranked(p1)
+    p2=_v68_ranker_probs(r,"R2"); r2=_v68_ranked(p2)
+    return {
+      "F":r1[:22],"A":r1[:27],"D":r1[:16],
+      "C":r2[:22],"B":r2[:27],
+      "rankers":{
+        "U":{"prob":_v69_uniform_prob(),"ranked":list(range(1,50))},
+        "R1":{"prob":p1,"ranked":r1,"gated_prob":_v69_shrink_to_uniform(p1)},
+        "R2":{"prob":p2,"ranked":r2,"gated_prob":_v69_shrink_to_uniform(p2)},
+      }
+    }
+
+def _v69_live_bases(r,profile="",next_issue=""):
+    b=_v69_challenger_bases(r)
+    r1=b["rankers"]["R1"]["ranked"]; r2=b["rankers"]["R2"]["ranked"]
+    p1=b["rankers"]["R1"]["prob"]; p2=b["rankers"]["R2"]["prob"]
+    f,a,bb,c,d=list(b["F"]),list(b["A"]),list(b["B"]),list(b["C"]),list(b["D"])
+    common="Uniform=正式概率基线；当前号码仅为冻结挑战者研究切线"
+    fm={"mode":"v69 R1冻结挑战者 Top22","code_count":22,"ranked49":r1,"dynamic_count":22,
+        "regime":"v69 Null-First · R1研究Top22","audit_regime":"F69|R1-challenger22","ranker_id":"R1",
+        "prob_meta":_v68_prob_meta(p1,r1),"null_first_note":common,"gate_lambda":V69_GATE_LAMBDA,
+        "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
+    am={"mode":"v69 R1冻结挑战者 Top27","ranked49":r1,"raw_top27":a,"code_count":27,
+        "killed_head":"","head_decision":{"active":False,"reason":"Null-First不杀码"},
+        "block_start":"","block_end":"","round_position":1,"ranker_id":"R1",
+        "regime":"v69 Null-First · R1研究Top27","audit_regime":"A69|R1-challenger27",
+        "prob_meta":_v68_prob_meta(p1,r1),"null_first_note":common,"gate_lambda":V69_GATE_LAMBDA}
+    bm={"mode":"v69 R2冻结挑战者 Top27","ranked49":r2,"code_count":27,"ranker_id":"R2",
+        "killed_head":"","missing_tail_rescue":{},"window_issues":[str(x["issue"]) for x in list(r[:10])],
+        "regime":"v69 Null-First · R2研究Top27","audit_regime":"B69|R2-challenger27",
+        "prob_meta":_v68_prob_meta(p2,r2),"null_first_note":common,"gate_lambda":V69_GATE_LAMBDA}
+    cm={"mode":"v69 R2冻结挑战者 Top22","ranked49":r2,"code_count":22,"ranker_id":"R2",
+        "killed_head":"","coldest3":[],"missing_tails":[],"missing_tail_rescue":{},
+        "regime":"v69 Null-First · R2研究Top22","audit_regime":"C69|R2-challenger22",
+        "prob_meta":_v68_prob_meta(p2,r2),"null_first_note":common,"gate_lambda":V69_GATE_LAMBDA}
+    dwc=dict(Counter(wave_of(n) for n in d))
+    dm={"mode":"v69 R1研究切线 Top16","ranked49":r1,"code_count":16,"ranker_id":"R1",
+        "fused_wave":{},"fused_size":{},"wave_counts":dwc,"neutral_weights_pct":{},
+        "anomaly":"","regime":"v69 D=R1 Top16研究切线（不是独立模型）","audit_regime":"D69|R1-cut16",
+        "prob_meta":_v68_prob_meta(p1,r1),"null_first_note":common,"gate_lambda":V69_GATE_LAMBDA}
+    return (f,fm),(a,am),(bb,bm),(c,cm),(d,dm)
+
+def _v69_lock_forecasts(target,r):
+    """Lock Uniform + frozen R1/R2 before the draw.
+
+    Uniform is a real database control, not just a displayed 44.9% reference.
+    """
+    if not r: return
+    b=_v69_challenger_bases(r); cutoff=str(r[0]["issue"])
+    with db_lock:
+        c=connect()
+        try:
+            for rid in ("U","R1","R2"):
+                prob=b["rankers"][rid]["prob"]
+                ranked=b["rankers"][rid]["ranked"]
+                if rid=="U":
+                    t16=t22=t27=""
+                else:
+                    t16=",".join(map(str,ranked[:16])); t22=",".join(map(str,ranked[:22])); t27=",".join(map(str,ranked[:27]))
+                c.execute("""INSERT OR IGNORE INTO v68_forecast
+                  (target_issue,ranker_id,model_version,history_cutoff_id,probs_json,ranked49,top16,top22,top27)
+                  VALUES (?,?,?,?,?,?,?,?,?)""",
+                  (str(target),rid,V69_MODEL_VERSION,cutoff,
+                   json.dumps({str(n):float(prob[n]) for n in range(1,50)},separators=(",",":")),
+                   ",".join(map(str,ranked)),t16,t22,t27))
+            c.commit()
+        finally: c.close()
+
+def _v69_settle_forecasts(issue,actual_special):
+    a=int(actual_special)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT ranker_id,probs_json,ranked49,top16,top22,top27
+                              FROM v68_forecast WHERE target_issue=? AND model_version=? AND settled=0""",
+                           (str(issue),V69_MODEL_VERSION)).fetchall()
+            for row in rows:
+                rid=str(row["ranker_id"])
+                try: probs={int(k):float(v) for k,v in json.loads(row["probs_json"]).items()}
+                except Exception: probs=_v69_uniform_prob()
+                if rid=="U":
+                    rank=25
+                    h16=h22=h27=0
+                else:
+                    ranked=_csv_nums(row["ranked49"])
+                    rank=(ranked.index(a)+1) if a in ranked else 49
+                    h16=int(a in set(_csv_nums(row["top16"]))); h22=int(a in set(_csv_nums(row["top22"]))); h27=int(a in set(_csv_nums(row["top27"])))
+                pa=max(float(probs.get(a,1.0/49.0)),1e-15)
+                ll=-math.log(pa)
+                br=sum((float(probs.get(n,0.0))-(1.0 if n==a else 0.0))**2 for n in range(1,50))
+                c.execute("""UPDATE v68_forecast SET settled=1,actual_special=?,actual_rank=?,log_loss=?,brier=?,hit16=?,hit22=?,hit27=?
+                             WHERE target_issue=? AND ranker_id=? AND model_version=?""",
+                          (a,rank,float(ll),float(br),h16,h22,h27,str(issue),rid,V69_MODEL_VERSION))
+            c.commit()
+        finally: c.close()
+
+def _v69_ranker_stats(rid,limit=10000):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT target_issue,actual_rank,log_loss,brier,hit16,hit22,hit27
+                              FROM v68_forecast WHERE ranker_id=? AND model_version=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC LIMIT ?""",
+                           (str(rid),V69_MODEL_VERSION,int(limit))).fetchall()
+        finally: c.close()
+    n=len(rows)
+    if str(rid)=="U":
+        return {"n":n,"avg_rank":25.0,"log_loss":round(V69_UNIFORM_LOGLOSS,5),"brier":round(V69_UNIFORM_BRIER,5),
+                "delta_log_loss":0.0,"delta_brier":0.0,"cum_delta_log_loss":0.0,"status":"正式基线冠军 · Uniform"}
+    h16=sum(int(x["hit16"] or 0) for x in rows); h22=sum(int(x["hit22"] or 0) for x in rows); h27=sum(int(x["hit27"] or 0) for x in rows)
+    avg_rank=(sum(float(x["actual_rank"] or 49) for x in rows)/n) if n else 0.0
+    avg_ll=(sum(float(x["log_loss"] or 0) for x in rows)/n) if n else 0.0
+    avg_br=(sum(float(x["brier"] or 0) for x in rows)/n) if n else 0.0
+    delta_ll=avg_ll-V69_UNIFORM_LOGLOSS if n else 0.0
+    delta_br=avg_br-V69_UNIFORM_BRIER if n else 0.0
+    cum_delta=sum(float(x["log_loss"] or 0)-V69_UNIFORM_LOGLOSS for x in rows)
+    primary_k=22
+    primary_h=h22
+    pm=_v68_k_metrics(primary_h,n,primary_k)
+    if n<V69_PROMOTION_MIN_N:
+        status=f"研究中 {n}/{V69_PROMOTION_MIN_N} · 未授权偏离Uniform"
+    elif delta_ll<0 and pm["p_one_sided"]<V69_PRIMARY_ALPHA and pm["ci95"][0]>pm["random"] and avg_rank<25.0:
+        status="证据通过 · 可进入人工晋级审查"
+    elif delta_ll>=0:
+        status="证据失败 · 劣于/不优于Uniform"
+    else:
+        status="未证明优势"
+    return {"n":n,"avg_rank":round(avg_rank,2),"log_loss":round(avg_ll,5),"brier":round(avg_br,5),
+            "delta_log_loss":round(delta_ll,5),"delta_brier":round(delta_br,5),"cum_delta_log_loss":round(cum_delta,4),
+            "uniform_log_loss":round(V69_UNIFORM_LOGLOSS,5),"uniform_brier":round(V69_UNIFORM_BRIER,5),
+            "top16":_v68_k_metrics(h16,n,16),"top22":_v68_k_metrics(h22,n,22),"top27":_v68_k_metrics(h27,n,27),
+            "primary_k":primary_k,"status":status}
+
+def _v69_holm_adjust(pairs,alpha=0.05):
+    """pairs: list[(key,p)]. Return adjusted p and reject flags using Holm."""
+    ordered=sorted([(k,min(1.0,max(0.0,float(p)))) for k,p in pairs], key=lambda x:x[1])
+    m=len(ordered); out={}; running=0.0; still=True
+    for i,(k,p) in enumerate(ordered):
+        factor=m-i
+        adj=min(1.0,max(running,p*factor)); running=adj
+        reject=bool(still and p <= alpha/factor)
+        if not reject: still=False
+        out[k]={"p_holm":round(adj,6),"holm_reject":reject,"raw_p":round(p,6)}
+    return out
+
+def _v69_shadow_dashboard():
+    raw=_v67_dashboard()
+    flat=[]
+    for g,items in raw.items():
+        for rid,x in items.items(): flat.append((f"{g}|{rid}",float(x.get("p_help",1.0))))
+    holm=_v69_holm_adjust(flat,0.05)
+    out={}
+    for g,items in raw.items():
+        out[g]={}
+        for rid,x0 in items.items():
+            x=dict(x0); h=holm.get(f"{g}|{rid}",{})
+            x.update(h)
+            n=int(x.get("n",0)); net=int(x.get("net",0)); reject=bool(x.get("holm_reject",False))
+            if reject and net>0:
+                status="证据通过"
+            elif n>=200 and net<=0:
+                status="证据失败"
+            else:
+                status="研究中 · 无优势证据"
+            x["status_v69"]=status
+            out[g][rid]=x
+    return out
+
+def _v69_dashboard(r=None):
+    if r is None: r=recent_rows(300)
+    b=_v69_challenger_bases(r) if r else {"rankers":{}}
+    cur={}
+    for rid in ("R1","R2"):
+        rr=(b.get("rankers") or {}).get(rid) or {}; p=rr.get("prob") or {}; ranked=rr.get("ranked") or []
+        cur[rid]=dict(_v68_prob_meta(p,ranked),ranked49=ranked,top16=ranked[:16],top22=ranked[:22],top27=ranked[:27]) if ranked else {}
+    r1=cur.get("R1",{}).get("ranked49",[]); r2=cur.get("R2",{}).get("ranked49",[])
+    return {
+      "model_version":V69_MODEL_VERSION,
+      "gate_lambda":V69_GATE_LAMBDA,
+      "champion":"Uniform 1/49",
+      "uniform":_v69_ranker_stats("U"),
+      "rankers":cur,
+      "forward":{"R1":_v69_ranker_stats("R1"),"R2":_v69_ranker_stats("R2")},
+      "dependence":{"R1_R2":round(_v68_rank_corr(r1,r2),4) if r1 and r2 else 0.0,
+                    "note":"D16只是R1切线；不再存在独立R3席位"},
+      "shadow_holm":_v69_shadow_dashboard(),
+      "archive_v68":_v68_dashboard(r,False),
+      "rule":"ΔLogLoss<0才优于Uniform；Shadow必须Holm校正后再谈晋级"
+    }
+
+
 # ===================== v67.1 fast live BASE layer =====================
 def _v671_recent10_ranked(r):
     """Return B/C frozen BASE mother ranking using only latest 10 specials.
@@ -9044,8 +9262,8 @@ def _v671_recent10_ranked(r):
     return ranked,{"window_issues":[str(x["issue"]) for x in recent],"missing_tails":[t for t in range(10) if t not in seen],"tail_weight_pct":10.0}
 
 def _v671_live_bases(r,profile,next_issue=""):
-    # Compatibility name used by old cache code; official live output is v68.
-    return _v68_live_bases(r,profile,next_issue)
+    # Compatibility name used by cache code; official visible output is v69 challengers under a Uniform control.
+    return _v69_live_bases(r,profile,next_issue)
 
 def _v672_simple_ranked(r, window=60):
     """Emergency ranking used only if the normal v67 BASE scorer errors.
@@ -9082,19 +9300,19 @@ def _v672_safe_live_bases(r,profile,next_issue=""):
             rank10=_v672_simple_ranked(r,10)
             bmeta={"window_issues":[str(x["issue"]) for x in list(r[:10])],"missing_tails":[],"tail_weight_pct":0.0}
         f=rank60[:22]; a=rank60[:27]; d=rank60[:16]; b=rank10[:27]; c=rank10[:22]
-        fm={"mode":"v68应急BASE Top22","code_count":22,"ranked49":rank60,
-            "dynamic_count":22,"regime":"v68应急BASE","audit_regime":"F68|fallback",
+        fm={"mode":"v69应急挑战者BASE Top22","code_count":22,"ranked49":rank60,
+            "dynamic_count":22,"regime":"v69应急挑战者BASE","audit_regime":"F69|fallback",
             "consensus":{"protected4_count":0,"protected4":[],"protected4_actual_count":0}}
         am={"mode":"v68应急A Top27","ranked49":rank60,"raw_top27":a,"code_count":27,
             "killed_head":"","head_decision":{"active":False,"reason":"应急BASE不杀码"},
-            "block_start":"","block_end":"","round_position":1,"regime":"v68应急A","audit_regime":"A68|fallback"}
+            "block_start":"","block_end":"","round_position":1,"regime":"v68应急A","audit_regime":"A69|fallback"}
         bm=dict(bmeta); bm.update({"mode":"v68应急B Top27","ranked49":rank10,"code_count":27,
-            "killed_head":"","missing_tail_rescue":{},"regime":"v68应急B","audit_regime":"B68|fallback"})
+            "killed_head":"","missing_tail_rescue":{},"regime":"v68应急B","audit_regime":"B69|fallback"})
         cm={"mode":"v68应急C Top22","ranked49":rank10,"code_count":22,"killed_head":"",
             "coldest3":[],"missing_tails":bmeta.get("missing_tails") or [],"missing_tail_rescue":{},
-            "regime":"v68应急C","audit_regime":"C68|fallback"}
+            "regime":"v68应急C","audit_regime":"C69|fallback"}
         dm={"mode":"v68应急D Top16","ranked49":rank60,"code_count":16,
-            "fused_wave":{},"fused_size":{},"regime":"v68应急D","audit_regime":"D68|fallback"}
+            "fused_wave":{},"fused_size":{},"regime":"v68应急D","audit_regime":"D69|fallback"}
         return ((f,fm),(a,am),(b,bm),(c,cm),(d,dm)), True, f"{type(e).__name__}: {e}"
 
 
@@ -9141,15 +9359,15 @@ def _v671_fast_live_snapshot():
       "special27":[f"{n:02d}" for n in sorted(c27)],"special27b":[f"{n:02d}" for n in sorted(c27b)],
       "special22c":[f"{n:02d}" for n in sorted(c22)],"special16d":[f"{n:02d}" for n in sorted(c16)],
       "strategy20":m20,"strategy27":m27,"strategy27b":m27b,"strategy22c":m22,"strategy16d":m16,
-      "stats20":_v672_safe_call(lambda:_profile_hit_stats(F_BASE_V68_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
-      "statsF":_v672_safe_call(lambda:_stats20round_profile(F_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats27":{"current":_v672_safe_call(lambda:_stats20round_profile(A_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-                 "last_complete":None,"overall":_v672_safe_call(lambda:_profile_hit_stats(A_BASE_V68_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
-                 "lifetime":_v672_safe_call(lambda:_profile_lifetime_stats(A_BASE_V68_PROFILE),{"n":0,"hits":0,"misses":0,"rate":0.0})},
-      "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V68_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"model_pool":{},"stable_signals":{},
+      "stats20":_v672_safe_call(lambda:_profile_hit_stats(F_BASE_V69_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+      "statsF":_v672_safe_call(lambda:_stats20round_profile(F_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats27":{"current":_v672_safe_call(lambda:_stats20round_profile(A_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+                 "last_complete":None,"overall":_v672_safe_call(lambda:_profile_hit_stats(A_BASE_V69_PROFILE,60),{"n":0,"hits":0,"misses":0,"rate":0.0}),
+                 "lifetime":_v672_safe_call(lambda:_profile_lifetime_stats(A_BASE_V69_PROFILE),{"n":0,"hits":0,"misses":0,"rate":0.0})},
+      "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
       "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
@@ -9158,7 +9376,7 @@ def _v671_fast_live_snapshot():
                "parity":_pct_map(trend,"parity"),"wave_parity":_pct_map(trend,"wave_parity")},
       "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
                   "long_prior_ready":bool(long_prior.get("ready")),
-                  "mode":"v68 概率BASE已显示 · Shadow/评估后台运行" + (" · 应急排名" if fallback_used else "")},
+                  "mode":"v69 Null-First · Uniform正式基线 · 挑战者号码已显示" + (" · 应急排名" if fallback_used else "")},
       "learning":{"enabled":True,"best_profile":learner_cache.get("best_profile","平衡"),
                   "settled":learner_cache.get("settled",0),"target":60,
                   "ai_live":_v672_safe_call(lambda:ai_live_validation_stats(60),{}),
@@ -9170,7 +9388,7 @@ def _v671_fast_live_snapshot():
       "fast_fallback_used":bool(fallback_used),"fast_fallback_error":fallback_error
     }
     # Optional wrappers must never blank the five BASE lists.
-    for key,prof in [("statsF",F_BASE_V68_PROFILE),("stats27b",B_BASE_V68_PROFILE),("stats22c",C_BASE_V68_PROFILE),("stats16d",D_BASE_V68_PROFILE)]:
+    for key,prof in [("statsF",F_BASE_V69_PROFILE),("stats27b",B_BASE_V69_PROFILE),("stats22c",C_BASE_V69_PROFILE),("stats16d",D_BASE_V69_PROFILE)]:
         try: data[key]["lifetime"]=_profile_lifetime_stats(prof)
         except Exception: data[key]["lifetime"]={"n":0,"hits":0,"misses":0,"rate":0.0}
     return data
@@ -9206,15 +9424,15 @@ def _v674_minimal_snapshot():
       "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
-      "v67_rules":{},"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
-      "profile":"v68概率BASE","profile_scores":{},"calibration_n":0,
+      "profile":"v69 Null-First","profile_scores":{},"calibration_n":0,
       "trend":{"wave":{},"size":{},"parity":{},"wave_parity":{}},
       "forecast":{"target_issue":next_issue,"transition_samples":0,"exact_previous_number_samples":0,
                   "long_prior_ready":bool(long_prior.get("ready")),
-                  "mode":"v68 49码概率BASE已出码 · 前瞻概率验收"},
-      "learning":{"enabled":True,"best_profile":"冻结BASE","settled":0,"target":60,
+                  "mode":"v69 Null-First · Uniform基线已锁定 · 挑战者前瞻验收"},
+      "learning":{"enabled":True,"best_profile":"Null-First冻结挑战者","settled":0,"target":60,
                   "ai_live":{},"fusion":{},"auto":dict(auto_state)},
       "complement":{},"strategy":{"cold_rebound_now":False,"cold_zodiacs":[],
           "latest_zodiac":normalize_z(latest["z7"] or ""),"nmy_samples":0,
@@ -10969,6 +11187,7 @@ def settle_predictions(issue, nums, zs):
         print(f"[AUDIT] settle failed: {e}",flush=True)
     try:
         _v68_settle_forecasts(issue,actual_special)
+        _v69_settle_forecasts(issue,actual_special)
     except Exception as e:
         print(f"[V68] forecast settle failed: {type(e).__name__}: {e}",flush=True)
 
@@ -11042,6 +11261,21 @@ def record_shadow_predictions(r):
         print(f"[V68] locked probability forecasts target={target} cutoff={r[0]['issue']}",flush=True)
     except Exception as e:
         print(f"[V68] lock failed: {type(e).__name__}: {e}",flush=True)
+
+    # v69 Null-First: new honest cohort. Uniform + frozen R1/R2 are locked pre-draw.
+    try:
+        vb69=_v69_challenger_bases(r)
+        records.extend([
+          (target,F_BASE_V69_PROFILE,",".join(map(str,vb69["F"])),"","",py),
+          (target,A_BASE_V69_PROFILE,",".join(map(str,vb69["A"])),"","",py),
+          (target,B_BASE_V69_PROFILE,",".join(map(str,vb69["B"])),"","",py),
+          (target,C_BASE_V69_PROFILE,",".join(map(str,vb69["C"])),"","",py),
+          (target,D_BASE_V69_PROFILE,",".join(map(str,vb69["D"])),"","",py),
+        ])
+        _v69_lock_forecasts(target,r)
+        print(f"[V69] locked Uniform+R1+R2 target={target} cutoff={r[0]['issue']}",flush=True)
+    except Exception as e:
+        print(f"[V69] lock failed: {type(e).__name__}: {e}",flush=True)
 
     # New final complement forecast gets its own profile and starts honest
     # forward validation from this version onward. Old samples are never faked.
@@ -11721,28 +11955,28 @@ def build_model():
     except Exception: next_issue=""
     (c20,meta20),(c27,meta27),(c27b,meta27b),(c22c,meta22c),(c16d,meta16d)=_v671_live_bases(r,profile,next_issue)
 
-    stats20=_profile_hit_stats(F_BASE_V68_PROFILE,60)
-    statsF=_stats20round_profile(F_BASE_V68_PROFILE,next_issue)
-    statsF["lifetime"]=_profile_lifetime_stats(F_BASE_V68_PROFILE)
+    stats20=_profile_hit_stats(F_BASE_V69_PROFILE,60)
+    statsF=_stats20round_profile(F_BASE_V69_PROFILE,next_issue)
+    statsF["lifetime"]=_profile_lifetime_stats(F_BASE_V69_PROFILE)
 
-    _a=_stats20round_profile(A_BASE_V68_PROFILE,next_issue)
+    _a=_stats20round_profile(A_BASE_V69_PROFILE,next_issue)
     stats27={"current":dict(_a),"last_complete":None,"rounds_completed":0,
-             "overall":_profile_hit_stats(A_BASE_V68_PROFILE,60),
-             "lifetime":_profile_lifetime_stats(A_BASE_V68_PROFILE),
-             "version_lifetime":_profile_lifetime_stats(A_BASE_V68_PROFILE)}
+             "overall":_profile_hit_stats(A_BASE_V69_PROFILE,60),
+             "lifetime":_profile_lifetime_stats(A_BASE_V69_PROFILE),
+             "version_lifetime":_profile_lifetime_stats(A_BASE_V69_PROFILE)}
 
-    stats27b=_stats20round_profile(B_BASE_V68_PROFILE,next_issue)
-    stats27b["version_lifetime"]=_profile_lifetime_stats(B_BASE_V68_PROFILE)
-    stats27b["lifetime"]=_profile_lifetime_stats(B_BASE_V68_PROFILE)
+    stats27b=_stats20round_profile(B_BASE_V69_PROFILE,next_issue)
+    stats27b["version_lifetime"]=_profile_lifetime_stats(B_BASE_V69_PROFILE)
+    stats27b["lifetime"]=_profile_lifetime_stats(B_BASE_V69_PROFILE)
     stats27b["algorithm_window"]=10
 
-    stats22c=_stats20round_profile(C_BASE_V68_PROFILE,next_issue)
-    stats22c["version_lifetime"]=_profile_lifetime_stats(C_BASE_V68_PROFILE)
-    stats22c["lifetime"]=_profile_lifetime_stats(C_BASE_V68_PROFILE)
+    stats22c=_stats20round_profile(C_BASE_V69_PROFILE,next_issue)
+    stats22c["version_lifetime"]=_profile_lifetime_stats(C_BASE_V69_PROFILE)
+    stats22c["lifetime"]=_profile_lifetime_stats(C_BASE_V69_PROFILE)
 
-    stats16d=_stats20round_profile(D_BASE_V68_PROFILE,next_issue)
-    stats16d["version_lifetime"]=_profile_lifetime_stats(D_BASE_V68_PROFILE)
-    stats16d["lifetime"]=_profile_lifetime_stats(D_BASE_V68_PROFILE)
+    stats16d=_stats20round_profile(D_BASE_V69_PROFILE,next_issue)
+    stats16d["version_lifetime"]=_profile_lifetime_stats(D_BASE_V69_PROFILE)
+    stats16d["lifetime"]=_profile_lifetime_stats(D_BASE_V69_PROFILE)
     pingte_b20_stats=_pingte_b20_stats()
 
     # v46: if live 27-code logic has just changed codes and opened a fresh
@@ -11765,8 +11999,8 @@ def build_model():
         stats27=dict(stats27)
         stats27["live_round_reset"]=False
 
-    diag20=_strategy_diagnostics(F_BASE_V68_PROFILE,60)
-    diag27=_strategy_diagnostics(A_BASE_V68_PROFILE,60)
+    diag20=_strategy_diagnostics(F_BASE_V69_PROFILE,60)
+    diag27=_strategy_diagnostics(A_BASE_V69_PROFILE,60)
     correction=_correction_status()
     model_pool=_pool_dashboard()
     stable_signals=_stable_dashboard()
@@ -11775,6 +12009,8 @@ def build_model():
     v66_validation={}
     v67_rules=_v67_dashboard()
     v68_prob=_v68_dashboard(r,True)
+    v69_null=_v69_dashboard(r)
+    v69_shadow=_v69_shadow_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
       "latest_numbers":latest_numbers,
@@ -11808,6 +12044,8 @@ def build_model():
       "v66_validation":v66_validation,
       "v67_rules":v67_rules,
       "v68_prob":v68_prob,
+      "v69_null":v69_null,
+      "v69_shadow":v69_shadow,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
       "zodiac_pairs":[{"zodiac":p["zodiac"],"code":f"{p['code']:02d}"} for p in zpairs],
@@ -11851,7 +12089,7 @@ def build_model():
         "exact_previous_number_samples":transition_meta.get("exact_samples",0),
         "long_prior_ready":bool(long_prior.get("ready")),
         "long_prior_rows":int(long_prior.get("total",0)),
-        "mode":"v68：49码概率排名 + 真前瞻锁单 + 同覆盖基准验收"
+        "mode":"v69：Uniform冠军基线 + R1/R2冻结挑战者 + 证据门控"
       },
       "strategy":{
         "cold_rebound_now":strategy["cold_rebound_now"],
@@ -12344,7 +12582,7 @@ def boot():
                 _c.close()
         auto_state["migration_latest_issue"]=str(_latest["issue"] if _latest else "")
         auto_state["migration_history_count"]=_n
-        print(f"[MIGRATION] v67 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
+        print(f"[MIGRATION] v69 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
     except Exception as e:
         print(f"[MIGRATION] audit failed: {e}",flush=True)
 
