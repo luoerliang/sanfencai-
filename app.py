@@ -303,7 +303,7 @@ V68_UNIFORM_BRIER=48.0/49.0
 v68_wf_lock=threading.RLock()
 v68_wf_cache={"ts":0.0,"data":None}
 
-# ===================== v69 Null-First evidence gate =====================
+# ===================== v70 EV-Gate evidence gate =====================
 F_BASE_V69_PROFILE="F_R1_CHALLENGER_TOP22_v69"
 A_BASE_V69_PROFILE="A_R1_CHALLENGER_TOP27_v69"
 B_BASE_V69_PROFILE="B_R2_CHALLENGER_TOP27_v69"
@@ -315,6 +315,11 @@ V69_PROMOTION_MIN_N=300
 V69_UNIFORM_LOGLOSS=math.log(49.0)
 V69_UNIFORM_BRIER=48.0/49.0
 V69_GATE_LAMBDA=0.0      # no evidence => official probability stays Uniform
+
+# ===================== v70 payout-aware EV gate =====================
+V70_PAYOUT_TOTAL=float(os.getenv("SPECIAL_PAYOUT_TOTAL","47.5"))
+V70_MIN_FINANCE_N=int(os.getenv("V70_MIN_FINANCE_N","500"))
+V70_MODEL_VERSION="v70-profit-gate-001"
 
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
@@ -744,6 +749,19 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
+        <div class="sectionTitle">v70 · 47.5倍回本门控</div>
+        <div class="sectionHint">按每个入选号码各押1单位计算。随机基准≠回本线；只有95%CI下界超过回本线才允许进入人工复核。</div>
+      </div>
+    </div>
+    <div id="v70ProfitGrid" class="strategyGrid"></div>
+    <div class="pillrow">
+      <span id="v70ProfitGate" class="pill">等待赔率审计</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
+      <div>
         <div class="sectionTitle">旧v67原子Shadow（Holm全局验收）</div>
         <div class="sectionHint">救回/误伤继续保留；不再用“净+2就候选”。所有Shadow一起做多重比较校正，只有校正后证据通过才允许晋级审查。</div>
       </div>
@@ -877,7 +895,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v69 Null-First证据门控版：Uniform(1/49)成为数据库中的正式冠军基线；R1/R2按v68参数永久冻结，只作为挑战者继续前瞻。F/A/D共享R1切线，C/B共享R2切线，取消R3独立席位。页面核心改看ΔLogLoss、Brier、真实排名、同覆盖Lift；ΔLogLoss&lt;0才表示概率质量优于Uniform。旧Shadow统一使用discordant精确检验并做Holm多重比较校正，不再因净+2/+8自动升候选。任何新窗口/权重/规则都必须新model_version重新计数，禁止用开奖结果事后回填。</div>
+  <div class="foot">v70 47.5倍收益门控版：Uniform(1/49)成为数据库中的正式冠军基线；R1/R2按v68参数永久冻结，只作为挑战者继续前瞻。F/A/D共享R1切线，C/B共享R2切线，取消R3独立席位。页面核心改看ΔLogLoss、Brier、真实排名、同覆盖Lift；ΔLogLoss&lt;0才表示概率质量优于Uniform。旧Shadow统一使用discordant精确检验并做Holm多重比较校正，不再因净+2/+8自动升候选。任何新窗口/权重/规则都必须新model_version重新计数，禁止用开奖结果事后回填。</div>
 </div>
 
 <script>
@@ -1100,6 +1118,22 @@ async function loadMain(){
     if(r2f.n){ code27BCumulative.textContent+=` · R2 Top27 Lift ${(r2f.top27||{}).lift_pct??0}%`; code22CLifetime.textContent+=` · R2 Top22 Lift ${(r2f.top22||{}).lift_pct??0}%`; }
     const dep=v69.dependence||{};
     if(document.getElementById('v68Dependence')) v68Dependence.textContent=`正式冠军：${v69.champion||'Uniform 1/49'} · gate λ=${v69.gate_lambda??0} · R1/R2相关 ${dep.R1_R2??0} ｜ D只是R1切线，不再设R3`;
+
+
+    const v70=d.v70_profit||{}, vg=v70.groups||{};
+    if(document.getElementById('v70ProfitGrid')){
+      const order=['F22','A27','B27','C22','D16_R1'];
+      const labels={F22:'F22 · R1',A27:'A27 · R1',B27:'B27 · R2',C22:'C22 · R2',D16_R1:'D16 · R1'};
+      v70ProfitGrid.innerHTML=order.map(key=>{
+        const x=vg[key]||{}, ci=x.ci95||[0,0];
+        const roi=Number(x.roi_pct||0), edge=Number(x.edge_pp||0);
+        return `<div class="strategyBox"><div class="strategyTitle">${labels[key]||key}</div><div class="strategyMain">${x.n??0}期 · 中${x.hits??0} · 命中${x.rate_pct??0}%<br>回本线 ${x.breakeven_pct??0}% · Edge ${edge>=0?'+':''}${edge.toFixed(3)}pp<br>95%CI ${ci[0]??0}%–${ci[1]??0}% · ROI ${roi>=0?'+':''}${roi.toFixed(3)}%<br>${x.status||'等待数据'}</div></div>`;
+      }).join('');
+    }
+    if(document.getElementById('v70ProfitGate')){
+      const p=Number(v70.payout_total||47.5);
+      v70ProfitGate.textContent=`赔率总返还 ${p}倍 · 门控 ${v70.bet_gate||'STOP'} · ${v70.rule||''}`;
+    }
 
     const vr=d.v69_shadow||d.v67_rules||{};
     const vrNames={
@@ -9147,6 +9181,78 @@ def _v69_holm_adjust(pairs,alpha=0.05):
         out[k]={"p_holm":round(adj,6),"holm_reject":reject,"raw_p":round(p,6)}
     return out
 
+
+def _v70_group_finance(rid,k,model_version=None,limit=20000):
+    """Payout-aware audit for flat 1-unit-per-number staking.
+
+    payout_total means total return per winning number, including stake.
+    This function is audit-only; it never changes a locked forecast.
+    """
+    mv=model_version or V68_MODEL_VERSION
+    col={16:"hit16",22:"hit22",27:"hit27"}[int(k)]
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute(f"""SELECT {col} AS h
+                               FROM v68_forecast
+                               WHERE ranker_id=? AND model_version=? AND settled=1
+                               ORDER BY CAST(target_issue AS INTEGER) ASC
+                               LIMIT ?""",
+                           (str(rid),str(mv),int(limit))).fetchall()
+        finally:
+            c.close()
+    n=len(rows); hits=sum(int(x["h"] or 0) for x in rows)
+    rate=(hits/n) if n else 0.0
+    payout=max(1e-9,float(V70_PAYOUT_TOTAL))
+    breakeven=float(k)/payout
+    lo,hi=_v68_wilson(hits,n)
+    ev_per_issue=rate*payout-float(k)
+    roi=(ev_per_issue/float(k)) if k else 0.0
+    pnl=hits*payout-n*float(k)
+    edge_pp=(rate-breakeven)*100.0
+    if n < V70_MIN_FINANCE_N:
+        status=f"样本不足 {n}/{V70_MIN_FINANCE_N}"
+    elif hi < breakeven:
+        status="负EV证据 · STOP"
+    elif lo > breakeven:
+        status="有正EV证据 · 仅进入人工复核"
+    else:
+        status="未证明正EV · STOP"
+    return {
+      "ranker":str(rid),"k":int(k),"n":n,"hits":hits,
+      "rate_pct":round(rate*100,3),
+      "ci95":[round(lo*100,3),round(hi*100,3)],
+      "payout_total":round(payout,3),
+      "breakeven_pct":round(breakeven*100,3),
+      "edge_pp":round(edge_pp,3),
+      "ev_per_issue":round(ev_per_issue,4),
+      "roi_pct":round(roi*100,3),
+      "cum_pnl_units":round(pnl,2),
+      "status":status
+    }
+
+def _v70_profit_dashboard():
+    # Use the long v68 forward archive because it contains the large locked sample.
+    groups={
+      "F22":_v70_group_finance("R1",22,V68_MODEL_VERSION),
+      "A27":_v70_group_finance("R1",27,V68_MODEL_VERSION),
+      "B27":_v70_group_finance("R2",27,V68_MODEL_VERSION),
+      "C22":_v70_group_finance("R2",22,V68_MODEL_VERSION),
+      # v69 D is an R1 cut; v68 D historical R3 is kept separately for transparency.
+      "D16_R1":_v70_group_finance("R1",16,V68_MODEL_VERSION),
+      "D16_R3_archive":_v70_group_finance("R3",16,V68_MODEL_VERSION),
+    }
+    eligible=[(k,v) for k,v in groups.items() if (v.get("status") or "").startswith("有正EV证据")]
+    return {
+      "version":V70_MODEL_VERSION,
+      "payout_total":V70_PAYOUT_TOTAL,
+      "assumption":"每个入选号码各押1单位；中奖时总返还=赔率（含本金）",
+      "groups":groups,
+      "bet_gate":"OPEN" if eligible else "STOP",
+      "eligible":[k for k,_ in eligible],
+      "rule":"只有95%CI下界高于回本线才允许进入人工复核；否则STOP。"
+    }
+
 def _v69_shadow_dashboard():
     raw=_v67_dashboard()
     flat=[]
@@ -9367,7 +9473,7 @@ def _v671_fast_live_snapshot():
       "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
       "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
@@ -9424,7 +9530,7 @@ def _v674_minimal_snapshot():
       "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
-      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
       "profile":"v69 Null-First","profile_scores":{},"calibration_n":0,
@@ -12010,6 +12116,7 @@ def build_model():
     v67_rules=_v67_dashboard()
     v68_prob=_v68_dashboard(r,True)
     v69_null=_v69_dashboard(r)
+    v70_profit=_v70_profit_dashboard()
     v69_shadow=_v69_shadow_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
@@ -12044,7 +12151,7 @@ def build_model():
       "v66_validation":v66_validation,
       "v67_rules":v67_rules,
       "v68_prob":v68_prob,
-      "v69_null":v69_null,
+      "v69_null":v69_null,"v70_profit":v70_profit,
       "v69_shadow":v69_shadow,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
