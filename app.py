@@ -321,6 +321,13 @@ V70_PAYOUT_TOTAL=float(os.getenv("SPECIAL_PAYOUT_TOTAL","47.5"))
 V70_MIN_FINANCE_N=int(os.getenv("V70_MIN_FINANCE_N","500"))
 V70_MODEL_VERSION="v70-profit-gate-001"
 
+# ===================== v71 prospective challenger lab =====================
+# New rankers are SHADOW-ONLY until they beat the frozen same-code incumbent
+# on genuine pre-draw samples. No result-driven retroactive rewrite is allowed.
+V71_MODEL_VERSION="v71-forward-competition-001"
+V71_PROMOTION_MIN_N=int(os.getenv("V71_PROMOTION_MIN_N","300"))
+V71_ALPHA=float(os.getenv("V71_ALPHA","0.025"))
+
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
 STABLE_SIGNAL_PROFILES={
@@ -762,6 +769,19 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   <section class="card">
     <div class="sectionHead">
       <div>
+        <div class="sectionTitle">v71 · 前瞻竞争实验室</div>
+        <div class="sectionHint">旧冠军继续Live；Q1/Q2/Q3只在开奖前锁定Shadow。同码数比较，样本不足绝不替换Live。</div>
+      </div>
+    </div>
+    <div id="v71Grid" class="strategyGrid"></div>
+    <div class="pillrow">
+      <span id="v71Gate" class="pill">新挑战者从0期开始真实前瞻</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
+      <div>
         <div class="sectionTitle">旧v67原子Shadow（Holm全局验收）</div>
         <div class="sectionHint">救回/误伤继续保留；不再用“净+2就候选”。所有Shadow一起做多重比较校正，只有校正后证据通过才允许晋级审查。</div>
       </div>
@@ -895,7 +915,7 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
     </div>
   </div>
   <div id="toast" class="toast">已复制</div>
-  <div class="foot">v70 47.5倍收益门控版：Uniform(1/49)成为数据库中的正式冠军基线；R1/R2按v68参数永久冻结，只作为挑战者继续前瞻。F/A/D共享R1切线，C/B共享R2切线，取消R3独立席位。页面核心改看ΔLogLoss、Brier、真实排名、同覆盖Lift；ΔLogLoss&lt;0才表示概率质量优于Uniform。旧Shadow统一使用discordant精确检验并做Holm多重比较校正，不再因净+2/+8自动升候选。任何新窗口/权重/规则都必须新model_version重新计数，禁止用开奖结果事后回填。</div>
+  <div class="foot">v71 前瞻竞争版：旧冠军保持Live，新Q1/Q2/Q3只做开奖前Shadow；达到真实前瞻门槛前绝不替换。v70 47.5倍收益门控继续保留：Uniform(1/49)成为数据库中的正式冠军基线；R1/R2按v68参数永久冻结，只作为挑战者继续前瞻。F/A/D共享R1切线，C/B共享R2切线，取消R3独立席位。页面核心改看ΔLogLoss、Brier、真实排名、同覆盖Lift；ΔLogLoss&lt;0才表示概率质量优于Uniform。旧Shadow统一使用discordant精确检验并做Holm多重比较校正，不再因净+2/+8自动升候选。任何新窗口/权重/规则都必须新model_version重新计数，禁止用开奖结果事后回填。</div>
 </div>
 
 <script>
@@ -1134,6 +1154,17 @@ async function loadMain(){
       const p=Number(v70.payout_total||47.5);
       v70ProfitGate.textContent=`赔率总返还 ${p}倍 · 门控 ${v70.bet_gate||'STOP'} · ${v70.rule||''}`;
     }
+
+    const v71=d.v71_forward||{}, v71r=v71.rankers||{};
+    if(document.getElementById('v71Grid')){
+      const labs={Q1:'Q1 长窗+转移 · F22/A27',Q2:'Q2 短窗+转移 · C22/B27',Q3:'Q3 独立多尺度 · D16'};
+      v71Grid.innerHTML=['Q1','Q2','Q3'].map(rid=>{
+        const x=v71r[rid]||{}, k=x.primary||{}, ci=k.ci95||[0,0];
+        const dll=Number(x.delta_log_loss||0), lift=Number(k.lift_pct||0);
+        return `<div class="strategyBox"><div class="strategyTitle">${labs[rid]}</div><div class="strategyMain">${x.n??0}期 · ${x.status||'等待前瞻样本'}<br>Top${k.k??'--'} ${k.rate??0}% / 随机${k.random??0}% · Lift ${lift>=0?'+':''}${lift.toFixed(2)}%<br>ΔLogLoss ${dll>=0?'+':''}${dll.toFixed(5)}（负数好） · 真号均排 ${x.avg_rank??0}<br>95%CI ${ci[0]??0}%–${ci[1]??0}%</div></div>`;
+      }).join('');
+    }
+    if(document.getElementById('v71Gate')) v71Gate.textContent=`Live不变 · Shadow ${v71.total_settled??0}期 · 晋级最低${v71.min_n??300}期 + 同码数/LogLoss双门槛`;
 
     const vr=d.v69_shadow||d.v67_rules||{};
     const vrNames={
@@ -9182,6 +9213,149 @@ def _v69_holm_adjust(pairs,alpha=0.05):
     return out
 
 
+# ===================== v71: honest forward challenger rankers =====================
+def _v71_transition_prob(r, window=240, half_life=80, alpha_each=1.5):
+    """First-order transition posterior P(next special | latest special).
+
+    Uses only pairs fully contained in the pre-draw history. Heavy smoothing keeps
+    the distribution near Uniform when the transition evidence is weak.
+    """
+    nums=list(range(1,50)); recent=list(r[:max(3,int(window)+1)])
+    if len(recent)<3:
+        return {n:1.0/49.0 for n in nums}
+    try: current=int(recent[0]["special"])
+    except Exception: return {n:1.0/49.0 for n in nums}
+    counts={n:0.0 for n in nums}; total=0.0; hl=max(1e-6,float(half_life))
+    # recent is newest -> oldest. Pair older(i+1) -> newer(i).
+    for i in range(len(recent)-1):
+        try:
+            newer=int(recent[i]["special"]); older=int(recent[i+1]["special"])
+        except Exception:
+            continue
+        if older!=current or not (1<=newer<=49):
+            continue
+        w=0.5**(float(i)/hl); counts[newer]+=w; total+=w
+    den=total+49.0*float(alpha_each)
+    return {n:(counts[n]+float(alpha_each))/den for n in nums} if den>0 else {n:1/49 for n in nums}
+
+def _v71_gap_prob(r, window=240, scale=35.0):
+    """Smooth gap feature converted to a normalized probability vector.
+    Research-only: it is not assumed that overdue numbers are truly more likely.
+    """
+    nums=list(range(1,50)); recent=list(r[:max(1,int(window))])
+    gap={n:len(recent)+1 for n in nums}
+    for i,x in enumerate(recent):
+        try: n=int(x["special"])
+        except Exception: continue
+        if 1<=n<=49 and gap[n]==len(recent)+1: gap[n]=i+1
+    raw={n:0.65+0.35*(1.0-math.exp(-float(gap[n])/max(1.0,float(scale)))) for n in nums}
+    z=sum(raw.values()) or 1.0
+    return {n:raw[n]/z for n in nums}
+
+def _v71_ranker_probs(r,rid):
+    rid=str(rid).upper()
+    if rid=="Q1":
+        # Independent long-window challenger for F/A.
+        p60=_v68_weighted_posterior(r,60,18,1.55)
+        p360=_v68_weighted_posterior(r,360,120,1.85)
+        pt=_v71_transition_prob(r,420,140,2.20)
+        return _v68_mix_prob((.40,p60),(.40,p360),(.20,pt))
+    if rid=="Q2":
+        # Independent short-window challenger for C/B.
+        p18=_v68_weighted_posterior(r,18,6,1.70)
+        p90=_v68_weighted_posterior(r,90,30,1.75)
+        pt=_v71_transition_prob(r,260,85,2.35)
+        return _v68_mix_prob((.42,p18),(.38,p90),(.20,pt))
+    if rid=="Q3":
+        # D16 gets its own multiscale probability ranker; no wave/size quotas.
+        p30=_v68_weighted_posterior(r,30,10,1.70)
+        p150=_v68_weighted_posterior(r,150,50,1.85)
+        pt=_v71_transition_prob(r,500,160,2.40)
+        pg=_v71_gap_prob(r,260,40)
+        return _v68_mix_prob((.28,p30),(.34,p150),(.22,pt),(.16,pg))
+    return {n:1.0/49.0 for n in range(1,50)}
+
+def _v71_bases(r):
+    out={"rankers":{}}
+    for rid in ("Q1","Q2","Q3"):
+        prob=_v71_ranker_probs(r,rid); ranked=_v68_ranked(prob)
+        out["rankers"][rid]={"prob":prob,"ranked":ranked}
+    q1=out["rankers"]["Q1"]["ranked"]; q2=out["rankers"]["Q2"]["ranked"]; q3=out["rankers"]["Q3"]["ranked"]
+    out.update({"F":q1[:22],"A":q1[:27],"C":q2[:22],"B":q2[:27],"D":q3[:16]})
+    return out
+
+def _v71_lock_forecasts(target,r):
+    if not r: return
+    b=_v71_bases(r); cutoff=str(r[0]["issue"])
+    with db_lock:
+        c=connect()
+        try:
+            for rid in ("Q1","Q2","Q3"):
+                prob=b["rankers"][rid]["prob"]; ranked=b["rankers"][rid]["ranked"]
+                c.execute("""INSERT OR IGNORE INTO v68_forecast
+                  (target_issue,ranker_id,model_version,history_cutoff_id,probs_json,ranked49,top16,top22,top27)
+                  VALUES (?,?,?,?,?,?,?,?,?)""",
+                  (str(target),rid,V71_MODEL_VERSION,cutoff,
+                   json.dumps({str(n):float(prob[n]) for n in range(1,50)},separators=(",",":")),
+                   ",".join(map(str,ranked)),",".join(map(str,ranked[:16])),
+                   ",".join(map(str,ranked[:22])),",".join(map(str,ranked[:27]))))
+            c.commit()
+        finally: c.close()
+
+def _v71_settle_forecasts(issue,actual_special):
+    a=int(actual_special)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT ranker_id,probs_json,ranked49,top16,top22,top27
+                              FROM v68_forecast WHERE target_issue=? AND model_version=? AND settled=0""",
+                           (str(issue),V71_MODEL_VERSION)).fetchall()
+            for row in rows:
+                try: probs={int(k):float(v) for k,v in json.loads(row["probs_json"]).items()}
+                except Exception: probs={n:1.0/49.0 for n in range(1,50)}
+                ranked=_csv_nums(row["ranked49"]); rank=(ranked.index(a)+1) if a in ranked else 49
+                pa=max(float(probs.get(a,1.0/49.0)),1e-15); ll=-math.log(pa)
+                br=sum((float(probs.get(n,0.0))-(1.0 if n==a else 0.0))**2 for n in range(1,50))
+                h16=int(a in set(_csv_nums(row["top16"]))); h22=int(a in set(_csv_nums(row["top22"]))); h27=int(a in set(_csv_nums(row["top27"])))
+                c.execute("""UPDATE v68_forecast SET settled=1,actual_special=?,actual_rank=?,log_loss=?,brier=?,hit16=?,hit22=?,hit27=?
+                             WHERE target_issue=? AND ranker_id=? AND model_version=?""",
+                          (a,rank,float(ll),float(br),h16,h22,h27,str(issue),row["ranker_id"],V71_MODEL_VERSION))
+            c.commit()
+        finally: c.close()
+
+def _v71_ranker_stats(rid,primary_k):
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT actual_rank,log_loss,brier,hit16,hit22,hit27 FROM v68_forecast
+                              WHERE ranker_id=? AND model_version=? AND settled=1
+                              ORDER BY CAST(target_issue AS INTEGER) ASC""",(str(rid),V71_MODEL_VERSION)).fetchall()
+        finally: c.close()
+    n=len(rows); col={16:"hit16",22:"hit22",27:"hit27"}[int(primary_k)]
+    h=sum(int(x[col] or 0) for x in rows); km=_v68_k_metrics(h,n,int(primary_k))
+    avg_rank=sum(float(x["actual_rank"] or 49) for x in rows)/n if n else 0.0
+    avg_ll=sum(float(x["log_loss"] or 0) for x in rows)/n if n else 0.0
+    avg_br=sum(float(x["brier"] or 0) for x in rows)/n if n else 0.0
+    dll=avg_ll-V69_UNIFORM_LOGLOSS if n else 0.0
+    if n<V71_PROMOTION_MIN_N:
+        status=f"Shadow积累 {n}/{V71_PROMOTION_MIN_N}"
+    elif dll<0 and km["p_one_sided"]<V71_ALPHA and km["ci95"][0]>km["random"] and avg_rank<25:
+        status="达到人工晋级复核门槛"
+    elif km["ci95"][1]<km["random"] or dll>=0:
+        status="未胜基线 · 保持Shadow"
+    else:
+        status="证据不足 · 保持Shadow"
+    return {"n":n,"avg_rank":round(avg_rank,2),"log_loss":round(avg_ll,5),"brier":round(avg_br,5),
+            "delta_log_loss":round(dll,5),"primary":km,"status":status}
+
+def _v71_dashboard():
+    q1=_v71_ranker_stats("Q1",22); q2=_v71_ranker_stats("Q2",22); q3=_v71_ranker_stats("Q3",16)
+    return {"version":V71_MODEL_VERSION,"min_n":V71_PROMOTION_MIN_N,
+            "total_settled":max(int(q1.get("n",0)),int(q2.get("n",0)),int(q3.get("n",0))),
+            "live_policy":"v70/v69 frozen incumbent remains Live; v71 challengers are Shadow-only",
+            "rankers":{"Q1":q1,"Q2":q2,"Q3":q3}}
+
+
 def _v70_group_finance(rid,k,model_version=None,limit=20000):
     """Payout-aware audit for flat 1-unit-per-number staking.
 
@@ -9473,7 +9647,7 @@ def _v671_fast_live_snapshot():
       "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
       "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
@@ -9530,7 +9704,7 @@ def _v674_minimal_snapshot():
       "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
-      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
       "profile":"v69 Null-First","profile_scores":{},"calibration_n":0,
@@ -11294,6 +11468,7 @@ def settle_predictions(issue, nums, zs):
     try:
         _v68_settle_forecasts(issue,actual_special)
         _v69_settle_forecasts(issue,actual_special)
+        _v71_settle_forecasts(issue,actual_special)
     except Exception as e:
         print(f"[V68] forecast settle failed: {type(e).__name__}: {e}",flush=True)
 
@@ -11380,6 +11555,8 @@ def record_shadow_predictions(r):
         ])
         _v69_lock_forecasts(target,r)
         print(f"[V69] locked Uniform+R1+R2 target={target} cutoff={r[0]['issue']}",flush=True)
+        _v71_lock_forecasts(target,r)
+        print(f"[V71] locked Q1+Q2+Q3 Shadow target={target} cutoff={r[0]['issue']}",flush=True)
     except Exception as e:
         print(f"[V69] lock failed: {type(e).__name__}: {e}",flush=True)
 
@@ -12117,6 +12294,7 @@ def build_model():
     v68_prob=_v68_dashboard(r,True)
     v69_null=_v69_dashboard(r)
     v70_profit=_v70_profit_dashboard()
+    v71_forward=_v71_dashboard()
     v69_shadow=_v69_shadow_dashboard()
     return {
       "issue":latest["issue"],"next_issue":next_issue,"count":history_cache.get("total",0),
@@ -12151,7 +12329,7 @@ def build_model():
       "v66_validation":v66_validation,
       "v67_rules":v67_rules,
       "v68_prob":v68_prob,
-      "v69_null":v69_null,"v70_profit":v70_profit,
+      "v69_null":v69_null,"v70_profit":v70_profit,"v71_forward":v71_forward,
       "v69_shadow":v69_shadow,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
