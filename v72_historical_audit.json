@@ -1,0 +1,214 @@
+{
+  "type": "RETROSPECTIVE_WALK_FORWARD_NOT_LIVE",
+  "start_index": 8000,
+  "history_count": 14343,
+  "first_test_issue": "20260901321",
+  "last_test_issue": "20260914423",
+  "warning": "Model configurations may have been chosen after inspecting this historical series; this is NOT independent evidence of prediction advantage.",
+  "summary": {
+    "R1": {
+      "n": 6343,
+      "mean_rank": 25.057,
+      "logloss": 3.926357,
+      "rates": {
+        "16": {
+          "hit": 2043,
+          "rate_pct": 32.209,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            31.07,
+            33.369
+          ]
+        },
+        "22": {
+          "hit": 2838,
+          "rate_pct": 44.742,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            43.522,
+            45.969
+          ]
+        },
+        "27": {
+          "hit": 3479,
+          "rate_pct": 54.848,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.621,
+            56.069
+          ]
+        }
+      }
+    },
+    "R2": {
+      "n": 6343,
+      "mean_rank": 24.966,
+      "logloss": 3.903801,
+      "rates": {
+        "16": {
+          "hit": 2035,
+          "rate_pct": 32.083,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            30.945,
+            33.242
+          ]
+        },
+        "22": {
+          "hit": 2838,
+          "rate_pct": 44.742,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            43.522,
+            45.969
+          ]
+        },
+        "27": {
+          "hit": 3488,
+          "rate_pct": 54.99,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.763,
+            56.211
+          ]
+        }
+      }
+    },
+    "Q1": {
+      "n": 6343,
+      "mean_rank": 25.03,
+      "logloss": 3.909108,
+      "rates": {
+        "16": {
+          "hit": 2078,
+          "rate_pct": 32.761,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            31.616,
+            33.926
+          ]
+        },
+        "22": {
+          "hit": 2861,
+          "rate_pct": 45.105,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            43.884,
+            46.332
+          ]
+        },
+        "27": {
+          "hit": 3477,
+          "rate_pct": 54.816,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.589,
+            56.038
+          ]
+        }
+      }
+    },
+    "Q2": {
+      "n": 6343,
+      "mean_rank": 25.046,
+      "logloss": 3.902894,
+      "rates": {
+        "16": {
+          "hit": 2039,
+          "rate_pct": 32.146,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            31.007,
+            33.306
+          ]
+        },
+        "22": {
+          "hit": 2831,
+          "rate_pct": 44.632,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            43.412,
+            45.858
+          ]
+        },
+        "27": {
+          "hit": 3499,
+          "rate_pct": 55.163,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.936,
+            56.384
+          ]
+        }
+      }
+    },
+    "Q3": {
+      "n": 6343,
+      "mean_rank": 25.182,
+      "logloss": 3.89959,
+      "rates": {
+        "16": {
+          "hit": 2035,
+          "rate_pct": 32.083,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            30.945,
+            33.242
+          ]
+        },
+        "22": {
+          "hit": 2794,
+          "rate_pct": 44.049,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            42.831,
+            45.274
+          ]
+        },
+        "27": {
+          "hit": 3457,
+          "rate_pct": 54.501,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.273,
+            55.723
+          ]
+        }
+      }
+    },
+    "RAND": {
+      "n": 6343,
+      "mean_rank": 25.101,
+      "logloss": 3.89182,
+      "rates": {
+        "16": {
+          "hit": 2022,
+          "rate_pct": 31.878,
+          "random_pct": 32.653,
+          "ci95_pct": [
+            30.742,
+            33.035
+          ]
+        },
+        "22": {
+          "hit": 2844,
+          "rate_pct": 44.837,
+          "random_pct": 44.898,
+          "ci95_pct": [
+            43.616,
+            46.064
+          ]
+        },
+        "27": {
+          "hit": 3497,
+          "rate_pct": 55.132,
+          "random_pct": 55.102,
+          "ci95_pct": [
+            53.905,
+            56.352
+          ]
+        }
+      }
+    }
+  }
+}
