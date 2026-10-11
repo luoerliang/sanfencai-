@@ -1,0 +1,355 @@
+{
+  "source": "https://sanfencai.onrender.com",
+  "source_total": 14376,
+  "source_latest": "20261012026",
+  "settled_locks": 17,
+  "pending_locks": 1,
+  "versions": {
+    "v76_compact_3groups": {
+      "algo22": {
+        "n": 13,
+        "hit": 3,
+        "miss": 10,
+        "post_added": 7,
+        "rate": 23.08
+      },
+      "algo16": {
+        "n": 13,
+        "hit": 4,
+        "miss": 9,
+        "post_added": 9,
+        "rate": 30.77
+      },
+      "pool22": {
+        "n": 13,
+        "hit": 6,
+        "miss": 7,
+        "post_added": 5,
+        "rate": 46.15
+      }
+    },
+    "v77_tie_corrected_3groups": {
+      "algo22": {
+        "n": 4,
+        "hit": 1,
+        "miss": 3,
+        "post_added": 2,
+        "rate": 25.0
+      },
+      "algo16": {
+        "n": 4,
+        "hit": 2,
+        "miss": 2,
+        "post_added": 2,
+        "rate": 50.0
+      },
+      "pool22": {
+        "n": 4,
+        "hit": 1,
+        "miss": 3,
+        "post_added": 2,
+        "rate": 25.0
+      }
+    }
+  },
+  "records": [
+    {
+      "issue": "20261012010",
+      "actual": 47,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012009",
+      "locked_at": "2026-10-11 16:24:34",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012011",
+      "actual": 5,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012010",
+      "locked_at": "2026-10-11 16:27:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012012",
+      "actual": 8,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012011",
+      "locked_at": "2026-10-11 16:30:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012013",
+      "actual": 26,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012012",
+      "locked_at": "2026-10-11 16:33:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012014",
+      "actual": 47,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012013",
+      "locked_at": "2026-10-11 16:36:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012015",
+      "actual": 44,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012014",
+      "locked_at": "2026-10-11 16:39:02",
+      "pre_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012016",
+      "actual": 7,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012015",
+      "locked_at": "2026-10-11 16:42:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012017",
+      "actual": 1,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012016",
+      "locked_at": "2026-10-11 16:45:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012018",
+      "actual": 3,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012017",
+      "locked_at": "2026-10-11 16:48:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012019",
+      "actual": 39,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012018",
+      "locked_at": "2026-10-11 16:51:02",
+      "pre_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012020",
+      "actual": 16,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012019",
+      "locked_at": "2026-10-11 16:54:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012021",
+      "actual": 15,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012020",
+      "locked_at": "2026-10-11 16:57:02",
+      "pre_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012022",
+      "actual": 25,
+      "version": "v76_compact_3groups",
+      "cutoff": "20261012021",
+      "locked_at": "2026-10-11 17:00:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012023",
+      "actual": 25,
+      "version": "v77_tie_corrected_3groups",
+      "cutoff": "20261012022",
+      "locked_at": "2026-10-11 17:03:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012024",
+      "actual": 9,
+      "version": "v77_tie_corrected_3groups",
+      "cutoff": "20261012023",
+      "locked_at": "2026-10-11 17:06:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": true
+      }
+    },
+    {
+      "issue": "20261012025",
+      "actual": 1,
+      "version": "v77_tie_corrected_3groups",
+      "cutoff": "20261012024",
+      "locked_at": "2026-10-11 17:09:02",
+      "pre_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "post_added": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012026",
+      "actual": 4,
+      "version": "v77_tie_corrected_3groups",
+      "cutoff": "20261012025",
+      "locked_at": "2026-10-11 17:12:02",
+      "pre_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "post_added": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      }
+    }
+  ],
+  "data_quality": {
+    "latest_consecutive": 31,
+    "continuous_from": "20261011476",
+    "continuous_to": "20261012026",
+    "gap_older_issue": "20261011473",
+    "long_gap_oldest_latest": "20260914423",
+    "long_gap_first_new": "20261011453",
+    "missing_between_old_and_new": 12989
+  }
+}

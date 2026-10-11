@@ -1,4 +1,3 @@
-# v77: storage, migration and Telegram compatibility; scoring lives in engine.py
 import os, re, csv, sqlite3, threading, math, time, hashlib, json, gzip, itertools
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
@@ -55,7 +54,7 @@ def _issue_add(issue, steps=1):
 
 def _next_issue_id(issue):
     return _issue_add(issue, 1)
-DEFAULT_HISTORY_SOURCE = 'https://sanfensidongyuce-2.onrender.com/api/history?limit=500'
+DEFAULT_HISTORY_SOURCE = 'https://sanfencai.onrender.com/api/export?limit=30000'
 HISTORY_SOURCE_URL = os.getenv('HISTORY_SOURCE_URL', DEFAULT_HISTORY_SOURCE).strip()
 background_state = {'profile_calibrating': False, 'stats_building': False, 'boot_ready': False}
 history_cache = {'total': 0, 'items': [], 'loaded_at': ''}
@@ -266,6 +265,16 @@ def parse_draw(text):
 
 def add_draw(*args):
     return False
+
+def latest_row():
+
+    def _read():
+        c = connect()
+        try:
+            return c.execute('SELECT * FROM draws\n                                ORDER BY CAST(issue AS INTEGER) DESC LIMIT 1').fetchone()
+        finally:
+            c.close()
+    return _db_retry(_read)
 
 def recent_rows(limit=1200):
     """Read only the recent history needed by the live predictor."""

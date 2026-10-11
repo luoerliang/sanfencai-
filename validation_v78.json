@@ -1,0 +1,987 @@
+{
+  "source_total": 14343,
+  "source_latest": "20260914423",
+  "excluded_latest": 2000,
+  "warmup": 500,
+  "candidate_count": 7,
+  "selection_rule": "development chooses one; validation and untouched test must both exceed same-size random baseline and current model at p < 0.05/3, with positive gains in both test halves",
+  "segments": {
+    "development": {
+      "n": 5921,
+      "start_issue": "20260817021",
+      "end_issue": "20260829181",
+      "groups": {
+        "algo22": {
+          "current": {
+            "n": 5921,
+            "hit": 2631,
+            "miss": 3290,
+            "rate": 44.44,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.17,
+              45.7
+            ],
+            "p_above_random": 0.7669900533844668
+          },
+          "hot20": {
+            "n": 5921,
+            "hit": 2602,
+            "miss": 3319,
+            "rate": 43.95,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.69,
+              45.21
+            ],
+            "p_above_random": 0.9315531141027058
+          },
+          "hot60": {
+            "n": 5921,
+            "hit": 2635,
+            "miss": 3286,
+            "rate": 44.5,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.24,
+              45.77
+            ],
+            "p_above_random": 0.7338158692875716
+          },
+          "hot180": {
+            "n": 5921,
+            "hit": 2615,
+            "miss": 3306,
+            "rate": 44.16,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.9,
+              45.43
+            ],
+            "p_above_random": 0.8743869493522503
+          },
+          "cold": {
+            "n": 5921,
+            "hit": 2669,
+            "miss": 3252,
+            "rate": 45.08,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.81,
+              46.35
+            ],
+            "p_above_random": 0.39585567112819614,
+            "rescued": 2274,
+            "lost": 2236,
+            "p_better_than_current": 0.2908358562322487,
+            "half_gains": [
+              30,
+              8
+            ]
+          },
+          "structure": {
+            "n": 5921,
+            "hit": 2623,
+            "miss": 3298,
+            "rate": 44.3,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.04,
+              45.57
+            ],
+            "p_above_random": 0.8259168674078663
+          },
+          "balanced": {
+            "n": 5921,
+            "hit": 2611,
+            "miss": 3310,
+            "rate": 44.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.84,
+              45.37
+            ],
+            "p_above_random": 0.8947159222303677
+          },
+          "random": {
+            "n": 5921,
+            "hit": 2684,
+            "miss": 3237,
+            "rate": 45.33,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              44.07,
+              46.6
+            ],
+            "p_above_random": 0.25596148263610397
+          }
+        },
+        "algo16": {
+          "current": {
+            "n": 5921,
+            "hit": 1901,
+            "miss": 4020,
+            "rate": 32.11,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.93,
+              33.31
+            ],
+            "p_above_random": 0.8188900311756738
+          },
+          "hot20": {
+            "n": 5921,
+            "hit": 1901,
+            "miss": 4020,
+            "rate": 32.11,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.93,
+              33.31
+            ],
+            "p_above_random": 0.8188900311756738
+          },
+          "hot60": {
+            "n": 5921,
+            "hit": 1901,
+            "miss": 4020,
+            "rate": 32.11,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.93,
+              33.31
+            ],
+            "p_above_random": 0.8188900311756738
+          },
+          "hot180": {
+            "n": 5921,
+            "hit": 1901,
+            "miss": 4020,
+            "rate": 32.11,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.93,
+              33.31
+            ],
+            "p_above_random": 0.8188900311756738
+          },
+          "cold": {
+            "n": 5921,
+            "hit": 1937,
+            "miss": 3984,
+            "rate": 32.71,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.53,
+              33.92
+            ],
+            "p_above_random": 0.4650025199823305,
+            "rescued": 1906,
+            "lost": 1870,
+            "p_better_than_current": 0.28448537267439317,
+            "half_gains": [
+              -11,
+              47
+            ]
+          },
+          "structure": {
+            "n": 5921,
+            "hit": 1898,
+            "miss": 4023,
+            "rate": 32.06,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.88,
+              33.26
+            ],
+            "p_above_random": 0.8400197424741093
+          },
+          "balanced": {
+            "n": 5921,
+            "hit": 1916,
+            "miss": 4005,
+            "rate": 32.36,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.18,
+              33.56
+            ],
+            "p_above_random": 0.689525762935562
+          },
+          "random": {
+            "n": 5921,
+            "hit": 1990,
+            "miss": 3931,
+            "rate": 33.61,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              32.42,
+              34.82
+            ],
+            "p_above_random": 0.06023430273060463
+          }
+        },
+        "pool22": {
+          "current": {
+            "n": 5921,
+            "hit": 2613,
+            "miss": 3308,
+            "rate": 44.13,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.87,
+              45.4
+            ],
+            "p_above_random": 0.8848699604225223
+          },
+          "hot20": {
+            "n": 5921,
+            "hit": 2602,
+            "miss": 3319,
+            "rate": 43.95,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.69,
+              45.21
+            ],
+            "p_above_random": 0.9315531141027058
+          },
+          "hot60": {
+            "n": 5921,
+            "hit": 2635,
+            "miss": 3286,
+            "rate": 44.5,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.24,
+              45.77
+            ],
+            "p_above_random": 0.7338158692875716
+          },
+          "hot180": {
+            "n": 5921,
+            "hit": 2615,
+            "miss": 3306,
+            "rate": 44.16,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.9,
+              45.43
+            ],
+            "p_above_random": 0.8743869493522503
+          },
+          "cold": {
+            "n": 5921,
+            "hit": 2669,
+            "miss": 3252,
+            "rate": 45.08,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.81,
+              46.35
+            ],
+            "p_above_random": 0.39585567112819614,
+            "rescued": 1748,
+            "lost": 1692,
+            "p_better_than_current": 0.1741891579933118,
+            "half_gains": [
+              33,
+              23
+            ]
+          },
+          "structure": {
+            "n": 5921,
+            "hit": 2623,
+            "miss": 3298,
+            "rate": 44.3,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.04,
+              45.57
+            ],
+            "p_above_random": 0.8259168674078663
+          },
+          "balanced": {
+            "n": 5921,
+            "hit": 2611,
+            "miss": 3310,
+            "rate": 44.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.84,
+              45.37
+            ],
+            "p_above_random": 0.8947159222303677
+          },
+          "random": {
+            "n": 5921,
+            "hit": 2684,
+            "miss": 3237,
+            "rate": 45.33,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              44.07,
+              46.6
+            ],
+            "p_above_random": 0.25596148263610397
+          }
+        }
+      }
+    },
+    "validation": {
+      "n": 2960,
+      "start_issue": "20260829182",
+      "end_issue": "20260904261",
+      "groups": {
+        "algo22": {
+          "current": {
+            "n": 2960,
+            "hit": 1338,
+            "miss": 1622,
+            "rate": 45.2,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.42,
+              47.0
+            ],
+            "p_above_random": 0.3762221084015956
+          },
+          "hot20": {
+            "n": 2960,
+            "hit": 1339,
+            "miss": 1621,
+            "rate": 45.24,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.45,
+              47.03
+            ],
+            "p_above_random": 0.362285814651792
+          },
+          "hot60": {
+            "n": 2960,
+            "hit": 1335,
+            "miss": 1625,
+            "rate": 45.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.32,
+              46.9
+            ],
+            "p_above_random": 0.4189439293477143
+          },
+          "hot180": {
+            "n": 2960,
+            "hit": 1335,
+            "miss": 1625,
+            "rate": 45.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.32,
+              46.9
+            ],
+            "p_above_random": 0.4189439293477143
+          },
+          "cold": {
+            "n": 2960,
+            "hit": 1345,
+            "miss": 1615,
+            "rate": 45.44,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.65,
+              47.24
+            ],
+            "p_above_random": 0.28300209151852446,
+            "rescued": 1132,
+            "lost": 1125,
+            "p_better_than_current": 0.4497511032486985,
+            "half_gains": [
+              11,
+              -4
+            ]
+          },
+          "structure": {
+            "n": 2960,
+            "hit": 1309,
+            "miss": 1651,
+            "rate": 44.22,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.44,
+              46.02
+            ],
+            "p_above_random": 0.7753305026058182
+          },
+          "balanced": {
+            "n": 2960,
+            "hit": 1338,
+            "miss": 1622,
+            "rate": 45.2,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.42,
+              47.0
+            ],
+            "p_above_random": 0.3762221084015956
+          },
+          "random": {
+            "n": 2960,
+            "hit": 1326,
+            "miss": 1634,
+            "rate": 44.8,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.01,
+              46.59
+            ],
+            "p_above_random": 0.5509103737110873
+          }
+        },
+        "algo16": {
+          "current": {
+            "n": 2960,
+            "hit": 971,
+            "miss": 1989,
+            "rate": 32.8,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.14,
+              34.52
+            ],
+            "p_above_random": 0.43731193305325045
+          },
+          "hot20": {
+            "n": 2960,
+            "hit": 971,
+            "miss": 1989,
+            "rate": 32.8,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.14,
+              34.52
+            ],
+            "p_above_random": 0.43731193305325045
+          },
+          "hot60": {
+            "n": 2960,
+            "hit": 971,
+            "miss": 1989,
+            "rate": 32.8,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.14,
+              34.52
+            ],
+            "p_above_random": 0.43731193305325045
+          },
+          "hot180": {
+            "n": 2960,
+            "hit": 971,
+            "miss": 1989,
+            "rate": 32.8,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.14,
+              34.52
+            ],
+            "p_above_random": 0.43731193305325045
+          },
+          "cold": {
+            "n": 2960,
+            "hit": 966,
+            "miss": 1994,
+            "rate": 32.64,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.97,
+              34.35
+            ],
+            "p_above_random": 0.5152082462056352,
+            "rescued": 939,
+            "lost": 944,
+            "p_better_than_current": 0.5549838737062415,
+            "half_gains": [
+              -13,
+              8
+            ]
+          },
+          "structure": {
+            "n": 2960,
+            "hit": 977,
+            "miss": 1983,
+            "rate": 33.01,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.34,
+              34.72
+            ],
+            "p_above_random": 0.34728432045767743
+          },
+          "balanced": {
+            "n": 2960,
+            "hit": 1001,
+            "miss": 1959,
+            "rate": 33.82,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              32.14,
+              35.54
+            ],
+            "p_above_random": 0.09180222232655383
+          },
+          "random": {
+            "n": 2960,
+            "hit": 976,
+            "miss": 1984,
+            "rate": 32.97,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.3,
+              34.69
+            ],
+            "p_above_random": 0.36184406411451775
+          }
+        },
+        "pool22": {
+          "current": {
+            "n": 2960,
+            "hit": 1330,
+            "miss": 1630,
+            "rate": 44.93,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.15,
+              46.73
+            ],
+            "p_above_random": 0.4920780280228165
+          },
+          "hot20": {
+            "n": 2960,
+            "hit": 1339,
+            "miss": 1621,
+            "rate": 45.24,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.45,
+              47.03
+            ],
+            "p_above_random": 0.362285814651792
+          },
+          "hot60": {
+            "n": 2960,
+            "hit": 1335,
+            "miss": 1625,
+            "rate": 45.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.32,
+              46.9
+            ],
+            "p_above_random": 0.4189439293477143
+          },
+          "hot180": {
+            "n": 2960,
+            "hit": 1335,
+            "miss": 1625,
+            "rate": 45.1,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.32,
+              46.9
+            ],
+            "p_above_random": 0.4189439293477143
+          },
+          "cold": {
+            "n": 2960,
+            "hit": 1345,
+            "miss": 1615,
+            "rate": 45.44,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.65,
+              47.24
+            ],
+            "p_above_random": 0.28300209151852446,
+            "rescued": 854,
+            "lost": 839,
+            "p_better_than_current": 0.36683929507155844,
+            "half_gains": [
+              -8,
+              23
+            ]
+          },
+          "structure": {
+            "n": 2960,
+            "hit": 1309,
+            "miss": 1651,
+            "rate": 44.22,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.44,
+              46.02
+            ],
+            "p_above_random": 0.7753305026058182
+          },
+          "balanced": {
+            "n": 2960,
+            "hit": 1338,
+            "miss": 1622,
+            "rate": 45.2,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.42,
+              47.0
+            ],
+            "p_above_random": 0.3762221084015956
+          },
+          "random": {
+            "n": 2960,
+            "hit": 1326,
+            "miss": 1634,
+            "rate": 44.8,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.01,
+              46.59
+            ],
+            "p_above_random": 0.5509103737110873
+          }
+        }
+      }
+    },
+    "test": {
+      "n": 2962,
+      "start_issue": "20260904262",
+      "end_issue": "20260910343",
+      "groups": {
+        "algo22": {
+          "current": {
+            "n": 2962,
+            "hit": 1349,
+            "miss": 1613,
+            "rate": 45.54,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.76,
+              47.34
+            ],
+            "p_above_random": 0.24564597317694242
+          },
+          "hot20": {
+            "n": 2962,
+            "hit": 1348,
+            "miss": 1614,
+            "rate": 45.51,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.72,
+              47.31
+            ],
+            "p_above_random": 0.25741191384421347
+          },
+          "hot60": {
+            "n": 2962,
+            "hit": 1322,
+            "miss": 1640,
+            "rate": 44.63,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.85,
+              46.43
+            ],
+            "p_above_random": 0.6213012626324109
+          },
+          "hot180": {
+            "n": 2962,
+            "hit": 1327,
+            "miss": 1635,
+            "rate": 44.8,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.02,
+              46.6
+            ],
+            "p_above_random": 0.5494011603501816
+          },
+          "cold": {
+            "n": 2962,
+            "hit": 1321,
+            "miss": 1641,
+            "rate": 44.6,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.82,
+              46.39
+            ],
+            "p_above_random": 0.6352744630147183,
+            "rescued": 1118,
+            "lost": 1146,
+            "p_better_than_current": 0.7288923131210439,
+            "half_gains": [
+              -40,
+              12
+            ]
+          },
+          "structure": {
+            "n": 2962,
+            "hit": 1306,
+            "miss": 1656,
+            "rate": 44.09,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.31,
+              45.89
+            ],
+            "p_above_random": 0.8160493039313299
+          },
+          "balanced": {
+            "n": 2962,
+            "hit": 1357,
+            "miss": 1605,
+            "rate": 45.81,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              44.03,
+              47.61
+            ],
+            "p_above_random": 0.16268464748689646
+          },
+          "random": {
+            "n": 2962,
+            "hit": 1331,
+            "miss": 1631,
+            "rate": 44.94,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.15,
+              46.73
+            ],
+            "p_above_random": 0.4905773266312595
+          }
+        },
+        "algo16": {
+          "current": {
+            "n": 2962,
+            "hit": 971,
+            "miss": 1991,
+            "rate": 32.78,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.11,
+              34.49
+            ],
+            "p_above_random": 0.44742735195095445
+          },
+          "hot20": {
+            "n": 2962,
+            "hit": 971,
+            "miss": 1991,
+            "rate": 32.78,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.11,
+              34.49
+            ],
+            "p_above_random": 0.44742735195095445
+          },
+          "hot60": {
+            "n": 2962,
+            "hit": 971,
+            "miss": 1991,
+            "rate": 32.78,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.11,
+              34.49
+            ],
+            "p_above_random": 0.44742735195095445
+          },
+          "hot180": {
+            "n": 2962,
+            "hit": 971,
+            "miss": 1991,
+            "rate": 32.78,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.11,
+              34.49
+            ],
+            "p_above_random": 0.44742735195095445
+          },
+          "cold": {
+            "n": 2962,
+            "hit": 983,
+            "miss": 1979,
+            "rate": 33.19,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.51,
+              34.9
+            ],
+            "p_above_random": 0.27373244964014526,
+            "rescued": 960,
+            "lost": 948,
+            "p_better_than_current": 0.4005911071537101,
+            "half_gains": [
+              -33,
+              45
+            ]
+          },
+          "structure": {
+            "n": 2962,
+            "hit": 965,
+            "miss": 1997,
+            "rate": 32.58,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.92,
+              34.29
+            ],
+            "p_above_random": 0.5409817152033413
+          },
+          "balanced": {
+            "n": 2962,
+            "hit": 990,
+            "miss": 1972,
+            "rate": 33.42,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              31.75,
+              35.14
+            ],
+            "p_above_random": 0.19080593009056948
+          },
+          "random": {
+            "n": 2962,
+            "hit": 941,
+            "miss": 2021,
+            "rate": 31.77,
+            "random_expected_rate": 32.65,
+            "ci95": [
+              30.12,
+              33.47
+            ],
+            "p_above_random": 0.8521600525115711
+          }
+        },
+        "pool22": {
+          "current": {
+            "n": 2962,
+            "hit": 1380,
+            "miss": 1582,
+            "rate": 46.59,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              44.8,
+              48.39
+            ],
+            "p_above_random": 0.03349409317572476
+          },
+          "hot20": {
+            "n": 2962,
+            "hit": 1348,
+            "miss": 1614,
+            "rate": 45.51,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.72,
+              47.31
+            ],
+            "p_above_random": 0.25741191384421347
+          },
+          "hot60": {
+            "n": 2962,
+            "hit": 1322,
+            "miss": 1640,
+            "rate": 44.63,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.85,
+              46.43
+            ],
+            "p_above_random": 0.6213012626324109
+          },
+          "hot180": {
+            "n": 2962,
+            "hit": 1327,
+            "miss": 1635,
+            "rate": 44.8,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.02,
+              46.6
+            ],
+            "p_above_random": 0.5494011603501816
+          },
+          "cold": {
+            "n": 2962,
+            "hit": 1321,
+            "miss": 1641,
+            "rate": 44.6,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.82,
+              46.39
+            ],
+            "p_above_random": 0.6352744630147183,
+            "rescued": 824,
+            "lost": 883,
+            "p_better_than_current": 0.9267916675029729,
+            "half_gains": [
+              -50,
+              -9
+            ]
+          },
+          "structure": {
+            "n": 2962,
+            "hit": 1306,
+            "miss": 1656,
+            "rate": 44.09,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              42.31,
+              45.89
+            ],
+            "p_above_random": 0.8160493039313299
+          },
+          "balanced": {
+            "n": 2962,
+            "hit": 1357,
+            "miss": 1605,
+            "rate": 45.81,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              44.03,
+              47.61
+            ],
+            "p_above_random": 0.16268464748689646
+          },
+          "random": {
+            "n": 2962,
+            "hit": 1331,
+            "miss": 1631,
+            "rate": 44.94,
+            "random_expected_rate": 44.9,
+            "ci95": [
+              43.15,
+              46.73
+            ],
+            "p_above_random": 0.4905773266312595
+          }
+        }
+      }
+    }
+  },
+  "chosen": {
+    "algo22": "cold",
+    "algo16": "cold",
+    "pool22": "cold"
+  },
+  "promote": {
+    "algo22": false,
+    "algo16": false,
+    "pool22": false
+  },
+  "elapsed_seconds": 41.737
+}

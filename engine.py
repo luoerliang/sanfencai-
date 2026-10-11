@@ -73,3 +73,21 @@ def corrected_predict(r):
         norms[k] = {n: (p[n] - low) / (high - low) if high - low > 1e-09 else 0.5 for n in NUMS}
     score = {n: sum((v[n] for v in votes.values())) + 0.2 * sum((p[n] for p in norms.values())) / 5 for n in NUMS}
     return {'algo22': sorted(rank(baseline_algo(r), r)[:22]), 'algo16': short16(r), 'pool22': sorted(rank(score, r)[:22])}
+
+
+def consecutive_history(r):
+    """Stop at a missing period; disconnected old records are not a recent trend window."""
+    from datetime import datetime,timedelta
+    out=[]
+    def following(raw):
+        raw=str(raw)
+        if len(raw)==11 and raw.isdigit() and 1<=int(raw[8:])<=480:
+            day=datetime.strptime(raw[:8],'%Y%m%d');seq=int(raw[8:])+1
+            if seq>480:day+=timedelta(days=1);seq=1
+            return day.strftime('%Y%m%d')+f'{seq:03d}'
+        try:return str(int(raw)+1)
+        except (TypeError,ValueError):return ''
+    for x in r:
+        if out and following(x['issue'])!=str(out[-1]['issue']):break
+        out.append(x)
+    return out
