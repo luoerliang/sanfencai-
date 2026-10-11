@@ -1,0 +1,28 @@
+{
+  "development": {
+    "n": 1000,
+    "start_issue": "20260910344",
+    "end_issue": "20260912383",
+    "hits": {
+      "old22": 445,
+      "old16": 320,
+      "oldpool": 423,
+      "fixed22": 445,
+      "fixed16": 322,
+      "fixedpool": 417
+    }
+  },
+  "holdout": {
+    "n": 1000,
+    "start_issue": "20260912384",
+    "end_issue": "20260914423",
+    "hits": {
+      "old22": 453,
+      "old16": 321,
+      "oldpool": 441,
+      "fixed22": 453,
+      "fixed16": 323,
+      "fixedpool": 429
+    }
+  }
+}
