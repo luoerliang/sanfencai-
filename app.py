@@ -307,6 +307,8 @@ v68_wf_cache={"ts":0.0,"data":None}
 # ===================== v70 EV-Gate evidence gate =====================
 F_BASE_V69_PROFILE="F_R1_CHALLENGER_TOP22_v69"
 F_CURRENT_PROFILE="F_SINGLE_Q1_TOP22_v73"
+CURRENT16_PROFILE="CURRENT_Q1_TOP16_v74"
+POOL22_PROFILE="POOL_WEIGHTED_TOP22_v74"
 A_BASE_V69_PROFILE="A_R1_CHALLENGER_TOP27_v69"
 B_BASE_V69_PROFILE="B_R2_CHALLENGER_TOP27_v69"
 C_BASE_V69_PROFILE="C_R2_CHALLENGER_TOP22_v69"
@@ -362,7 +364,7 @@ BLUE_NUMS = {3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48}
 GREEN_NUMS = {5,6,11,16,17,21,22,27,28,32,33,38,39,43,44,49}
 ALL_ZODIACS = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"]
 
-INDEX_HTML = '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>三分彩 · 精简看板</title>\n<style>\n:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#080e18;color:#e8eef8;font-size:12px}*{box-sizing:border-box}body{margin:0}.wrap{max-width:720px;margin:auto;padding:8px}header{display:flex;justify-content:space-between;align-items:center;margin:2px 0 8px}h1{font-size:15px;margin:0}h2{font-size:12px;margin:0}p{margin:4px 0}.muted{color:#94a4bb;font-size:10px;line-height:1.45}.card{padding:9px;margin-bottom:7px;border:1px solid #233149;border-radius:9px;background:#101a29}.head{display:flex;justify-content:space-between;align-items:center;gap:8px}.periods{display:flex;gap:12px;font-size:11px;margin:5px 0 7px;flex-wrap:wrap}.balls{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}.ball{width:23px;height:23px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:700;color:white}.red{background:#b63549}.blue{background:#275eaf}.green{background:#22835d}.special{outline:2px solid #ffd168;outline-offset:1px}.group{padding:8px 0;border-bottom:1px solid #253148}.group:last-child{border:0;padding-bottom:0}.group:first-child{padding-top:0}.record{font-size:10px;color:#abbad0;line-height:1.5}.pool{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:7px}.model{padding:6px 2px;text-align:center;border-radius:5px;background:#192539;font-size:10px;line-height:1.6}.model strong{font-size:11px}.model span{display:block;color:#9aaec9;font-size:9px}.scroll{overflow:auto;-webkit-overflow-scrolling:touch;margin-top:6px;max-height:225px}table{border-collapse:collapse;width:100%;font-size:10px;text-align:center;white-space:nowrap}th,td{padding:5px 3px;border-bottom:1px solid #233149}th{position:sticky;top:0;background:#18253a;color:#afbed5;z-index:1}td:first-child{font-variant-numeric:tabular-nums;font-size:9px}.hit{color:#58d79f}.miss{color:#f18a95}button{font:inherit;color:#d9e8ff;border:1px solid #3b5274;background:#20314a;border-radius:5px;padding:4px 7px;white-space:nowrap}summary{cursor:pointer;font-weight:600;font-size:11px}.details{margin-top:7px}#historyList{max-height:180px;overflow:auto}.historyRow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #24324a}.historyRow .balls{margin:0}.historyRow .ball{width:20px;height:20px;font-size:9px}#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:8px 14px;background:#264363;border-radius:7px;display:none;z-index:10}.note{font-size:10px;color:#93a8c4;line-height:1.5;margin-top:7px}@media(max-width:380px){.wrap{padding:6px}.card{padding:7px}.ball{width:21px;height:21px}.pool{gap:2px}th,td{padding:5px 2px}}\n</style></head><body><main class="wrap">\n<header><h1>三分彩 · 精简看板</h1><span class="muted" id="connection">连接中</span></header>\n<section class="card"><div class="head"><h2>最新开奖</h2><span class="muted" id="total">历史 -- 期</span></div><div class="periods"><span>最新 <b id="issue">--</b></span><span>下期 <b id="nextIssue">--</b></span></div><div class="balls" id="latestNums"></div><div class="muted" id="ingest">等待开奖记录</div></section>\n<section class="card" id="groups"><div class="muted">等待当前算法号码</div></section>\n<section class="card"><div class="head"><h2>多策略池</h2><span class="muted" id="poolMaturity">等待前瞻样本</span></div><div class="pool" id="poolRows"></div></section>\n<section class="card"><div class="head"><h2>最近20期正式锁单结算</h2><span class="muted">✓ 中 · × 错 · — 未锁单</span></div><div class="muted">F对应当前F组22码</div><div class="scroll"><table><thead><tr><th>期号</th><th>特</th><th>趋势</th><th>生肖</th><th>冷热</th><th>波色</th><th>单双</th><th>纠错</th><th>F</th></tr></thead><tbody id="lockRows"><tr><td colspan="9">等待正式结算</td></tr></tbody></table></div></section>\n<section class="card"><div class="head"><h2>平特一肖</h2><strong id="pingte">--</strong></div><div class="record" id="pingteRecord">等待前瞻样本</div></section>\n<details class="card" id="algorithmDetails"><summary>当前算法与验证思路</summary><div class="details"><p class="muted">只保留一套多尺度算法：近60期40% + 近360期40% + 历史转移20%，统一排序取22码；每期重算，正式锁单后不改。</p><p class="muted">策略池保留趋势、生肖、冷热、波色、单双、纠错。F是唯一主算法输出，策略池用于独立观察。新算法统计从v73正式锁单开始。</p><div id="research" class="muted">等待同期验证</div></div></details>\n<details class="card" id="historyDetails"><summary>历史开奖 <span class="muted" id="historyCount"></span></summary><div class="details" id="historyList">展开后加载</div></details>\n<div class="note">v73 · 开奖前锁单，开奖后结算。历史命中率不代表下一期结果。</div>\n</main><div id="toast"></div><script>\nconst $=id=>document.getElementById(id), RED=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]), BLUE=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);\nconst names=[\'趋势\',\'生肖\',\'冷热\',\'波色\',\'单双\',\'纠错\'];let current={},loading=false,poolLoading=false,historyLoading=false,groupsKey=\'\';\nconst esc=x=>String(x??\'\').replace(/[&<>"\']/g,c=>({\'&\':\'&amp;\',\'<\':\'&lt;\',\'>\':\'&gt;\',\'"\':\'&quot;\',"\'":\'&#39;\'}[c]));\nconst fmt=n=>String(n).padStart(2,\'0\');\nfunction balls(nums,special=false){return(nums||[]).map((n,i)=>`<span class="ball ${RED.has(Number(n))?\'red\':BLUE.has(Number(n))?\'blue\':\'green\'} ${special&&i===6?\'special\':\'\'}">${esc(fmt(n))}</span>`).join(\'\')}\nfunction hm(v){return v===1?\'<span class="hit">✓</span>\':v===0?\'<span class="miss">×</span>\':\'—\'}\nfunction record(s){const n=s.n??0,h=s.hits??0;return `本轮 已开${n}/20 · 中${h} · 错${s.misses??Math.max(0,n-h)}`}\nasync function copyGroup(key){const text=(current[key]||[]).map(fmt).join(\',\');if(!text)return;try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement(\'textarea\');t.value=text;document.body.append(t);t.select();document.execCommand(\'copy\');t.remove()}$(\'toast\').textContent=\'已复制 \'+text;$(\'toast\').style.display=\'block\';setTimeout(()=>$(\'toast\').style.display=\'none\',1800)}\nfunction renderPool(mp){if(!mp||!Object.keys(mp.stats||{}).length)return;$(\'poolMaturity\').textContent=`样本 ${mp.mature_n??0}/30`;$(\'poolRows\').innerHTML=names.map(k=>{const x=(mp.stats||{})[k]||{};return `<div class="model"><strong>${k}</strong><span>权重${esc(x.weight_pct??0)}%</span><span>错10:${esc(x.e10??0)}</span><span>错30:${esc(x.e30??0)}</span><span>连错:${esc(x.miss_streak??0)}</span></div>`}).join(\'\');const rows=(mp.recent20||[]).slice(0,20);$(\'lockRows\').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.issue)}</td><td>${esc(x.actual??\'—\')}</td>${names.map(k=>`<td>${hm(x[k])}</td>`).join(\'\')}<td>${hm(x.F)}</td></tr>`).join(\'\'):\'<tr><td colspan="9">等待正式结算</td></tr>\'}\nasync function loadPool(){if(poolLoading)return;poolLoading=true;try{const r=await fetch(\'/api/model-pool\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);renderPool((await r.json()).model_pool)}catch(e){}finally{poolLoading=false}}\nasync function loadMain(){if(loading)return;loading=true;try{const r=await fetch(\'/api/prediction\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);const d=await r.json();current=d;$(\'issue\').textContent=d.issue||\'暂无\';$(\'nextIssue\').textContent=d.next_issue||\'--\';$(\'total\').textContent=`历史 ${Number(d.count||0).toLocaleString()} 期`;$(\'latestNums\').innerHTML=balls(d.latest_numbers,true);$(\'ingest\').textContent=`${d.latest_special_zodiac||\'\'} · ${d.stale_prediction?\'下一期重算中\':d.recalculating?\'后台更新中\':d.prediction_locked?\'下一期已正式锁单\':\'等待正式锁单\'} · ${d.latest_created_at||\'\'}`;\nconst config=[[\'F\',\'special20\',\'22\',d.statsF||{}]];\nconst key=JSON.stringify(config);if(key!==groupsKey){$(\'groups\').innerHTML=config.map(([label,key,k,s])=>{const life=s.lifetime||(label===\'A\'?(d.stats27||{}).lifetime:{})||{};return `<div class="group"><div class="head"><h2>当前算法 · ${k}码</h2><button onclick="copyGroup(\'${key}\')">复制</button></div><div class="balls">${balls(d[key]||[])}</div><div class="record">${record(s)} · 累计中${esc(life.hits??0)}/错${esc(life.misses??0)}</div></div>`}).join(\'\');groupsKey=key}\n$(\'pingte\').textContent=d.pingte_yixiao||\'--\';const ps=d.pingte_b20_stats||{};$(\'pingteRecord\').textContent=`动态更新 · 实盘中${ps.hits??0} · 错${ps.misses??0}`;renderPool(d.model_pool);\n$(\'research\').textContent=\'只统计真实开奖前锁单，不回填旧期预测；目前未证明预测优势。\';\n$(\'connection\').textContent=\'已连接\';if($(\'historyDetails\').open)loadHistory();}catch(e){$(\'connection\').textContent=\'连接中断，正在重试\'}finally{loading=false}}\nasync function loadHistory(){if(historyLoading)return;historyLoading=true;try{const r=await fetch(\'/api/history?limit=100\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);const d=await r.json();$(\'historyCount\').textContent=`共${Number(d.total||0).toLocaleString()}期`;$(\'historyList\').innerHTML=(d.items||[]).map(x=>`<div class="historyRow"><span class="muted">${esc(x.issue)}</span><div class="balls">${balls(x.numbers,true)}</div></div>`).join(\'\')}catch(e){$(\'historyCount\').textContent=\'加载失败，可重新展开\'}finally{historyLoading=false}}\n$(\'historyDetails\').addEventListener(\'toggle\',()=>{if($(\'historyDetails\').open)loadHistory()});loadMain();loadPool();setInterval(loadMain,5000);setInterval(loadPool,15000);\n</script></body></html>\n'
+INDEX_HTML = '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>三分彩 · 精简看板</title>\n<style>\n:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#080e18;color:#e8eef8;font-size:12px}*{box-sizing:border-box}body{margin:0}.wrap{max-width:720px;margin:auto;padding:8px}header{display:flex;justify-content:space-between;align-items:center;margin:2px 0 8px}h1{font-size:15px;margin:0}h2{font-size:12px;margin:0}p{margin:4px 0}.muted{color:#94a4bb;font-size:10px;line-height:1.45}.card{padding:9px;margin-bottom:7px;border:1px solid #233149;border-radius:9px;background:#101a29}.head{display:flex;justify-content:space-between;align-items:center;gap:8px}.periods{display:flex;gap:12px;font-size:11px;margin:5px 0 7px;flex-wrap:wrap}.balls{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}.ball{width:23px;height:23px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:700;color:white}.red{background:#b63549}.blue{background:#275eaf}.green{background:#22835d}.special{outline:2px solid #ffd168;outline-offset:1px}.group{padding:8px 0;border-bottom:1px solid #253148}.group:last-child{border:0;padding-bottom:0}.group:first-child{padding-top:0}.record{font-size:10px;color:#abbad0;line-height:1.5}.pool{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:7px}.model{padding:6px 2px;text-align:center;border-radius:5px;background:#192539;font-size:10px;line-height:1.6}.model strong{font-size:11px}.model span{display:block;color:#9aaec9;font-size:9px}.scroll{overflow:auto;-webkit-overflow-scrolling:touch;margin-top:6px;max-height:225px}table{border-collapse:collapse;width:100%;font-size:10px;text-align:center;white-space:nowrap}th,td{padding:5px 3px;border-bottom:1px solid #233149}th{position:sticky;top:0;background:#18253a;color:#afbed5;z-index:1}td:first-child{font-variant-numeric:tabular-nums;font-size:9px}.hit{color:#58d79f}.miss{color:#f18a95}button{font:inherit;color:#d9e8ff;border:1px solid #3b5274;background:#20314a;border-radius:5px;padding:4px 7px;white-space:nowrap}summary{cursor:pointer;font-weight:600;font-size:11px}.details{margin-top:7px}#historyList{max-height:180px;overflow:auto}.historyRow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #24324a}.historyRow .balls{margin:0}.historyRow .ball{width:20px;height:20px;font-size:9px}#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:8px 14px;background:#264363;border-radius:7px;display:none;z-index:10}.note{font-size:10px;color:#93a8c4;line-height:1.5;margin-top:7px}@media(max-width:380px){.wrap{padding:6px}.card{padding:7px}.ball{width:21px;height:21px}.pool{gap:2px}th,td{padding:5px 2px}}\n</style></head><body><main class="wrap">\n<header><h1>三分彩 · 精简看板</h1><span class="muted" id="connection">连接中</span></header>\n<section class="card"><div class="head"><h2>最新开奖</h2><span class="muted" id="total">历史 -- 期</span></div><div class="periods"><span>最新 <b id="issue">--</b></span><span>下期 <b id="nextIssue">--</b></span></div><div class="balls" id="latestNums"></div><div class="muted" id="ingest">等待开奖记录</div></section>\n<section class="card" id="groups"><div class="muted">等待三组号码</div></section>\n<section class="card"><div class="head"><h2>多策略池</h2><span class="muted" id="poolMaturity">等待前瞻样本</span></div><div class="pool" id="poolRows"></div></section>\n<section class="card"><div class="head"><h2>最近20期正式锁单结算</h2><span class="muted">✓ 中 · × 错 · — 未锁单</span></div><div class="muted">三组独立结算 · 缺少正式锁单显示 —</div><div class="scroll"><table><thead><tr><th>期号</th><th>特</th><th>趋势</th><th>生肖</th><th>冷热</th><th>波色</th><th>单双</th><th>纠错</th><th>算法22</th><th>算法16</th><th>策略22</th></tr></thead><tbody id="lockRows"><tr><td colspan="11">等待正式结算</td></tr></tbody></table></div></section>\n<section class="card"><div class="head"><h2>平特一肖</h2><strong id="pingte">--</strong></div><div class="record" id="pingteRecord">等待前瞻样本</div></section>\n<details class="card" id="algorithmDetails"><summary>当前算法与验证思路</summary><div class="details"><p class="muted">算法22与算法16共用一套多尺度排序：近60期40% + 近360期40% + 历史转移20%，分别取前22、前16码。每期重算，正式锁单后不改。</p><p class="muted">多策略22独立融合趋势、生肖、冷热、波色、单双、纠错六模型评分，按近10/30/60期正式成绩调整权重，不从算法22截取。三组分别统计；新增两组从v74正式锁单开始。</p><div id="research" class="muted">等待同期验证</div></div></details>\n<details class="card" id="historyDetails"><summary>历史开奖 <span class="muted" id="historyCount"></span></summary><div class="details" id="historyList">展开后加载</div></details>\n<div class="note">v74 · 开奖前锁单，开奖后结算。历史命中率不代表下一期结果。</div>\n</main><div id="toast"></div><script>\nconst $=id=>document.getElementById(id), RED=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]), BLUE=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);\nconst names=[\'趋势\',\'生肖\',\'冷热\',\'波色\',\'单双\',\'纠错\'];let current={},loading=false,poolLoading=false,historyLoading=false,groupsKey=\'\';\nconst esc=x=>String(x??\'\').replace(/[&<>"\']/g,c=>({\'&\':\'&amp;\',\'<\':\'&lt;\',\'>\':\'&gt;\',\'"\':\'&quot;\',"\'":\'&#39;\'}[c]));\nconst fmt=n=>String(n).padStart(2,\'0\');\nfunction balls(nums,special=false){return(nums||[]).map((n,i)=>`<span class="ball ${RED.has(Number(n))?\'red\':BLUE.has(Number(n))?\'blue\':\'green\'} ${special&&i===6?\'special\':\'\'}">${esc(fmt(n))}</span>`).join(\'\')}\nfunction hm(v){return v===1?\'<span class="hit">✓</span>\':v===0?\'<span class="miss">×</span>\':\'—\'}\nfunction record(s){const n=s.n??0,h=s.hits??0;return `本轮 已开${n}/20 · 中${h} · 错${s.misses??Math.max(0,n-h)}`}\nasync function copyGroup(key){const text=(current[key]||[]).map(fmt).join(\',\');if(!text)return;try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement(\'textarea\');t.value=text;document.body.append(t);t.select();document.execCommand(\'copy\');t.remove()}$(\'toast\').textContent=\'已复制 \'+text;$(\'toast\').style.display=\'block\';setTimeout(()=>$(\'toast\').style.display=\'none\',1800)}\nfunction renderPool(mp){if(!mp||!Object.keys(mp.stats||{}).length)return;$(\'poolMaturity\').textContent=`样本 ${mp.mature_n??0}/30`;$(\'poolRows\').innerHTML=names.map(k=>{const x=(mp.stats||{})[k]||{};return `<div class="model"><strong>${k}</strong><span>权重${esc(x.weight_pct??0)}%</span><span>错10:${esc(x.e10??0)}</span><span>错30:${esc(x.e30??0)}</span><span>连错:${esc(x.miss_streak??0)}</span></div>`}).join(\'\');const rows=(mp.recent20||[]).slice(0,20);$(\'lockRows\').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.issue)}</td><td>${esc(x.actual??\'—\')}</td>${names.map(k=>`<td>${hm(x[k])}</td>`).join(\'\')}<td>${hm(x.F)}</td><td>${hm(x.M16)}</td><td>${hm(x.P22)}</td></tr>`).join(\'\'):\'<tr><td colspan="11">等待正式结算</td></tr>\'}\nasync function loadPool(){if(poolLoading)return;poolLoading=true;try{const r=await fetch(\'/api/model-pool\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);renderPool((await r.json()).model_pool)}catch(e){}finally{poolLoading=false}}\nasync function loadMain(){if(loading)return;loading=true;try{const r=await fetch(\'/api/prediction\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);const d=await r.json();current=d;$(\'issue\').textContent=d.issue||\'暂无\';$(\'nextIssue\').textContent=d.next_issue||\'--\';$(\'total\').textContent=`历史 ${Number(d.count||0).toLocaleString()} 期`;$(\'latestNums\').innerHTML=balls(d.latest_numbers,true);$(\'ingest\').textContent=`${d.latest_special_zodiac||\'\'} · ${d.stale_prediction?\'下一期重算中\':d.recalculating?\'后台更新中\':d.prediction_locked?\'下一期已正式锁单\':\'等待正式锁单\'} · ${d.latest_created_at||\'\'}`;\nconst config=[[\'算法22\',\'special20\',\'22\',d.statsF||{},\'F\'],[\'算法16\',\'special16\',\'16\',d.stats16||{},\'M16\'],[\'多策略22\',\'pool22\',\'22\',d.statsPool22||{},\'P22\']];\nconst key=JSON.stringify({groups:config,codes:[d.special20,d.special16,d.pool22],locked:d.group_locked});if(key!==groupsKey){$(\'groups\').innerHTML=config.map(([label,key,k,s,group])=>{const life=s.lifetime||{};return `<div class="group"><div class="head"><h2>${label}码</h2><span class="muted">${(d.group_locked||{})[group]?\'已锁单\':\'待锁单\'}</span><button onclick="copyGroup(\'${key}\')">复制</button></div><div class="balls">${balls(d[key]||[])}</div><div class="record">${record(s)} · 累计中${esc(life.hits??0)}/错${esc(life.misses??0)}</div></div>`}).join(\'\');groupsKey=key}\n$(\'pingte\').textContent=d.pingte_yixiao||\'--\';const ps=d.pingte_b20_stats||{};$(\'pingteRecord\').textContent=`动态更新 · 实盘中${ps.hits??0} · 错${ps.misses??0}`;renderPool(d.model_pool);\n$(\'research\').textContent=\'只统计真实开奖前锁单，不回填旧期预测；目前未证明预测优势。\';\n$(\'connection\').textContent=\'已连接\';if($(\'historyDetails\').open)loadHistory();}catch(e){$(\'connection\').textContent=\'连接中断，正在重试\'}finally{loading=false}}\nasync function loadHistory(){if(historyLoading)return;historyLoading=true;try{const r=await fetch(\'/api/history?limit=100\',{cache:\'no-store\'});if(!r.ok)throw Error(r.status);const d=await r.json();$(\'historyCount\').textContent=`共${Number(d.total||0).toLocaleString()}期`;$(\'historyList\').innerHTML=(d.items||[]).map(x=>`<div class="historyRow"><span class="muted">${esc(x.issue)}</span><div class="balls">${balls(x.numbers,true)}</div></div>`).join(\'\')}catch(e){$(\'historyCount\').textContent=\'加载失败，可重新展开\'}finally{historyLoading=false}}\n$(\'historyDetails\').addEventListener(\'toggle\',()=>{if($(\'historyDetails\').open)loadHistory()});loadMain();loadPool();setInterval(loadMain,5000);setInterval(loadPool,15000);\n</script></body></html>\n'
 
 
 def ensure_db_dir():
@@ -2812,9 +2814,8 @@ def _pool_performance(force=False):
 
 def _pool_dashboard():
     perf=_pool_performance()
-    stats_internal=perf.get("stats",{})
-
-    profiles=list(POOL_MODEL_PROFILES.values())
+    output_profiles={"F":F_CURRENT_PROFILE,"M16":CURRENT16_PROFILE,"P22":POOL22_PROFILE}
+    profiles=[*POOL_MODEL_PROFILES.values(),*output_profiles.values()]
     placeholders=",".join("?" for _ in profiles)
     with db_lock:
         c=connect()
@@ -2823,57 +2824,23 @@ def _pool_dashboard():
                                FROM prediction_log
                                WHERE profile IN ({placeholders}) AND settled=1
                                ORDER BY CAST(target_issue AS INTEGER) DESC
-                               LIMIT 420""",tuple(profiles)).fetchall()
-            frows=c.execute("""SELECT target_issue,hit24,actual_special
-                               FROM prediction_log
-                               WHERE profile=? AND settled=1
-                               ORDER BY CAST(target_issue AS INTEGER) DESC
-                               LIMIT 60""",(F_CURRENT_PROFILE,)).fetchall()
-        finally:
-            c.close()
-
+                               LIMIT 540""",tuple(profiles)).fetchall()
+        finally: c.close()
+    prof_to_key={v:POOL_MODEL_DISPLAY[k] for k,v in POOL_MODEL_PROFILES.items()}
+    prof_to_key.update({v:k for k,v in output_profiles.items()})
     by_issue={}
-    prof_to_key={v:k for k,v in POOL_MODEL_PROFILES.items()}
     for x in rows:
-        d=by_issue.setdefault(str(x["target_issue"]),{"actual":x["actual_special"],"hits":{}})
-        k=prof_to_key.get(str(x["profile"]))
-        if k:
-            d["hits"][k]=int(x["hit24"] or 0)
+        row=by_issue.setdefault(str(x["target_issue"]),{"issue":str(x["target_issue"]),"actual":x["actual_special"]})
+        row[prof_to_key[x["profile"]]]=int(x["hit24"]) if x["hit24"] is not None else None
+    stats={POOL_MODEL_DISPLAY[k]:dict(v,name=POOL_MODEL_DISPLAY[k])
+           for k,v in perf.get("stats",{}).items()}
+    recent=[by_issue[i] for i in sorted(by_issue,key=int,reverse=True)[:20]]
+    return {"stats":stats,"recent20":recent,"recent10":recent[:10],
+            "mature_n":perf.get("mature_n",0),
+            "model_names":[POOL_MODEL_DISPLAY[k] for k in POOL_MODEL_PROFILES],
+            "legacy_errors":{}}
 
-    for x in frows:
-        by_issue.setdefault(str(x["target_issue"]),{"actual":x["actual_special"],"hits":{}})
 
-    unique={k:0 for k in POOL_MODEL_PROFILES}
-    for issue in sorted(by_issue,key=lambda x:int(x),reverse=True)[:60]:
-        h=[k for k,v in by_issue[issue]["hits"].items() if v]
-        if len(h)==1:
-            unique[h[0]]+=1
-
-    stats={}
-    for k,v in stats_internal.items():
-        x=dict(v)
-        x["unique_hits60"]=unique.get(k,0)
-        # API/user-facing name is Chinese; internal profile remains compatible.
-        x["name"]=POOL_MODEL_DISPLAY.get(k,k)
-        stats[POOL_MODEL_DISPLAY.get(k,k)]=x
-
-    f_by_issue={str(x["target_issue"]):int(x["hit24"] or 0) for x in frows}
-    recent=[]
-    for issue in sorted(by_issue,key=lambda x:int(x),reverse=True)[:20]:
-        d=by_issue[issue]
-        row={"issue":issue,"actual":d.get("actual"),"F":f_by_issue.get(issue)}
-        for k in POOL_MODEL_PROFILES:
-            row[POOL_MODEL_DISPLAY.get(k,k)]=d["hits"].get(k)
-        recent.append(row)
-
-    return {
-      "stats":stats,
-      "recent20":recent,
-      "recent10":recent[:10],
-      "mature_n":perf.get("mature_n",0),
-      "model_names":[POOL_MODEL_DISPLAY[k] for k in POOL_MODEL_PROFILES],
-      "legacy_errors":{}
-    }
 
 
 
@@ -4245,33 +4212,55 @@ def settle_predictions(issue, nums, zs):
             print(f"[FUSION] refresh failed: {e}",flush=True)
         print(f"[LEARN] settled issue={issue} models={len(rows)} best={best}",flush=True)
 
+def _pool22_ranked(specialists):
+    """Independent weighted ensemble of all six specialist scores, not Q1 cuts."""
+    perf=_pool_performance()
+    weights=perf.get("weights") or {}
+    keys=list(POOL_MODEL_PROFILES)
+    total=sum(max(0.0,float(weights.get(k,1.0/len(keys)))) for k in keys) or 1.0
+    score={n:sum(max(0.0,float(weights.get(k,1.0/len(keys)))) *
+                 float(specialists.get(k,{}).get(n,.5)) for k in keys)/total
+           for n in range(1,50)}
+    return sorted(range(1,50),key=lambda n:(-score[n],n))
+
+
 def record_shadow_predictions(r):
-    """One current output plus six pool specialists. Never rewrite locked records."""
+    """Lock three outputs and six specialists atomically before the next draw."""
     if not r: return
     target=_next_issue_id(r[0]["issue"])
     py,_=_predict_pingte_yixiao_b20(r)
-    prob=_current_ranker_probs(r)
-    codes=_v68_ranked(prob)[:22]
-    records=[(target,F_CURRENT_PROFILE,",".join(map(str,codes)),"","",py)]
+    ranked=_v68_ranked(_current_ranker_probs(r))
     specialists=_specialist_model_scores(r,"平衡","20")
-    for key,prof in POOL_MODEL_PROFILES.items():
-        ranked=sorted(range(1,50),key=lambda n:(-specialists[key].get(n,-1e9),n))
-        records.append((target,prof,",".join(map(str,ranked[:20])),"","",py))
+    pool22=_pool22_ranked(specialists)[:22]
     with db_lock:
         c=connect()
         try:
+            # Prevent a completed outcome racing the scoring work or transaction.
+            c.execute("BEGIN IMMEDIATE")
             newest=c.execute("SELECT issue FROM draws ORDER BY CAST(issue AS INTEGER) DESC LIMIT 1").fetchone()
             if newest and str(newest["issue"])!=str(r[0]["issue"]):
                 return
             if c.execute("SELECT 1 FROM draws WHERE issue=?",(target,)).fetchone():
                 return
+            old22=c.execute("SELECT special24 FROM prediction_log WHERE target_issue=? AND profile=?",
+                            (target,F_CURRENT_PROFILE)).fetchone()
+            codes22=_csv_nums(old22["special24"]) if old22 else ranked[:22]
+            # Existing v73 F ranking is authoritative, including its Top16 cut.
+            records=[(target,F_CURRENT_PROFILE,",".join(map(str,codes22)),"","",py),
+                     (target,CURRENT16_PROFILE,",".join(map(str,codes22[:16])),"","",py),
+                     (target,POOL22_PROFILE,",".join(map(str,pool22)),"","",py)]
+            for key,prof in POOL_MODEL_PROFILES.items():
+                order=sorted(range(1,50),key=lambda n:(-specialists[key].get(n,-1e9),n))
+                records.append((target,prof,",".join(map(str,order[:20])),"","",py))
             c.executemany("""INSERT OR IGNORE INTO prediction_log
                 (target_issue,profile,special24,main4,zodiac4,pingte)
                 VALUES (?,?,?,?,?,?)""",records)
             c.commit()
         finally: c.close()
-    print(f"[V73] locked one current output + six pool models target={target}",flush=True)
+    print(f"[V74] locked algorithm22 + algorithm16 + pool22 + six specialists target={target}",flush=True)
     threading.Thread(target=write_checkpoint_atomic,daemon=True,name="learning-checkpoint").start()
+
+
 
 
 
@@ -4710,34 +4699,46 @@ def initialize_quick_live_cache():
         print(f"[BOOT68] immediate BASE failed: {type(e).__name__}: {e}",flush=True)
 
 def build_model():
-    """Current single algorithm; retained training helpers support the pool only."""
+    """Same Q1 mother ranking for 22/16; independent six-model pool for pool22."""
     r=recent_rows(1200)
     if not r:
-        return {"issue":None,"count":0,"special20":[],"model_pool":{},"recalculating":False}
+        return {"issue":None,"count":0,"special20":[],"special16":[],"pool22":[],"model_pool":{},"recalculating":False}
     latest=r[0]; target=_next_issue_id(latest["issue"])
-    ranked=_v68_ranked(_current_ranker_probs(r))
-    # Read the already-locked list when available so refresh/restart cannot change it.
+    output_profiles={"F":F_CURRENT_PROFILE,"M16":CURRENT16_PROFILE,"P22":POOL22_PROFILE}
     with db_lock:
         c=connect()
         try:
-            locked=c.execute("SELECT special24 FROM prediction_log WHERE target_issue=? AND profile=?",
-                             (target,F_CURRENT_PROFILE)).fetchone()
+            locked_rows=c.execute("""SELECT profile,special24 FROM prediction_log
+                                   WHERE target_issue=? AND profile IN (?,?,?)""",
+                                  (target,*output_profiles.values())).fetchall()
         finally: c.close()
-    codes=_csv_nums(locked["special24"]) if locked else ranked[:22]
-    stats=_stats20round_profile(F_CURRENT_PROFILE,target)
-    stats["lifetime"]=_profile_lifetime_stats(F_CURRENT_PROFILE)
+    locked={x["profile"]:_csv_nums(x["special24"]) for x in locked_rows}
+    codes22=locked.get(F_CURRENT_PROFILE)
+    if codes22 is None: codes22=_v68_ranked(_current_ranker_probs(r))[:22]
+    codes16=locked.get(CURRENT16_PROFILE,codes22[:16])
+    codespool=locked.get(POOL22_PROFILE)
+    if codespool is None:
+        specialists=_specialist_model_scores(r,"平衡","20")
+        codespool=_pool22_ranked(specialists)[:22]
+    states={k:p in locked for k,p in output_profiles.items()}
+    stats={k:_stats20round_profile(p,target) for k,p in output_profiles.items()}
     py,pm=_predict_pingte_yixiao_b20(r)
     return {"issue":latest["issue"],"next_issue":target,"count":history_cache.get("total",0),
             "latest_numbers":[latest[f"n{i}"] for i in range(1,7)]+[latest["special"]],
             "latest_special_zodiac":normalize_z(latest["z7"] or ""),
             "latest_created_at":latest["created_at"] or "",
-            "special20":[f"{n:02d}" for n in sorted(codes)],
-            "special24":[f"{n:02d}" for n in sorted(codes)],"statsF":stats,
+            "special20":[f"{n:02d}" for n in sorted(codes22)],
+            "special24":[f"{n:02d}" for n in sorted(codes22)],
+            "special16":[f"{n:02d}" for n in sorted(codes16)],
+            "pool22":[f"{n:02d}" for n in sorted(codespool)],
+            "statsF":stats["F"],"stats16":stats["M16"],"statsPool22":stats["P22"],
             "stats20":_profile_hit_stats(F_CURRENT_PROFILE,60),"model_pool":_pool_dashboard(),
             "pingte_yixiao":py,"pingte_meta":pm,"pingte_b20_stats":_pingte_current_stats(),
-            "profile":F_CURRENT_PROFILE,"prediction_locked":bool(locked),
-            "forecast":{"target_issue":target,"mode":"单一多尺度算法"},
+            "profile":F_CURRENT_PROFILE,"prediction_locked":all(states.values()),"group_locked":states,
+            "forecast":{"target_issue":target,"mode":"算法22/16 + 独立多策略22"},
             "telegram":bool(BOT_TOKEN),"recalculating":False,"stale_prediction":False}
+
+
 
 
 def _pingte_current_stats():
@@ -4778,7 +4779,9 @@ def rebuild_live_cache():
 
 
 def _visible_base_ready(data):
-    return isinstance(data,dict) and len(data.get("special20") or [])==22
+    return (isinstance(data,dict) and len(data.get("special20") or [])==22
+            and len(data.get("special16") or [])==16 and len(data.get("pool22") or [])==22)
+
 
 
 
@@ -4872,7 +4875,10 @@ def prediction():
 
 @app.get("/api/stats")
 def stats_api():
-    return jsonify({"current":_profile_hit_stats(F_CURRENT_PROFILE,60),"pingte":_pingte_current_stats()})
+    return jsonify({"current":_profile_hit_stats(F_CURRENT_PROFILE,60),
+                    "current16":_profile_hit_stats(CURRENT16_PROFILE,60),
+                    "pool22":_profile_hit_stats(POOL22_PROFILE,60),"pingte":_pingte_current_stats()})
+
 
 
 @app.get("/api/learning")
