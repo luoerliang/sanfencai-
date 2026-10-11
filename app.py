@@ -1493,27 +1493,35 @@ def normalize_z(z):
     return {"馬":"马","龍":"龙","雞":"鸡","豬":"猪"}.get(z,z)
 
 def import_history_once():
-    if not os.path.exists("history.csv"): return
+    """Fill missing archived issues; existing live rows always take precedence."""
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.csv")
+    if not os.path.exists(path):
+        return 0
     with db_lock:
         c=connect()
-        existing=c.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
-        if existing:
-            c.close(); return
-        with open("history.csv","r",encoding="utf-8-sig",newline="") as f:
-            for r in csv.DictReader(f):
-                issue=(r.get("期号") or "").strip()
-                try:
-                    nums=[int(r[k]) for k in ["正码1","正码2","正码3","正码4","正码5","正码6","特码"]]
-                except Exception:
-                    continue
-                if not issue or not all(1<=n<=49 for n in nums): continue
-                zs=[normalize_z((r.get(k) or "").strip()) for k in
-                    ["正码1生肖","正码2生肖","正码3生肖","正码4生肖","正码5生肖","正码6生肖"]]
-                zs.append(normalize_z((r.get("生肖") or "").strip()))
-                c.execute("""INSERT OR IGNORE INTO draws
-                (issue,n1,n2,n3,n4,n5,n6,special,z1,z2,z3,z4,z5,z6,z7,raw)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",[issue,*nums,*zs,"history.csv"])
-        c.commit(); c.close()
+        try:
+            before=c.total_changes
+            with open(path,"r",encoding="utf-8-sig",newline="") as f:
+                for r in csv.DictReader(f):
+                    issue=(r.get("期号") or "").strip()
+                    try:
+                        nums=[int(r[k]) for k in ["正码1","正码2","正码3","正码4","正码5","正码6","特码"]]
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if not issue.isdigit() or len(set(nums))!=7 or not all(1<=n<=49 for n in nums):
+                        continue
+                    zs=[normalize_z((r.get(k) or "").strip()) for k in
+                        ["正码1生肖","正码2生肖","正码3生肖","正码4生肖","正码5生肖","正码6生肖"]]
+                    zs.append(normalize_z((r.get("生肖") or "").strip()))
+                    c.execute("""INSERT OR IGNORE INTO draws
+                    (issue,n1,n2,n3,n4,n5,n6,special,z1,z2,z3,z4,z5,z6,z7,raw)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",[issue,*nums,*zs,"history.csv"])
+            imported=c.total_changes-before
+            c.commit()
+            print(f"[MIGRATION] archive missing rows merged={imported}; existing rows preserved",flush=True)
+            return imported
+        finally:
+            c.close()
 
 
 def _insert_migrated_draw(c, item):
@@ -1556,6 +1564,16 @@ def _insert_migrated_draw(c, item):
       [issue,*nums,*zs,*cs,raw,created])
     return 1 if c.total_changes>before else 0
 
+def migration_high_water(count, issue):
+    """Remember known pre-upgrade history requirements, including remote totals."""
+    auto_state["migration_required_count"]=max(
+        int(auto_state.get("migration_required_count") or 0), int(count or 0))
+    issue=str(issue or "")
+    previous=str(auto_state.get("migration_required_issue") or "")
+    if issue.isdigit() and (not previous.isdigit() or int(issue)>int(previous)):
+        auto_state["migration_required_issue"]=issue
+
+
 def sync_remote_history(url=None):
     """Merge history from the currently-live old service before switching versions."""
     url=(url or HISTORY_SOURCE_URL or "").strip()
@@ -1570,6 +1588,12 @@ def sync_remote_history(url=None):
         if not isinstance(items,list):
             raise ValueError("remote history response has no items list")
 
+        remote_latest=max((str(x.get("issue") or x.get("期号") or "")
+                           for x in items if isinstance(x,dict) and
+                           str(x.get("issue") or x.get("期号") or "").isdigit()),
+                          key=int, default="")
+        remote_total=payload.get("total",len(items)) if isinstance(payload,dict) else len(items)
+        migration_high_water(remote_total,remote_latest)
         imported=0
         with db_lock:
             c=connect()
@@ -1621,9 +1645,8 @@ def sync_best_available_history():
         seen.add(u)
         n=sync_remote_history(u)
         total += n
-        if not sync_state["last_error"]:
-            # Success includes 0 imported (everything already present).
-            break
+        # A valid response can still contain only a truncated recent window.
+        # Merge every distinct candidate; never replace an existing issue.
     return total
 
 def parse_draw(text):
@@ -11852,8 +11875,7 @@ def _checkpoint_payload():
         c=connect()
         try:
             rows=c.execute("""SELECT * FROM draws
-                              ORDER BY CAST(issue AS INTEGER) DESC
-                              LIMIT 1400""").fetchall()
+                              ORDER BY CAST(issue AS INTEGER) DESC""").fetchall()
             scores=c.execute("SELECT * FROM learner_scores ORDER BY profile").fetchall()
         finally:
             c.close()
@@ -12873,6 +12895,14 @@ def webhook_status():
 
 def boot():
     init_db()
+    with db_lock:
+        _c=connect()
+        try:
+            _n=_c.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
+            _r=_c.execute("SELECT issue FROM draws ORDER BY CAST(issue AS INTEGER) DESC LIMIT 1").fetchone()
+            migration_high_water(_n, _r["issue"] if _r else "")
+        finally:
+            _c.close()
     if REMOTE_BACKUP_ENABLED:
         download_checkpoint_from_supabase()
     restore_checkpoint_if_better()
@@ -12890,14 +12920,18 @@ def boot():
                 _c.close()
         auto_state["migration_latest_issue"]=str(_latest["issue"] if _latest else "")
         auto_state["migration_history_count"]=_n
-        print(f"[MIGRATION] v69 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
+        print(f"[MIGRATION] v72.1 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
     except Exception as e:
         print(f"[MIGRATION] audit failed: {e}",flush=True)
 
     # v72 deploy guard: operators can pin the exact previous live high-water
     # mark. Abort deployment rather than silently fall back to bundled CSV.
-    _required_count=int(os.getenv("V72_REQUIRED_HISTORY_COUNT", "14343"))
-    _required_issue=str(os.getenv("V72_REQUIRED_LATEST_ISSUE", "20260914423")).strip()
+    _required_count=max(int(os.getenv("V72_REQUIRED_HISTORY_COUNT", "14343")),
+                        int(auto_state.get("migration_required_count") or 0))
+    _configured_issue=str(os.getenv("V72_REQUIRED_LATEST_ISSUE", "20260914423")).strip()
+    _required_issue=max((x for x in [_configured_issue,
+                        str(auto_state.get("migration_required_issue") or "")]
+                        if x.isdigit()),key=int,default="")
     _actual_count=int(auto_state.get("migration_history_count") or 0)
     _actual_issue=str(auto_state.get("migration_latest_issue") or "")
     if _actual_count < _required_count or ( _required_issue.isdigit() and
