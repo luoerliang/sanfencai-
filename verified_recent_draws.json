@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "issue": "20261011453",
+      "numbers": [
+        31,
+        24,
+        36,
+        41,
+        18,
+        5,
+        19
+      ],
+      "raw": "verified user result supplied in conversation"
+    },
+    {
+      "issue": "20261011473",
+      "numbers": [
+        33,
+        47,
+        38,
+        7,
+        8,
+        25,
+        2
+      ],
+      "zodiac": "蛇",
+      "created_at": "2026-10-11 15:37:00",
+      "raw": "verified live /api/prediction response at 2026-10-11 15:37 UTC"
+    }
+  ],
+  "note": "Only known verified results, not complete October history."
+}

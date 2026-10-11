@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from flask import Flask, jsonify, render_template_string, request, send_file
 import requests
 import v72_evidence
+from recovery_engine import Recovery, PAGE as RECOVERY_PAGE
 
 PERSIST_DIR = os.getenv("PERSIST_DIR", "").strip()
 if not PERSIST_DIR:
@@ -785,6 +786,8 @@ def _refresh_learning_and_stats():
 
 def _auto_update_after_draw(issue, nums):
     """One unified post-draw pipeline. Nothing here requires a manual browser refresh."""
+    if not recovery.ready:
+        return None
     auto_state["updating"]=True
     auto_state["last_draw_issue"]=str(issue)
     auto_state["last_error"]=""
@@ -841,6 +844,9 @@ def add_draw(issue,nums,zs,colors,raw):
         c.commit()
         changed=c.total_changes>before
         c.close()
+        if changed and not recovery.ready:
+            refresh_history_cache()
+            return True
         if changed:
             update_long_prior_incremental(prev_before_insert, nums, zs)
             settle_predictions(issue, nums, zs)
@@ -4235,6 +4241,8 @@ def _pool22_ranked(specialists):
 
 def record_shadow_predictions(r):
     """Lock three outputs and six specialists atomically before the next draw."""
+    if not recovery.ready:
+        return None
     if not r: return
     target=_next_issue_id(r[0]["issue"])
     py,_=_predict_pingte_yixiao_b20(r)
@@ -4312,6 +4320,9 @@ def _supabase_headers(content_type=None):
     return h
 
 def upload_checkpoint_to_supabase():
+    if not recovery.ready or not recovery.snapshot()[2]:
+        auto_state["checkpoint_error"]="历史恢复未通过，保护已有备份，暂停写入"
+        return False
     if not REMOTE_BACKUP_ENABLED or not os.path.exists(CHECKPOINT_PATH):
         return False
     try:
@@ -4333,34 +4344,13 @@ def upload_checkpoint_to_supabase():
         return False
 
 def download_checkpoint_from_supabase():
-    if not REMOTE_BACKUP_ENABLED:
-        return False
     try:
-        url=f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}"
-        r=requests.get(url,headers=_supabase_headers(),timeout=25)
-        if r.status_code==404:
-            print("[REMOTE] no checkpoint yet",flush=True)
-            return False
-        if r.status_code!=200:
-            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:220]}")
-        parent=os.path.dirname(os.path.abspath(CHECKPOINT_PATH))
-        os.makedirs(parent,exist_ok=True)
-        tmp=CHECKPOINT_PATH+".remote.tmp"
-        with open(tmp,"wb") as f:
-            f.write(r.content)
-        with gzip.open(tmp,"rt",encoding="utf-8") as f:
-            payload=json.load(f)
-        if not isinstance(payload,dict) or "learning" not in payload:
-            raise RuntimeError("invalid remote checkpoint")
-        os.replace(tmp,CHECKPOINT_PATH)
-        auto_state["remote_restore_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
-        auto_state["remote_backup_error"]=""
-        print(f"[REMOTE] Supabase restore OK bytes={len(r.content)}",flush=True)
-        return True
+        recovery.remote()
+        return REMOTE_BACKUP_ENABLED
     except Exception as e:
-        auto_state["remote_backup_error"]=f"restore {type(e).__name__}: {e}"
-        print(f"[REMOTE] restore failed: {auto_state['remote_backup_error']}",flush=True)
+        auto_state["remote_backup_error"]=str(e)
         return False
+
 
 def _checkpoint_payload():
     learning=export_learning_payload(1500)
@@ -4373,7 +4363,9 @@ def _checkpoint_payload():
         finally:
             c.close()
     return {
-      "version":"v67",
+      "version":"v75.1",
+      "history_total":len(rows),
+      "history_latest_issue":str(rows[0]["issue"]) if rows else "",
       "created_at":time.strftime("%Y-%m-%d %H:%M:%S"),
       "persistent_mode":PERSISTENT_MODE,
       "learning":learning,
@@ -4383,6 +4375,9 @@ def _checkpoint_payload():
 
 def write_checkpoint_atomic():
     """Atomic learning checkpoint. On a persistent disk this survives deploy/restart."""
+    if not recovery.ready or not recovery.snapshot()[2]:
+        auto_state["checkpoint_error"]="历史恢复未通过，保护已有备份，暂停写入"
+        return False
     try:
         parent=os.path.dirname(os.path.abspath(CHECKPOINT_PATH))
         os.makedirs(parent,exist_ok=True)
@@ -4710,6 +4705,8 @@ def initialize_quick_live_cache():
 
 def build_model():
     """Algorithm22 stays intact; algorithm16 uses only 20 draws; pool22 independent."""
+    if not recovery.ready:
+        return {"issue":None,"special20":[],"special16":[],"pool22":[],"recovery_required":True}
     r=recent_rows(1200)
     if not r:
         return {"issue":None,"count":0,"special20":[],"special16":[],"pool22":[],"model_pool":{},"recalculating":False}
@@ -4765,6 +4762,8 @@ def _pingte_current_stats():
 
 
 def rebuild_live_cache():
+    if not recovery.ready:
+        return None
     with live_cache_lock:
         if live_cache.get("building"):
             return live_cache.get("data")
@@ -4855,13 +4854,16 @@ def model():
 
 @app.get("/")
 def home():
+    if not recovery.ready:
+        return render_template_string(RECOVERY_PAGE)
     return render_template_string(INDEX_HTML)
+
 
 @app.get("/api/health")
 def health():
     with history_cache_lock:
         count=history_cache.get("total",0)
-    return jsonify({"ok":True,"ready":background_state.get("boot_ready",False),
+    return jsonify({"ok":True,"ready":recovery.ready,"recovery":recovery.status(),
                     "model_building":bool(live_cache.get("building")),
                     "stats_building":background_state.get("stats_building",False),
                     "long_prior_ready":bool(long_prior.get("ready")),
@@ -5173,90 +5175,35 @@ def webhook_status():
         return jsonify({"ok":False,"error":str(e)}),500
 
 def boot():
+    """Keep the recovery website available; never enable incomplete-history forecasts."""
     init_db()
     with db_lock:
-        _c=connect()
+        c=connect()
         try:
-            _n=_c.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
-            _r=_c.execute("SELECT issue FROM draws ORDER BY CAST(issue AS INTEGER) DESC LIMIT 1").fetchone()
-            migration_high_water(_n, _r["issue"] if _r else "")
-        finally:
-            _c.close()
-    if REMOTE_BACKUP_ENABLED:
-        download_checkpoint_from_supabase()
-    restore_checkpoint_if_better()
+            n=c.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
+            row=c.execute("SELECT issue FROM draws ORDER BY CAST(issue AS INTEGER) DESC LIMIT 1").fetchone()
+            migration_high_water(n,row["issue"] if row else "")
+        finally:c.close()
     import_history_once()
-
-    # Preserve latest bot-collected history before takeover.
-    sync_best_available_history()
-    try:
-        _latest=latest_row()
+    # Only individually verified recent results; never substitute them for missing history.
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)),"verified_recent_draws.json")
+    if os.path.exists(path):
+        with open(path,"r",encoding="utf-8") as f:items=json.load(f)["items"]
         with db_lock:
-            _c=connect()
+            c=connect()
             try:
-                _n=int(_c.execute("SELECT COUNT(*) AS n FROM draws").fetchone()["n"])
-            finally:
-                _c.close()
-        auto_state["migration_latest_issue"]=str(_latest["issue"] if _latest else "")
-        auto_state["migration_history_count"]=_n
-        print(f"[MIGRATION] v72.1 inherited latest={auto_state['migration_latest_issue']} count={_n}",flush=True)
-    except Exception as e:
-        print(f"[MIGRATION] audit failed: {e}",flush=True)
-
-    # v72 deploy guard: operators can pin the exact previous live high-water
-    # mark. Abort deployment rather than silently fall back to bundled CSV.
-    _required_count=max(int(os.getenv("V72_REQUIRED_HISTORY_COUNT", "15744")),
-                        int(auto_state.get("migration_required_count") or 0))
-    _configured_issue=str(os.getenv("V72_REQUIRED_LATEST_ISSUE", "20261011454")).strip()
-    _required_issue=max((x for x in [_configured_issue,
-                        str(auto_state.get("migration_required_issue") or "")]
-                        if x.isdigit()),key=int,default="")
-    _actual_count=int(auto_state.get("migration_history_count") or 0)
-    _actual_issue=str(auto_state.get("migration_latest_issue") or "")
-    if _actual_count < _required_count or ( _required_issue.isdigit() and
-            (not _actual_issue.isdigit() or int(_actual_issue)<int(_required_issue))):
-        raise RuntimeError(f"V72 MIGRATION GUARD: found {_actual_count} draws / {_actual_issue}, "
-                           f"required >= {_required_count} / {_required_issue}. "
-                           "Restore previous live history before enabling this version.")
-    print(f"[V72] migration guard PASS count={_actual_count} latest={_actual_issue}",flush=True)
-
-    # From v26 onward, also inherit learned prediction/score history.
-    sync_previous_learning()
-    load_ai_state()
-    load_correction_state()
-    refresh_learner_cache(60)
-    try:
-        refresh_dynamic_ai_mix()
-    except Exception as e:
-        print(f"[FUSION] boot refresh failed: {e}",flush=True)
-    try:
-        _r0=recent_rows(1)
-        if _r0:
-            auto_state["last_draw_issue"]=str(_r0[0]["issue"])
-            auto_state["last_prediction_issue"]=_next_issue_id(_r0[0]["issue"])
-    except Exception:
-        pass
-    auto_state["last_refresh_at"]=time.strftime("%Y-%m-%d %H:%M:%S")
-
-    # Make the site usable immediately. Do NOT wait for model/backtest here.
-    try:
-        refresh_history_cache()
-    except Exception as e:
-        print(f"[BOOT] history cache failed: {type(e).__name__}: {e}",flush=True)
-    initialize_quick_live_cache()
-    background_state["boot_ready"]=True
-    threading.Thread(target=rebuild_fast_live_cache,daemon=True,name="initial-fast-base").start()
-
-    # Webhook can now receive new draws.
+                for item in items:_insert_migrated_draw(c,item)
+                c.commit()
+            finally:c.close()
+    refresh_history_cache()
+    # Bot can preserve new incoming results in recovery mode, without making predictions.
     if BOT_TOKEN:
         threading.Thread(target=webhook_keeper,daemon=True,name="telegram-webhook-keeper").start()
+    recovery.start()
 
-    # Live model first, then full-history prior in parallel. Neither blocks the site.
-    threading.Thread(target=rebuild_live_cache,daemon=True,name="initial-model-build").start()
-    threading.Thread(target=build_long_prior,daemon=True,name="full-history-prior").start()
-    threading.Thread(target=bootstrap_ai_history,daemon=True,name="ai-history-bootstrap").start()
-    threading.Thread(target=bootstrap_correction_models,daemon=True,name="correction-ai-bootstrap").start()
 
+recovery=Recovery(globals())
+recovery.routes(app)
 boot()
 
 if __name__=="__main__":
