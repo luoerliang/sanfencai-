@@ -327,6 +327,8 @@ V70_MODEL_VERSION="v70-profit-gate-001"
 V71_MODEL_VERSION="v71-forward-competition-001"
 V71_PROMOTION_MIN_N=int(os.getenv("V71_PROMOTION_MIN_N","300"))
 V71_ALPHA=float(os.getenv("V71_ALPHA","0.025"))
+V72_MODEL_VERSION="v72-independent-quant-001"
+V72_MIN_N=500
 
 ten27_perf_lock=threading.RLock()
 ten27_perf_cache={"ts":0.0,"data":None}
@@ -767,8 +769,15 @@ background:#2b1912;border:1px solid #8d4a2f;color:#ffd2b1;font-weight:800;font-s
   </section>
 
   <section class="card">
-    <div class="sectionHead">
-      <div>
+    <div class="sectionHead"><div>
+      <div class="sectionTitle">v72 · 我的独立算法（开奖前锁定）</div>
+      <div class="sectionHint">O1长期多尺度 / O2短期多尺度；概率收缩至随机基线。不使用硬性杀码与生肖配额。统计独立从零开始。</div>
+    </div></div>
+    <div id="v72Grid" class="strategyGrid"></div>
+    <div class="pillrow"><span id="v72Gate" class="pill">等待前瞻锁单</span></div>
+  </section>
+  <section class="card">
+    <div class="sectionHead"><div>
         <div class="sectionTitle">v71 · 前瞻竞争实验室</div>
         <div class="sectionHint">旧冠军继续Live；Q1/Q2/Q3只在开奖前锁定Shadow。同码数比较，样本不足绝不替换Live。</div>
       </div>
@@ -1155,6 +1164,15 @@ async function loadMain(){
       v70ProfitGate.textContent=`赔率总返还 ${p}倍 · 门控 ${v70.bet_gate||'STOP'} · ${v70.rule||''}`;
     }
 
+    const v72=d.v72_own||{}, v72s=v72.stats||{}, v72g=v72.groups||{};
+    if(document.getElementById('v72Grid')){
+      v72Grid.innerHTML=['F','A','B','C','D'].map(key=>{
+        const x=v72s[key]||{}, g=v72g[key]||{}, m=x.metrics||{};
+        const codes=(g.numbers||[]).map(x=>String(x).padStart(2,'0')).join(',');
+        return `<div class="strategyBox"><div class="strategyTitle">${key} · 独立Top${x.k||'--'}（O${key==='B'||key==='C'?'2':'1'}）</div><div class="strategyMain">${x.n||0}期 · 中${x.hits||0} · 命中${m.rate||0}% / 随机${m.random||0}%<br>${x.status||'等待数据'}<br>已锁期号 ${g.target||'无'} · 截止 ${g.cutoff||'--'}<br><span style="overflow-wrap:anywhere">${codes||'等待下一期自动锁定'}</span></div></div>`;
+      }).join('');
+    }
+    if(document.getElementById('v72Gate')) v72Gate.textContent=v72.policy||'仅观察';
     const v71=d.v71_forward||{}, v71r=v71.rankers||{};
     if(document.getElementById('v71Grid')){
       const labs={Q1:'Q1 长窗+转移 · F22/A27',Q2:'Q2 短窗+转移 · C22/B27',Q3:'Q3 独立多尺度 · D16'};
@@ -9213,6 +9231,97 @@ def _v69_holm_adjust(pairs,alpha=0.05):
     return out
 
 
+# ===================== v72: independent, preregistered ranking =====================
+def _v72_rankers(r):
+    """Two independent pre-registered probability ensembles; no hard exclusions.
+
+    Shrink all empirical probabilities towards the one-in-49 base rate.
+    Coefficients never update from the current or future winning number.
+    """
+    u={n:1.0/49.0 for n in range(1,50)}
+    p24=_v68_weighted_posterior(r,24,9,3.0)
+    p100=_v68_weighted_posterior(r,100,35,4.0)
+    p400=_v68_weighted_posterior(r,400,135,5.0)
+    p1000=_v68_weighted_posterior(r,1000,300,5.0)
+    # Independent long / short ensembles. 75% and 80% uniform shrinkage
+    # restrains the overconfident frequency and transition models.
+    long=_v68_mix_prob((.75,u),(.04,p24),(.06,p100),(.09,p400),(.06,p1000))
+    short=_v68_mix_prob((.80,u),(.09,p24),(.07,p100),(.04,p400))
+    out={}
+    for name,prob in [('O1',long),('O2',short)]:
+        out[name]={'prob':prob,'ranked':_v68_ranked(prob)}
+    return out
+
+def _v72_lock_forecasts(target,r):
+    if not r:return
+    ranks=_v72_rankers(r)
+    with db_lock:
+        c=connect()
+        try:
+            for rid,obj in ranks.items():
+                prob=obj['prob'];ranked=obj['ranked']
+                c.execute("""INSERT OR IGNORE INTO v68_forecast
+                 (target_issue,ranker_id,model_version,history_cutoff_id,probs_json,ranked49,top16,top22,top27)
+                 VALUES (?,?,?,?,?,?,?,?,?)""",
+                 (str(target),rid,V72_MODEL_VERSION,str(r[0]['issue']),
+                 json.dumps({str(n):float(prob[n]) for n in range(1,50)},separators=(',',':')),
+                 ','.join(map(str,ranked)),','.join(map(str,ranked[:16])),
+                 ','.join(map(str,ranked[:22])),','.join(map(str,ranked[:27]))))
+            c.commit()
+        finally:c.close()
+
+def _v72_settle_forecasts(issue,actual_special):
+    actual=int(actual_special)
+    with db_lock:
+        c=connect()
+        try:
+            rows=c.execute("""SELECT ranker_id,probs_json,ranked49,top16,top22,top27 FROM v68_forecast
+              WHERE target_issue=? AND model_version=? AND settled=0""",(str(issue),V72_MODEL_VERSION)).fetchall()
+            for row in rows:
+                prob={int(k):float(v) for k,v in json.loads(row['probs_json']).items()}
+                ranked=_csv_nums(row['ranked49']); rank=ranked.index(actual)+1 if actual in ranked else 49
+                ll=-math.log(max(1e-15,prob.get(actual,1/49)))
+                brier=sum((prob[n]-(1.0 if n==actual else 0.0))**2 for n in range(1,50))
+                hits=[int(actual in set(_csv_nums(row['top'+str(k)]))) for k in (16,22,27)]
+                c.execute("""UPDATE v68_forecast SET settled=1,actual_special=?,actual_rank=?,
+                 log_loss=?,brier=?,hit16=?,hit22=?,hit27=?
+                 WHERE target_issue=? AND model_version=? AND ranker_id=?""",
+                 (actual,rank,ll,brier,*hits,str(issue),V72_MODEL_VERSION,row['ranker_id']))
+            c.commit()
+        finally:c.close()
+
+def _v72_dashboard(r):
+    stats={}; model_ids={'F':('O1',22),'A':('O1',27),'C':('O2',22),'B':('O2',27),'D':('O1',16)}
+    with db_lock:
+        c=connect()
+        try:
+            for group,(rid,k) in model_ids.items():
+                rows=c.execute("""SELECT target_issue,actual_special,hit16,hit22,hit27,log_loss,brier
+                  FROM v68_forecast WHERE model_version=? AND ranker_id=? AND settled=1
+                  ORDER BY CAST(target_issue AS INTEGER)""",(V72_MODEL_VERSION,rid)).fetchall()
+                n=len(rows);h=sum(int(row['hit'+str(k)] or 0) for row in rows)
+                m=_v68_k_metrics(h,n,k)
+                ll=sum(float(row['log_loss'] or 0) for row in rows)/n if n else 0
+                status='继续观察（未证实优势）'
+                if n<V72_MIN_N:status=f'样本不足 {n}/{V72_MIN_N}'
+                elif m['ci95'][1]<m['random']:status='弱于随机基准 · 停止使用'
+                elif m['ci95'][0]>m['random'] and ll<V69_UNIFORM_LOGLOSS:status='通过随机基线 · 尚需与现版配对复核'
+                stats[group]={'n':n,'hits':h,'k':k,'metrics':m,'log_loss':round(ll,5),'status':status}
+            locked=c.execute("""SELECT ranker_id,ranked49,history_cutoff_id,target_issue
+                    FROM v68_forecast WHERE model_version=? AND settled=0
+                    ORDER BY CAST(target_issue AS INTEGER) DESC LIMIT 2""",(V72_MODEL_VERSION,)).fetchall()
+        finally:c.close()
+    # Predictions shown only if already locked before drawing; never freshly infer a past period.
+    pending={row['ranker_id']:row for row in locked}
+    groups={}
+    for group,(rid,k) in model_ids.items():
+        row=pending.get(rid)
+        nums=_csv_nums(row['ranked49'])[:k] if row is not None else []
+        groups[group]={'numbers':nums,'target':row['target_issue'] if row is not None else None,
+                       'cutoff':row['history_cutoff_id'] if row is not None else None}
+    return {'version':V72_MODEL_VERSION,'groups':groups,'stats':stats,
+            'policy':'仅观察，绝不自动替换 Live；不足500期不能宣称胜出'}
+
 # ===================== v71: honest forward challenger rankers =====================
 def _v71_transition_prob(r, window=240, half_life=80, alpha_each=1.5):
     """First-order transition posterior P(next special | latest special).
@@ -9647,7 +9756,7 @@ def _v671_fast_live_snapshot():
       "stats27b":_v672_safe_call(lambda:_stats20round_profile(B_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats22c":_v672_safe_call(lambda:_stats20round_profile(C_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
       "stats16d":_v672_safe_call(lambda:_stats20round_profile(D_BASE_V69_PROFILE,next_issue),{"n":0,"hits":0,"misses":0}),
-      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":_v672_safe_call(lambda:_v67_dashboard(),{}),"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"v72_own":_v672_safe_call(lambda:_v72_dashboard(r),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":pingte_one,"pingte_meta":pingte_meta,
       "pingte_b20_stats":_v672_safe_call(lambda:_pingte_b20_stats(),{"n":0,"hits":0,"misses":0,"rate":0.0}),
@@ -9704,7 +9813,7 @@ def _v674_minimal_snapshot():
       "stats27b":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats22c":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
       "stats16d":{"n":0,"hits":0,"misses":0,"lifetime":dict(empty_stat)},
-      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"model_pool":{},"stable_signals":{},
+      "v67_rules":{},"v69_shadow":_v672_safe_call(lambda:_v69_shadow_dashboard(),{}),"v68_prob":_v672_safe_call(lambda:_v68_dashboard(r,False),{}),"v69_null":_v672_safe_call(lambda:_v69_dashboard(r),{}),"v70_profit":_v672_safe_call(lambda:_v70_profit_dashboard(),{}),"v71_forward":_v672_safe_call(lambda:_v71_dashboard(),{}),"v72_own":_v672_safe_call(lambda:_v72_dashboard(r),{}),"model_pool":{},"stable_signals":{},
       "diagnostics20":{},"diagnostics27":{},"correction":{},"f_error_diag":{},"f_slot_stats":{},
       "pingte_yixiao":"","pingte_meta":{"samples":0},"pingte_b20_stats":dict(empty_stat),
       "profile":"v69 Null-First","profile_scores":{},"calibration_n":0,
@@ -11469,6 +11578,7 @@ def settle_predictions(issue, nums, zs):
         _v68_settle_forecasts(issue,actual_special)
         _v69_settle_forecasts(issue,actual_special)
         _v71_settle_forecasts(issue,actual_special)
+        _v72_settle_forecasts(issue,actual_special)
     except Exception as e:
         print(f"[V68] forecast settle failed: {type(e).__name__}: {e}",flush=True)
 
@@ -11556,6 +11666,7 @@ def record_shadow_predictions(r):
         _v69_lock_forecasts(target,r)
         print(f"[V69] locked Uniform+R1+R2 target={target} cutoff={r[0]['issue']}",flush=True)
         _v71_lock_forecasts(target,r)
+        _v72_lock_forecasts(target,r)
         print(f"[V71] locked Q1+Q2+Q3 Shadow target={target} cutoff={r[0]['issue']}",flush=True)
     except Exception as e:
         print(f"[V69] lock failed: {type(e).__name__}: {e}",flush=True)
@@ -12329,7 +12440,7 @@ def build_model():
       "v66_validation":v66_validation,
       "v67_rules":v67_rules,
       "v68_prob":v68_prob,
-      "v69_null":v69_null,"v70_profit":v70_profit,"v71_forward":v71_forward,
+      "v69_null":v69_null,"v70_profit":v70_profit,"v71_forward":v71_forward,"v72_own":_v672_safe_call(lambda:_v72_dashboard(r),{}),
       "v69_shadow":v69_shadow,
       "main4":[f"{n:02d}" for n in m4],
       "zodiac4":z4,
