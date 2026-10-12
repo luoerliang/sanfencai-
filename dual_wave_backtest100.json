@@ -1,0 +1,1356 @@
+{
+  "version": "v81_dual_wave",
+  "n": 100,
+  "start_issue": "20261012348",
+  "end_issue": "20261012447",
+  "hit": 74,
+  "miss": 26,
+  "rate": 74.0,
+  "streaks": {
+    "current_hit": 0,
+    "current_miss": 1,
+    "max_hit": 13,
+    "max_miss": 3
+  },
+  "fixed_baselines": {
+    "红+蓝": {
+      "hit": 69,
+      "miss": 31,
+      "rate": 69.0,
+      "theoretical_rate": 67.35
+    },
+    "红+绿": {
+      "hit": 73,
+      "miss": 27,
+      "rate": 73.0,
+      "theoretical_rate": 67.35
+    },
+    "蓝+绿": {
+      "hit": 58,
+      "miss": 42,
+      "rate": 58.0,
+      "theoretical_rate": 65.31
+    }
+  },
+  "mean_theoretical_coverage": 67.35,
+  "no_target_result_used": true,
+  "parameters_fixed_before_test": true,
+  "historical_not_formal": true,
+  "excluded_missing_predecessor": [],
+  "records": [
+    {
+      "target": "20261012348",
+      "history_cutoff": "20261012347",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 36,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 41
+    },
+    {
+      "target": "20261012349",
+      "history_cutoff": "20261012348",
+      "recommended": [
+        "蓝",
+        "红"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 36
+    },
+    {
+      "target": "20261012350",
+      "history_cutoff": "20261012349",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 49,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012351",
+      "history_cutoff": "20261012350",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012352",
+      "history_cutoff": "20261012351",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 6,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012353",
+      "history_cutoff": "20261012352",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 1,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012354",
+      "history_cutoff": "20261012353",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 49,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012355",
+      "history_cutoff": "20261012354",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 7,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012356",
+      "history_cutoff": "20261012355",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 47,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012357",
+      "history_cutoff": "20261012356",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 28,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 34
+    },
+    {
+      "target": "20261012358",
+      "history_cutoff": "20261012357",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 8,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012359",
+      "history_cutoff": "20261012358",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 39,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012360",
+      "history_cutoff": "20261012359",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 39,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012361",
+      "history_cutoff": "20261012360",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 35,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012362",
+      "history_cutoff": "20261012361",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 33,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012363",
+      "history_cutoff": "20261012362",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 36,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012364",
+      "history_cutoff": "20261012363",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "绿",
+      "special": 11,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 33
+    },
+    {
+      "target": "20261012365",
+      "history_cutoff": "20261012364",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 17,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012366",
+      "history_cutoff": "20261012365",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "绿",
+      "special": 49,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012367",
+      "history_cutoff": "20261012366",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "蓝",
+      "special": 25,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012368",
+      "history_cutoff": "20261012367",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 2,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 33
+    },
+    {
+      "target": "20261012369",
+      "history_cutoff": "20261012368",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012370",
+      "history_cutoff": "20261012369",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 13,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012371",
+      "history_cutoff": "20261012370",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 38,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012372",
+      "history_cutoff": "20261012371",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012373",
+      "history_cutoff": "20261012372",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 22,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012374",
+      "history_cutoff": "20261012373",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 11,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012375",
+      "history_cutoff": "20261012374",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "蓝",
+      "special": 47,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012376",
+      "history_cutoff": "20261012375",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "绿",
+      "special": 21,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 32
+    },
+    {
+      "target": "20261012377",
+      "history_cutoff": "20261012376",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012378",
+      "history_cutoff": "20261012377",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 30,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012379",
+      "history_cutoff": "20261012378",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 8,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012380",
+      "history_cutoff": "20261012379",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 8,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012381",
+      "history_cutoff": "20261012380",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 19,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012382",
+      "history_cutoff": "20261012381",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 13,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012383",
+      "history_cutoff": "20261012382",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 38,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012384",
+      "history_cutoff": "20261012383",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 27,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012385",
+      "history_cutoff": "20261012384",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 43,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012386",
+      "history_cutoff": "20261012385",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 8,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012387",
+      "history_cutoff": "20261012386",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 45,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012388",
+      "history_cutoff": "20261012387",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 28,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012389",
+      "history_cutoff": "20261012388",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 41,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012390",
+      "history_cutoff": "20261012389",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 10,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 30
+    },
+    {
+      "target": "20261012391",
+      "history_cutoff": "20261012390",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 42,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 31
+    },
+    {
+      "target": "20261012392",
+      "history_cutoff": "20261012391",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 43,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 31
+    },
+    {
+      "target": "20261012393",
+      "history_cutoff": "20261012392",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 13,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012394",
+      "history_cutoff": "20261012393",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 40,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012395",
+      "history_cutoff": "20261012394",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 4,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012396",
+      "history_cutoff": "20261012395",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 7,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 29
+    },
+    {
+      "target": "20261012397",
+      "history_cutoff": "20261012396",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 26,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012398",
+      "history_cutoff": "20261012397",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 28,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 30
+    },
+    {
+      "target": "20261012399",
+      "history_cutoff": "20261012398",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 36,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012400",
+      "history_cutoff": "20261012399",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 40,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 30
+    },
+    {
+      "target": "20261012401",
+      "history_cutoff": "20261012400",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 11,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012402",
+      "history_cutoff": "20261012401",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 4,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012403",
+      "history_cutoff": "20261012402",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 11,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 31
+    },
+    {
+      "target": "20261012404",
+      "history_cutoff": "20261012403",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 15,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012405",
+      "history_cutoff": "20261012404",
+      "recommended": [
+        "绿",
+        "红"
+      ],
+      "actual": "红",
+      "special": 1,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 32
+    },
+    {
+      "target": "20261012406",
+      "history_cutoff": "20261012405",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 2,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 40
+    },
+    {
+      "target": "20261012407",
+      "history_cutoff": "20261012406",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 13,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 40
+    },
+    {
+      "target": "20261012408",
+      "history_cutoff": "20261012407",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 29,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 41
+    },
+    {
+      "target": "20261012409",
+      "history_cutoff": "20261012408",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 39,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012410",
+      "history_cutoff": "20261012409",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 41,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012411",
+      "history_cutoff": "20261012410",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 20,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 31
+    },
+    {
+      "target": "20261012412",
+      "history_cutoff": "20261012411",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 15,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 31
+    },
+    {
+      "target": "20261012413",
+      "history_cutoff": "20261012412",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 46,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 32
+    },
+    {
+      "target": "20261012414",
+      "history_cutoff": "20261012413",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 31,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012415",
+      "history_cutoff": "20261012414",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 7,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 33
+    },
+    {
+      "target": "20261012416",
+      "history_cutoff": "20261012415",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 7,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 42
+    },
+    {
+      "target": "20261012417",
+      "history_cutoff": "20261012416",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 35,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 43
+    },
+    {
+      "target": "20261012418",
+      "history_cutoff": "20261012417",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 18,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 44
+    },
+    {
+      "target": "20261012419",
+      "history_cutoff": "20261012418",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 14,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012420",
+      "history_cutoff": "20261012419",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 8,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 33
+    },
+    {
+      "target": "20261012421",
+      "history_cutoff": "20261012420",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 18,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012422",
+      "history_cutoff": "20261012421",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 38,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 47
+    },
+    {
+      "target": "20261012423",
+      "history_cutoff": "20261012422",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 21,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 39
+    },
+    {
+      "target": "20261012424",
+      "history_cutoff": "20261012423",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 25,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 39
+    },
+    {
+      "target": "20261012425",
+      "history_cutoff": "20261012424",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 31,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 34
+    },
+    {
+      "target": "20261012426",
+      "history_cutoff": "20261012425",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 17,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 35
+    },
+    {
+      "target": "20261012427",
+      "history_cutoff": "20261012426",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 43,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 40
+    },
+    {
+      "target": "20261012428",
+      "history_cutoff": "20261012427",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 29,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 40
+    },
+    {
+      "target": "20261012429",
+      "history_cutoff": "20261012428",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "绿",
+      "special": 21,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012430",
+      "history_cutoff": "20261012429",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 31,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 40
+    },
+    {
+      "target": "20261012431",
+      "history_cutoff": "20261012430",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "红",
+      "special": 2,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 34
+    },
+    {
+      "target": "20261012432",
+      "history_cutoff": "20261012431",
+      "recommended": [
+        "红",
+        "绿"
+      ],
+      "actual": "蓝",
+      "special": 14,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 45
+    },
+    {
+      "target": "20261012433",
+      "history_cutoff": "20261012432",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 46,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 35
+    },
+    {
+      "target": "20261012434",
+      "history_cutoff": "20261012433",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 25,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 46
+    },
+    {
+      "target": "20261012435",
+      "history_cutoff": "20261012434",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 17,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 34
+    },
+    {
+      "target": "20261012436",
+      "history_cutoff": "20261012435",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 1,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 38
+    },
+    {
+      "target": "20261012437",
+      "history_cutoff": "20261012436",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 31,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 47
+    },
+    {
+      "target": "20261012438",
+      "history_cutoff": "20261012437",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 35
+    },
+    {
+      "target": "20261012439",
+      "history_cutoff": "20261012438",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 47,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 48
+    },
+    {
+      "target": "20261012440",
+      "history_cutoff": "20261012439",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 20,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 35
+    },
+    {
+      "target": "20261012441",
+      "history_cutoff": "20261012440",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 34,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 36
+    },
+    {
+      "target": "20261012442",
+      "history_cutoff": "20261012441",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "蓝",
+      "special": 3,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 48
+    },
+    {
+      "target": "20261012443",
+      "history_cutoff": "20261012442",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 12,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 37
+    },
+    {
+      "target": "20261012444",
+      "history_cutoff": "20261012443",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 17,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 49
+    },
+    {
+      "target": "20261012445",
+      "history_cutoff": "20261012444",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 18,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 34
+    },
+    {
+      "target": "20261012446",
+      "history_cutoff": "20261012445",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "红",
+      "special": 35,
+      "hit": true,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 50
+    },
+    {
+      "target": "20261012447",
+      "history_cutoff": "20261012446",
+      "recommended": [
+        "红",
+        "蓝"
+      ],
+      "actual": "绿",
+      "special": 5,
+      "hit": false,
+      "baseline_coverage": 0.673469387755102,
+      "transition_pairs": 51
+    }
+  ],
+  "fixed_pair_comparison": {
+    "红+蓝": {
+      "rescued": 22,
+      "lost": 17
+    },
+    "红+绿": {
+      "rescued": 10,
+      "lost": 9
+    },
+    "蓝+绿": {
+      "rescued": 42,
+      "lost": 26
+    }
+  }
+}

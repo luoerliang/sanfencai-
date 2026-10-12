@@ -4,6 +4,8 @@ from collections import Counter
 from flask import jsonify
 
 VERSION='v80_hot5_cold1_spread16'
+APP_VERSION='v81_dual_wave'
+WAVE_VERSION='v81_dual_wave'
 GROUPS={'algo22':('算法22码',22),'algo16':('算法16码 · 近20期',16),'pool22':('多策略22码',22),'zodiac24':('6肖24码',24)}
 
 def install(a):
@@ -20,6 +22,7 @@ def install(a):
         c=a.connect()
         try:
             c.execute('CREATE TABLE IF NOT EXISTS compact_forecasts(target TEXT, version TEXT, cutoff TEXT, groups_json TEXT, actual INTEGER, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(target,version))')
+            c.execute('CREATE TABLE IF NOT EXISTS wave_forecasts(target TEXT,version TEXT,cutoff TEXT,colors_json TEXT,info_json TEXT,actual_wave TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(target,version))')
             if 'meta_json' not in {x[1] for x in c.execute('PRAGMA table_info(compact_forecasts)')}:
                 c.execute("ALTER TABLE compact_forecasts ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}'")
             c.commit()
@@ -78,6 +81,18 @@ def install(a):
                     for k,gate in current_meta.get('gates',{}).items():gate['applied']=bool(gate.get('enabled') and active_versions.get(k)==VERSION)
                 else:
                     active_version=VERSION;calculation_mode='等待历史核对'
+                from dual_wave import forecast as wave_forecast
+                for pending in c.execute('SELECT target,version FROM wave_forecasts WHERE actual_wave IS NULL').fetchall():
+                    actual=c.execute('SELECT special FROM draws WHERE issue=?',(pending['target'],)).fetchone()
+                    if actual is not None:
+                        from engine import wave
+                        c.execute('UPDATE wave_forecasts SET actual_wave=? WHERE target=? AND version=?',(wave(int(actual['special'])),pending['target'],pending['version']))
+                locked_wave=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,WAVE_VERSION)).fetchone()
+                if state['ready'] and locked_wave is None:
+                    wf=wave_forecast(r)
+                    c.execute('INSERT OR IGNORE INTO wave_forecasts(target,version,cutoff,colors_json,info_json) VALUES (?,?,?,?,?)',(target,WAVE_VERSION,cutoff,json.dumps(wf['colors'],ensure_ascii=False),json.dumps(wf,ensure_ascii=False)))
+                    locked_wave=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,WAVE_VERSION)).fetchone()
+                wave_rows=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target',(WAVE_VERSION,))]
                 c.commit()
                 records=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts ORDER BY target,created_at,version')]
                 rows=records
@@ -117,14 +132,23 @@ def install(a):
             count,latest=dbmeta();state.update(count=count,latest=latest)
             calculation={'history_cutoff':cutoff,'target':target,'mode':calculation_mode,'completed_at':time.strftime('%Y-%m-%d %H:%M:%S'),'elapsed_ms':round((time.perf_counter()-started)*1000,2)}
 
-            cache.clear();cache.update(version=VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
+            from dual_wave import streaks
+            settled_wave=[x for x in wave_rows if x['actual_wave'] is not None]
+            wh=sum(x['actual_wave'] in json.loads(x['colors_json']) for x in settled_wave)
+            pseudo=[dict(target=x['target'],version=x['version'],created_at=x['created_at'],groups_json=json.dumps({'dual_wave':json.loads(x['colors_json'])}),actual=x['actual_wave'],meta_json='{}') for x in wave_rows]
+            wr,wrh=summarize(pseudo,{'dual_wave':('双波色',2)},target,WAVE_VERSION,{'dual_wave':WAVE_VERSION})
+            bits=[x['actual_wave'] in json.loads(x['colors_json']) for x in settled_wave]
+            wave_data={'next_issue':target,'colors':json.loads(locked_wave['colors_json']) if locked_wave else [],'info':json.loads(locked_wave['info_json']) if locked_wave else {},'n':len(settled_wave),'hit':wh,'miss':len(settled_wave)-wh,'rate':round(100*wh/len(settled_wave),1) if settled_wave else None,'streaks':streaks(bits,[x['target'] for x in settled_wave]),'round':wr['dual_wave'],'round_history':wrh['dual_wave'],'recent':[{'issue':x['target'],'recommended':json.loads(x['colors_json']),'actual':x['actual_wave'],'hit':x['actual_wave'] in json.loads(x['colors_json'])} for x in settled_wave[-10:][::-1]]}
+            cache.clear();cache.update(dual_wave=wave_data,version=APP_VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
     old_payload=a._checkpoint_payload
     def payload():
         p=old_payload();c=a.connect()
         try:
             p['draws']=[dict(x) for x in c.execute('SELECT * FROM draws ORDER BY issue DESC')]
             p['compact_forecasts']=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts')]
-            p['version']=VERSION
+            p['version']=APP_VERSION
+            p['core_version']=VERSION
+            p['wave_forecasts']=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts')]
         finally:c.close()
         return p
     a._checkpoint_payload=payload
@@ -136,6 +160,8 @@ def install(a):
         try:
             for x in p.get('compact_forecasts',[]):
                 c.execute('INSERT OR IGNORE INTO compact_forecasts(target,version,cutoff,groups_json,actual,created_at,meta_json) VALUES (?,?,?,?,?,?,?)',tuple(x.get(k) for k in ('target','version','cutoff','groups_json','actual','created_at'))+(x.get('meta_json') or '{}',))
+            for x in p.get('wave_forecasts',[]):
+                c.execute('INSERT OR IGNORE INTO wave_forecasts(target,version,cutoff,colors_json,info_json,actual_wave,created_at) VALUES (?,?,?,?,?,?,?)',tuple(x.get(k) for k in ('target','version','cutoff','colors_json','info_json','actual_wave','created_at')))
             c.commit()
         finally:c.close()
     def sync_previous_compact():
@@ -229,6 +255,12 @@ def install(a):
                     except Exception as e:
                         cache.update(error=f'重算失败: {type(e).__name__}: {e}',stale_prediction=True)
             return jsonify(dict(cache) if cache else dict(state,ready=False,groups={k:[] for k in GROUPS},recent=[],stats={}))
+    @a.app.get('/api/dual-wave-backtest')
+    def dual_wave_report():
+        with open(os.path.join(os.path.dirname(__file__),'dual_wave_backtest100.json'),encoding='utf-8') as f:return jsonify(json.load(f))
+    @a.app.get('/api/dual-wave')
+    def dual_wave_api():
+        with lock:return jsonify(cache.get('dual_wave',{}))
     @a.app.get('/api/rounds')
     def rounds_api():
         with lock:return jsonify(version=VERSION,current=cache.get('rounds',{}),history=cache.get('round_history',{}))
@@ -258,19 +290,22 @@ def install(a):
             return a.send_file(a.CHECKPOINT_PATH,as_attachment=True,download_name='sanfen_full_backup.json.gz',mimetype='application/gzip')
     a.app.view_functions['full_backup']=full_backup
 
-HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v80</title><style>
+HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v81</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f5f8;color:#172738;font:13px -apple-system,BlinkMacSystemFont,sans-serif}main{max-width:560px;margin:auto;padding:10px}header,.head{display:flex;justify-content:space-between;align-items:center}h1{font-size:17px;margin:4px 0}section{background:#fff;border-radius:10px;padding:10px;margin:8px 0}h2{font-size:13px;margin:0}small,.muted{color:#637386;font-size:11px}.nums{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}.ball{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#eef2f7;font-size:12px;font-weight:600}.red{color:#be3341;background:#ffedf0}.blue{color:#255da9;background:#edf4ff}.green{color:#248250;background:#ecf8ee}button{font:11px inherit;border:0;border-radius:5px;background:#eaf0f7;padding:5px 9px;color:#304860}a{color:#355c91}table{width:100%;border-collapse:collapse;font-size:10px}th,td{text-align:center;padding:5px 1px;border-bottom:1px solid #edf1f4}.yes{color:#198454}.no{color:#b75151}#status{line-height:1.6;margin-top:6px}footer{font-size:10px;color:#718093;line-height:1.7}#toast{min-height:14px;color:#277055}.round{font-size:12px;line-height:1.8}.range{font-size:10px;color:#637386}.summary{font-size:10px;line-height:1.6;color:#637386}details{margin-top:4px}.zodiac{font-size:11px;color:#406281;margin-bottom:6px}strong{font-weight:600}</style>
-<main><header><h1>四组号码 <small>v80</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
+<main><header><h1>四组号码 <small>v81</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>下期双波色</h2><div id="wavePair" class="nums">待锁定</div><div id="waveBasis" class="summary"></div><div id="waveStats" class="round"></div><div id="waveRound" class="summary"></div><div id="waveStreak" class="summary"></div><div id="waveBacktest" class="summary">历史回测加载中…</div><details><summary class="summary">最近正式双波记录</summary><div id="waveRecent" class="summary"></div></details></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
 <script>
 const labels={algo22:'算法22码',algo16:'算法16码 · 8热8冷',pool22:'多策略22码',zodiac24:'24码 · 5热肖1冷肖'};let data={},busy=false;
 const red=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]),blue=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
 function balls(ns){return ns.map(n=>`<span class="ball ${red.has(n)?'red':blue.has(n)?'blue':'green'}">${String(n).padStart(2,'0')}</span>`).join('')}
+function wavepair(colors){return colors.map(z=>`<span class="ball ${z==='红'?'red':z==='蓝'?'blue':'green'}">${z}</span>`).join('<span>＋</span>')}
 function mark(x){return x==null?'—':x?'<span class="yes">中</span>':'<span class="no">错</span>'}
 function roundtext(r){return `第${r.number||1}轮 · 已开${r.opened||0}/10 · <strong>中${r.hit||0} 错${r.miss||0}</strong>`}
 async function load(){if(busy)return;busy=true;try{let res=await fetch('/api/prediction',{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);data=await res.json();document.getElementById('status').textContent=`${data.migration||''} · ${data.count||0}期${data.error?' · '+data.error:''}`;document.getElementById('issue').textContent=data.issue||'--';document.getElementById('next').textContent='下一期 '+(data.next_issue||'--');document.getElementById('draw').innerHTML=balls(data.latest_numbers||[]);let calc=data.calculation||{},q=data.data_quality||{};document.getElementById('calculation').textContent=`${calc.mode||''} · 可用${q.usable_recent??'--'}期，连${q.recent_consecutive??'--'}期，缺${q.missing_recent||0}期 · ${calc.elapsed_ms??'--'}ms`;
+let dw=data.dual_wave||{},ds=dw.streaks||{},dr=dw.round||{};document.getElementById('wavePair').innerHTML=wavepair(dw.colors||[]);document.getElementById('waveBasis').textContent=`预测${dw.next_issue||'--'} · 基于本期${dw.info?.based_on_wave||'--'}波及近期走势`;document.getElementById('waveStats').textContent=`正式已开${dw.n||0} · 中${dw.hit||0} 错${dw.miss||0} · ${dw.rate==null?'--':dw.rate+'%'}`;document.getElementById('waveRound').textContent=`第${dr.number||1}轮 ${dr.start||'--'}—${dr.end||'--'} · 已开${dr.opened||0}/10 · 中${dr.hit||0}错${dr.miss||0}`;document.getElementById('waveStreak').textContent=`当前连中${ds.current_hit||0}连错${ds.current_miss||0} · 最高连中${ds.max_hit||0}连错${ds.max_miss||0}`;document.getElementById('waveRecent').innerHTML=(dw.recent||[]).map(x=>`${x.issue} · ${x.recommended.join('+')} · 开${x.actual} ${mark(x.hit)}`).join('<br>')||'尚无正式样本';
 document.getElementById('groups').innerHTML=Object.keys(labels).map(k=>{let st=(data.stats||{})[k]||{},rd=(data.rounds||{})[k]||{},dg=(data.diagnostics||{})[k]||{},meta=data.group_meta||{},zm=meta.zodiac24||{},gate=(meta.gates||{})[k]||{},hist=(data.round_history||{})[k]||[],ver=((data.active_versions||{})[k]||'').split('_')[0];let hm=meta.algo16||{};let split=k==='algo16'?(hm.hot?`<details><summary class="summary">热8：${hm.hot.map(n=>String(n).padStart(2,'0')).join(',')} · 冷8：${hm.cold.map(n=>String(n).padStart(2,'0')).join(',')}</summary><div class="summary">冷码在近20期未开或只开1次，并排除热8；按波色单双、生肖和尾数分散。${hm.insufficient_hot_history?'热码样本不足，已按相对热度补足。':''}</div></details>`:'<div class="summary">旧版本期锁单保留，下个未锁期启用8热8冷</div>'):'';let z=k==='zodiac24'?`<div class="zodiac">${zm.hot_zodiacs?'热肖：'+zm.hot_zodiacs.join('、')+' · 防冷：'+zm.cold_zodiac:'旧版本期6肖：'+(zm.zodiacs||[]).join('、')} · 每肖4码</div>`:'';let method=(meta.methods||{})[k]||{};let rule=k==='zodiac24'?'6肖与24码分别结算':gate.applied?'融合已启用：通过开奖前逐期比较':k==='algo16'?'仅使用近20期':ver&&ver!=='v80'?'升级保留原锁单':gate.validation_n?'融合候选未通过，沿用原方案':'';
 return `<section><div class="head"><h2>${labels[k]}</h2><button data-copy="${k}" ${data.ready?'':'disabled'}>复制</button></div><div class="nums">${balls([...(data.groups[k]||[])].sort((a,b)=>a-b))}</div>${z}${split}<div class="round">${roundtext(rd)}</div><div class="range">本轮 ${rd.start||'--'} — ${rd.end||'--'}${k==='zodiac24'&&rd.zodiac_opened?' · 6肖中'+rd.zodiac_hit+'错'+rd.zodiac_miss:''}</div><div class="summary">累计（含旧版）已开${st.n||0} · 中${st.hit||0}错${st.miss||0} · ${st.rate==null?'--':st.rate+'%'} · ${dg.changed_count==null?'无前期对照':'换入'+dg.changed_count+'码'} · ${ver}锁定</div><div class="summary">${method.label?method.label+' · '+(method.switched?method.trigger:'本方法已连错'+(method.miss_run||0)+'期')+' · ':''}${rule}</div>${hist.length?`<details><summary class="summary">之前${hist.length}轮</summary>${hist.slice().reverse().map(r=>`<div class="summary">${roundtext(r)} · ${r.start}—${r.end}</div>`).join('')}</details>`:''}${k==='zodiac24'?`<details><summary class="summary">各肖号码</summary><div class="summary">${(zm.zodiacs||[]).map(z=>z+'：'+(zm.by_zodiac?.[z]||[]).map(n=>String(n).padStart(2,'0')).join(',')).join(' · ')}</div></details>`:''}</section>`}).join('');
 document.getElementById('records').innerHTML=(data.recent||[]).map(x=>`<tr><td>${x.issue}</td><td>${String(x.actual).padStart(2,'0')}</td>${Object.keys(labels).map(k=>`<td>${mark(x.hits[k])}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="6">等待正式开奖</td></tr>';
 }catch(e){document.getElementById('status').textContent='连接失败，自动重试 · '+e.message}finally{busy=false}}
+fetch('/api/dual-wave-backtest').then(r=>r.json()).then(t=>{document.getElementById('waveBacktest').textContent=`历史回测${t.n}期：中${t.hit}错${t.miss}，${t.rate}% · 固定红+绿${t.fixed_baselines['红+绿'].rate}%（不计正式统计）`}).catch(()=>{document.getElementById('waveBacktest').textContent='回测报告暂不可读'});
 document.getElementById('refresh').onclick=load;document.getElementById('groups').onclick=async e=>{let k=e.target.dataset.copy;if(!k)return;let text=[...(data.groups[k]||[])].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(',');try{await navigator.clipboard.writeText(text)}catch(_){let t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();document.execCommand('copy');t.remove()}document.getElementById('toast').textContent='已复制'};load();setInterval(()=>{if(!document.hidden)load()},10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 </script></html>'''
