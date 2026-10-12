@@ -1,0 +1,199 @@
+{
+  "source_count": 14830,
+  "source_latest": "20261012478",
+  "eligible_targets": 14789,
+  "skipped_gaps": 21,
+  "prior_periods": 20,
+  "segments": {
+    "development": {
+      "start": "20260816021",
+      "end": "20260831214",
+      "methods": {
+        "blend20": {
+          "n": 7394,
+          "hit": 2371,
+          "miss": 5023,
+          "rate": 32.07,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.01,
+            33.14
+          ],
+          "p_above_random": 0.861735370180573
+        },
+        "trend20": {
+          "n": 7394,
+          "hit": 2404,
+          "miss": 4990,
+          "rate": 32.51,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.45,
+            33.59
+          ],
+          "p_above_random": 0.6057155300411646,
+          "rescued": 327,
+          "lost": 294,
+          "p_better_than_current": 0.0995312072886585,
+          "half_gains": [
+            47,
+            -14
+          ]
+        },
+        "shape20": {
+          "n": 7394,
+          "hit": 2393,
+          "miss": 5001,
+          "rate": 32.36,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.31,
+            33.44
+          ],
+          "p_above_random": 0.705841967826572
+        },
+        "gap20": {
+          "n": 7394,
+          "hit": 2394,
+          "miss": 5000,
+          "rate": 32.38,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.32,
+            33.45
+          ],
+          "p_above_random": 0.6972267404748669
+        }
+      }
+    },
+    "validation": {
+      "start": "20260831215",
+      "end": "20260908071",
+      "methods": {
+        "blend20": {
+          "n": 3697,
+          "hit": 1192,
+          "miss": 2505,
+          "rate": 32.24,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            30.75,
+            33.77
+          ],
+          "p_above_random": 0.7083689762558592
+        },
+        "trend20": {
+          "n": 3697,
+          "hit": 1216,
+          "miss": 2481,
+          "rate": 32.89,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.4,
+            34.42
+          ],
+          "p_above_random": 0.384564328916472,
+          "rescued": 168,
+          "lost": 144,
+          "p_better_than_current": 0.0963967442185762,
+          "half_gains": [
+            3,
+            21
+          ]
+        },
+        "shape20": {
+          "n": 3697,
+          "hit": 1231,
+          "miss": 2466,
+          "rate": 33.3,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.8,
+            34.83
+          ],
+          "p_above_random": 0.20656244487973524
+        },
+        "gap20": {
+          "n": 3697,
+          "hit": 1218,
+          "miss": 2479,
+          "rate": 32.95,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.45,
+            34.48
+          ],
+          "p_above_random": 0.35809189325603424
+        }
+      }
+    },
+    "test": {
+      "start": "20260908072",
+      "end": "20261012478",
+      "methods": {
+        "blend20": {
+          "n": 3698,
+          "hit": 1194,
+          "miss": 2504,
+          "rate": 32.29,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            30.8,
+            33.81
+          ],
+          "p_above_random": 0.687842726314221
+        },
+        "trend20": {
+          "n": 3698,
+          "hit": 1206,
+          "miss": 2492,
+          "rate": 32.61,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.12,
+            34.14
+          ],
+          "p_above_random": 0.5272948876303211,
+          "rescued": 163,
+          "lost": 151,
+          "p_better_than_current": 0.26741039835342506,
+          "half_gains": [
+            -14,
+            26
+          ]
+        },
+        "shape20": {
+          "n": 3698,
+          "hit": 1169,
+          "miss": 2529,
+          "rate": 31.61,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            30.13,
+            33.13
+          ],
+          "p_above_random": 0.9146216559379595
+        },
+        "gap20": {
+          "n": 3698,
+          "hit": 1226,
+          "miss": 2472,
+          "rate": 33.15,
+          "random_expected_rate": 32.65,
+          "ci95": [
+            31.65,
+            34.69
+          ],
+          "p_above_random": 0.26367503343849824
+        }
+      }
+    }
+  },
+  "chosen_from_development": "trend20",
+  "screening_passed": false,
+  "automatic_promotion": false,
+  "active_method": "blend20",
+  "multiplicity_threshold": 0.016666666666666666,
+  "seconds": 12.181,
+  "limitation": "Retrospective screening on previously available history; not proof of an untouched test or future advantage. Forward pre-draw locks must independently confirm any advantage."
+}

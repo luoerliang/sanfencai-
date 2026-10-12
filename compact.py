@@ -3,8 +3,8 @@ import os, json, threading, time, gzip
 from collections import Counter
 from flask import jsonify
 
-VERSION='v80_hot5_cold1_spread16'
-APP_VERSION='v81_5_formal16_wave_totals'
+VERSION='v82_evidence_separated'
+APP_VERSION='v82_evidence_separated'
 SINGLE_VERSION='v81_3_single_wave'
 WAVE_VERSION='v81_dual_wave'
 GROUPS={'algo22':('算法22码',22),'algo16':('算法16码 · 近20期',16),'pool22':('多策略22码',22),'zodiac24':('6肖24码',24)}
@@ -32,27 +32,10 @@ def install(a):
         from enhanced import predict,METHODS
         controls={}
         for k,options in METHODS.items():
-            eligible={}
-            for x in records:
-                if x['actual'] is not None and json.loads(x['groups_json']).get(k):eligible[x['target']]=x
-            recent=sorted(eligible.values(),key=lambda x:x['target'],reverse=True)[:2]
-            def key(x):return json.loads(x.get('meta_json') or '{}').get('methods',{}).get(k,{}).get('key',options[0])
-            current=key(recent[0]) if recent else options[0]
-            misses=0;previous_target=None
-            from rounds import ordinal
-            for x in recent:
-                if previous_target is not None and ordinal(previous_target)-ordinal(x['target'])!=1:break
-                if key(x)!=current or x['actual'] in json.loads(x['groups_json'])[k]:break
-                misses+=1;previous_target=x['target']
-            controls[k]={'current_key':current,'miss_run':misses,'force_switch':misses>=2}
-            if k=='algo16':
-                perf={key:{'n':0,'hit':0} for key in options}
-                for row in sorted(eligible.values(),key=lambda x:x['target'],reverse=True)[:60]:
-                    candidates=json.loads(row.get('meta_json') or '{}').get('algo16_candidates',{})
-                    for method,codes in candidates.items():
-                        if method in perf:perf[method]['n']+=1;perf[method]['hit']+=row['actual'] in codes
-                for value in perf.values():value['smoothed_rate']=(value['hit']+20*16/49)/(value['n']+20)
-                controls[k]['performance']=perf
+            eligible=[x for x in records if x['actual'] is not None and json.loads(x['groups_json']).get(k)]
+            latest=max(eligible,key=lambda x:x['target']) if eligible else None
+            current=json.loads(latest.get('meta_json') or '{}').get('methods',{}).get(k,{}).get('key',options[0]) if latest else options[0]
+            controls[k]={'current_key':current,'force_switch':False}
         return predict(r,controls)
     def refresh():
         started=time.perf_counter()
@@ -80,7 +63,8 @@ def install(a):
                         ledger=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts WHERE actual IS NOT NULL ORDER BY target,created_at,version')]
                         calculated,metadata=build(r,ledger);new_groups={k:calculated[k] for k in missing}
                         metadata['methods']={k:v for k,v in metadata.get('methods',{}).items() if k in missing}
-                        if 'algo16' not in missing:metadata.pop('algo16',None)
+                        if 'algo16' not in missing:
+                            metadata.pop('algo16',None);metadata.pop('algorithm_revisions',None);metadata.pop('algo16_candidates',None)
                         # Preserve existing current-period locks; append only the new group when upgrading.
                         c.execute('INSERT OR IGNORE INTO compact_forecasts(target,version,cutoff,groups_json,meta_json) VALUES (?,?,?,?,?)',(target,VERSION,cutoff,json.dumps(new_groups),json.dumps(metadata,ensure_ascii=False)))
                         groups.update(new_groups);current_meta.update(metadata)
@@ -133,14 +117,14 @@ def install(a):
             finally:c.close()
             from rounds import summarize
             round_stats,round_history=summarize(records,GROUPS,target,VERSION,active_versions)
-            stats={}
-            for k in GROUPS:
-                latest_settled={}
-                for x in records:
-                    if x['actual'] is not None and json.loads(x['groups_json']).get(k):latest_settled[x['target']]=x
-                eligible=list(latest_settled.values())
-                n=len(eligible);h=sum(x['actual'] in json.loads(x['groups_json'])[k] for x in eligible)
-                stats[k]={'n':n,'hit':h,'miss':n-h,'rate':round(h/n*100,1) if n else None}
+            from audit_policy import group_stats,revision,ALGO16_REVISION
+            stats={k:group_stats(records,k) for k in GROUPS}
+            revised16=[x for x in records if revision(x,'algo16')==ALGO16_REVISION]
+            new_round,new_history=summarize(revised16,{'algo16':GROUPS['algo16']},target,VERSION,{'algo16':VERSION})
+            legacy16=[x for x in records if revision(x,'algo16')!=ALGO16_REVISION]
+            old_round,old_history=summarize(legacy16,{'algo16':GROUPS['algo16']},target,VERSION,{'algo16':VERSION})
+            archived16_rounds=[x for x in old_history['algo16']+[old_round['algo16']] if x['locked']]
+            round_stats['algo16']=new_round['algo16'];round_history['algo16']=new_history['algo16']
             previous_by_group={}
             for x in records:
                 if x['target']==cutoff and x['actual'] is not None:
@@ -186,7 +170,7 @@ def install(a):
                 issue=str(draw['issue']);actual_color=wave(int(draw['special']));dwlock=wave_by_target.get(issue);swlock=single_by_target.get(issue)
                 pair=json.loads(dwlock['colors_json']) if dwlock else [];single=json.loads(swlock['colors_json']) if swlock else []
                 wave_history.append({'issue':issue,'special':int(draw['special']),'waves':[wave(int(draw[f'n{i}'])) for i in range(1,7)]+[actual_color],'actual':actual_color,'dual':pair,'single':single,'dual_hit':actual_color in pair if pair else None,'single_hit':actual_color in single if single else None})
-            cache.clear();cache.update(wave_history=wave_history,single_wave=single_data,dual_wave=wave_data,version=APP_VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
+            cache.clear();cache.update(archived16_rounds=archived16_rounds,wave_history=wave_history,single_wave=single_data,dual_wave=wave_data,version=APP_VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
     old_payload=a._checkpoint_payload
     def payload():
         p=old_payload();c=a.connect()
@@ -288,6 +272,9 @@ def install(a):
     original_write_checkpoint=a.write_checkpoint_atomic
     def serialized_checkpoint():
         with backup_lock:
+            if not state['ready']:
+                a.auto_state['checkpoint_error']='历史核对未通过，保留原备份'
+                return False
             return original_write_checkpoint()
     a.write_checkpoint_atomic=serialized_checkpoint
     def backup():
@@ -318,7 +305,7 @@ def install(a):
         with open(path,encoding='utf-8') as f:return jsonify(json.load(f))
     @a.app.get('/api/validation-report')
     def validation_report():
-        path=os.path.join(os.path.dirname(__file__),'validation_v80_16.json')
+        path=os.path.join(os.path.dirname(__file__),'validation_v82_16.json')
         if not os.path.isfile(path):return jsonify(error='验证报告未生成'),404
         with open(path,encoding='utf-8') as f:return jsonify(json.load(f))
     a.boot=boot;a.add_draw=add_draw
@@ -334,9 +321,9 @@ def install(a):
             return a.send_file(a.CHECKPOINT_PATH,as_attachment=True,download_name='sanfen_full_backup.json.gz',mimetype='application/gzip')
     a.app.view_functions['full_backup']=full_backup
 
-HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v81.5</title><style>
+HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v82</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f5f8;color:#172738;font:13px -apple-system,BlinkMacSystemFont,sans-serif}main{max-width:560px;margin:auto;padding:10px}header,.head{display:flex;justify-content:space-between;align-items:center}h1{font-size:17px;margin:4px 0}section{background:#fff;border-radius:10px;padding:10px;margin:8px 0}h2{font-size:13px;margin:0}small,.muted{color:#637386;font-size:11px}.nums{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}.ball{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#eef2f7;font-size:12px;font-weight:600}.red{color:#be3341;background:#ffedf0}.blue{color:#255da9;background:#edf4ff}.green{color:#248250;background:#ecf8ee}button{font:11px inherit;border:0;border-radius:5px;background:#eaf0f7;padding:5px 9px;color:#304860}a{color:#355c91}table{width:100%;border-collapse:collapse;font-size:10px}th,td{text-align:center;padding:5px 1px;border-bottom:1px solid #edf1f4}.yes{color:#198454}.no{color:#b75151}#status{line-height:1.6;margin-top:6px}footer{font-size:10px;color:#718093;line-height:1.7}#toast{min-height:14px;color:#277055}.round{font-size:12px;line-height:1.8}.range{font-size:10px;color:#637386}.summary{font-size:10px;line-height:1.6;color:#637386}details{margin-top:4px}.zodiac{font-size:11px;color:#406281;margin-bottom:6px}strong{font-weight:600}.wave-panel{padding:10px;border:1px solid #dce4ef;border-radius:10px;margin:8px 0}.next-panel{border-color:#e0be69}.wave-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wave-line .nums{margin:0}.wave-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;background:#f3f6fb;border-radius:10px;padding:10px}.wave-metrics .round{font-size:15px}.history-scroll{max-height:280px;overflow:auto;overscroll-behavior:contain}.history-scroll thead{position:sticky;top:0;background:#fff}.history-scroll td{font-size:12px;white-space:nowrap;padding:8px 3px}.wave-dots{letter-spacing:1px}.dot{font-size:13px}.dot.red{color:#c43e50}.dot.blue{color:#3462b6}.dot.green{color:#448b5b}</style>
-<main><header><h1>四组号码 <small>v81.5</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
+<main><header><h1>四组号码 <small>v82</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
 <script>
 const labels={algo22:'算法22码',algo16:'算法16码',pool22:'多策略22码',zodiac24:'24码 · 5热肖1冷肖'};let data={},busy=false;
 const red=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]),blue=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
@@ -352,7 +339,7 @@ document.getElementById('singleMethod').textContent=`单波 ${({mixed:'融合',t
 let sh=new Map((sw.round_history||[]).map(x=>[x.number,x]));document.getElementById('waveRoundHistory').innerHTML=(dw.round_history||[]).slice().reverse().map(x=>{let y=sh.get(x.number)||{};return `<div class="summary">第${x.number}轮 · ${x.start}—${x.end}<br>双波 已开${x.opened} 中${x.hit}错${x.miss} · 单波 已开${y.opened||0} 中${y.hit||0}错${y.miss||0}</div>`}).join('')||'暂无已结束轮次';
 function dots(zs){return zs.map(z=>`<span class="dot ${z==='红'?'red':z==='蓝'?'blue':'green'}" title="${z}">●</span>`).join('')}
 document.getElementById('waveHistory').innerHTML=(data.wave_history||[]).map(x=>`<tr><td>${x.issue.slice(-6)}<br>特${String(x.special).padStart(2,'0')} ${x.actual}</td><td class="wave-dots">${dots(x.waves)}</td><td>${x.dual.join('+')||'—'}</td><td>${x.single.join('')||'—'}</td><td>双${mark(x.dual_hit)} 单${mark(x.single_hit)}</td></tr>`).join('')||'<tr><td colspan="5">等待开奖</td></tr>';
-document.getElementById('groups').innerHTML=Object.keys(labels).map(k=>{let rd=(data.rounds||{})[k]||{},hist=(data.round_history||{})[k]||[];return `<section><div class="head"><h2>${labels[k]}</h2><button data-copy="${k}" ${data.ready?'':'disabled'}>复制</button></div><div class="nums">${balls([...(data.groups[k]||[])].sort((a,b)=>a-b))}</div><div class="round">${roundtext(rd)}</div><div class="range">${rd.start||'--'}—${rd.end||'--'}</div><details><summary class="summary">历史轮次</summary><div class="history-scroll">${hist.slice().reverse().map(r=>`<div class="summary">${roundtext(r)} · ${r.start}—${r.end}</div>`).join('')||'暂无已结束轮次'}</div></details></section>`}).join('');
+document.getElementById('groups').innerHTML=Object.keys(labels).map(k=>{let rd=(data.rounds||{})[k]||{},hist=(data.round_history||{})[k]||[],st=(data.stats||{})[k]||{},life=st.lifetime||{};let evidence=k==='algo16'?`<div class="summary">本版已开${st.n||0} · 中${st.hit||0} 错${st.miss||0}</div><details><summary class="summary">旧版记录与累计</summary><div class="summary">历版累计已开${life.n||0} · 中${life.hit||0} 错${life.miss||0}</div><div class="history-scroll">${(data.archived16_rounds||[]).slice().reverse().map(r=>`<div class="summary">${roundtext(r)} · ${r.start}—${r.end}</div>`).join('')}</div></details>`:'';return `<section><div class="head"><h2>${labels[k]}</h2><button data-copy="${k}" ${data.ready?'':'disabled'}>复制</button></div><div class="nums">${balls([...(data.groups[k]||[])].sort((a,b)=>a-b))}</div><div class="round">${roundtext(rd)}</div>${evidence}<div class="range">${rd.start||'--'}—${rd.end||'--'}</div><details><summary class="summary">历史轮次</summary><div class="history-scroll">${hist.slice().reverse().map(r=>`<div class="summary">${roundtext(r)} · ${r.start}—${r.end}</div>`).join('')||'暂无已结束轮次'}</div></details></section>`}).join('');
 document.getElementById('records').innerHTML=(data.recent||[]).map(x=>`<tr><td>${x.issue}</td><td>${String(x.actual).padStart(2,'0')}</td>${Object.keys(labels).map(k=>`<td>${mark(x.hits[k])}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="6">等待正式开奖</td></tr>';
 }catch(e){document.getElementById('status').textContent='连接失败，自动重试 · '+e.message}finally{busy=false}}
 document.getElementById('refresh').onclick=load;document.getElementById('groups').onclick=async e=>{let k=e.target.dataset.copy;if(!k)return;let text=[...(data.groups[k]||[])].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(',');try{await navigator.clipboard.writeText(text)}catch(_){let t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();document.execCommand('copy');t.remove()}document.getElementById('toast').textContent='已复制'};load();setInterval(()=>{if(!document.hidden)load()},10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});

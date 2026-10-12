@@ -115,33 +115,18 @@ def method_group(r,k,method,book=None,index=0):
     if method=='weighted':return book.candidate(index)[0][k]
     return sorted(rank(_structure(rr),rr)[:22])
 def predict(r,controls=None):
-    controls=controls or {};book=Book(r);gates=book.evaluate();candidate,weights,n=book.candidate();groups={};chosen={};zmeta=None
+    # Historical evaluation runs offline, never while ingesting a draw.
+    controls=controls or {};book=Book(r);groups={};chosen={};zmeta=None
     for k,options in METHODS.items():
-        ctl=controls.get(k,{})
-        current=ctl.get('current_key',options[0]);current=current if current in options else options[0]
-        method=current;switch=bool(ctl.get('force_switch'))
-        if k=='algo16':
-            perf=ctl.get('performance',{});alternate=[x for x in options if x!=current]
-            if switch:
-                if all(perf.get(x,{}).get('n',0)>=10 for x in alternate):
-                    method=max(alternate,key=lambda x:(perf[x]['smoothed_rate'],-options.index(x)))
-                else:method=options[(options.index(current)+1)%len(options)]
-            elif all(perf.get(x,{}).get('n',0)>=30 for x in options):
-                best=max(options,key=lambda x:perf[x]['smoothed_rate'])
-                if perf[best]['smoothed_rate']>perf[current]['smoothed_rate']+.08:method=best
-        elif switch:
-            alternate=[x for x in options if x!=current]
-            rr=period_window(r,20) if k=='algo16' else r;folds=min(8,len(rr)-5) if k=='algo16' else min(20,max(0,len(rr)-60));performance={x:0 for x in alternate}
-            for j in range(max(0,folds)):
-                for x in alternate:
-                    past=rr[j+1:];codes=method_group(past,k,x) if k=='algo16' else method_group(r,k,x,book,j+1)
-                    performance[x]+=int(rr[j]['special']) in codes
-            current_codes=set(method_group(r,k,current,book));method=max(alternate,key=lambda x:(performance[x],len(set(method_group(r,k,x,book))-current_codes),-options.index(x)))
-        elif current==options[0] and k in gates and gates[k]['enabled']:
-            method='fusion' if k=='algo22' else 'weighted'
-        groups[k]=method_group(r,k,method,book)
+        current=controls.get(k,{}).get('current_key',options[0])
+        method='blend20' if k=='algo16' else current if current in options else options[0]
         if k=='zodiac24':groups[k],zmeta=six_zodiac(r,method=method)
-        chosen[k]={'key':method,'label':METHOD_LABELS[method],'previous':current,'switched':method!=current,'trigger':'连续2期未中' if switch else '正式候选表现更好' if k=='algo16' and method!=current else '逐期比较通过' if method!=current else '继续当前方法','miss_run':int(ctl.get('miss_run',0))}
-    candidates16={x:split16(r,x)[0] for x in METHODS['algo16']}
-    meta={'algo16_candidates':candidates16,'algo16_feedback':controls.get('algo16',{}).get('performance',{}),'algo16':split16(r,chosen['algo16']['key'])[1],'gates':gates,'methods':chosen,'expert_weights':{k:round(v,4) for k,v in weights.items()},'weight_validation_n':n,'zodiac24':zmeta}
+        else:groups[k]=method_group(r,k,method,book)
+        chosen[k]={'key':method,'label':METHOD_LABELS[method],'previous':current,'switched':method!=current,'trigger':'固定方法，候选仅观察','miss_run':0}
+    from audit_policy import ALGO16_REVISION
+    from validate16 import candidates
+    meta={'algo16_candidates':candidates(period_window(r,20)),
+          'algo16':split16(r,'blend20')[1], 'gates':{}, 'methods':chosen,
+          'algorithm_revisions':{'algo16':ALGO16_REVISION},
+          'zodiac24':zmeta,'online_historical_evaluation':False}
     return groups,meta
