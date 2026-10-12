@@ -1,5 +1,5 @@
 """Frozen dual-colour rule: 35%20-window,35%60-window,30%last-colour transition."""
-import hashlib
+import hashlib,json
 from collections import Counter
 from engine import NUMS,wave,period_window,period_ordinal,recent_history,seed
 COLORS=('红','蓝','绿')
@@ -36,3 +36,35 @@ def streaks(bits,targets=None):
         if h:cur_hit+=1;cur_miss=0;max_hit=max(max_hit,cur_hit)
         else:cur_miss+=1;cur_hit=0;max_miss=max(max_miss,cur_miss)
     return {'current_hit':cur_hit,'current_miss':cur_miss,'max_hit':max_hit,'max_miss':max_miss}
+
+def single_forecast(r,records):
+    """Independent single-colour feedback, using only saved pre-draw candidates."""
+    candidates=forecast(r)['candidates']
+    rr=period_window(r,6);counts=Counter()
+    for i,row in enumerate(rr):counts[wave(int(row['special']))]+=.5**(i/2)
+    total=sum(counts.values())+6
+    short={z:(counts[z]+6*BASE[z])/total for z in COLORS}
+    candidates['short']={'probs':short}
+    choices={key:max(COLORS,key=lambda z:(value['probs'][z],-COLORS.index(z))) for key,value in candidates.items()}
+    settled=sorted((x for x in records if x['actual_wave'] is not None),key=lambda x:x['target'],reverse=True)[:60]
+    current=json.loads(settled[0]['info_json']).get('method','mixed') if settled else 'mixed'
+    if current not in candidates:current='mixed'
+    perf={key:{'n':0,'hit':0} for key in candidates}
+    for row in settled:
+        for key,color in json.loads(row['info_json']).get('single_candidates',{}).items():
+            if key in perf:perf[key]['n']+=1;perf[key]['hit']+=color==row['actual_wave']
+    for value in perf.values():value['smoothed_rate']=(value['hit']+20/3)/(value['n']+20)
+    misses=0;previous=None
+    for row in settled[:2]:
+        if previous is not None and period_ordinal(previous)-period_ordinal(row['target'])!=1:break
+        if json.loads(row['info_json']).get('method','mixed')!=current or row['actual_wave'] in json.loads(row['colors_json']):break
+        misses+=1;previous=row['target']
+    method=current
+    if misses>=2:
+        alternatives=[key for key in candidates if key!=current]
+        method=max(alternatives,key=lambda key:(choices[key]!=choices[current],perf[key]['smoothed_rate'],key=='short'))
+    elif all(perf[key]['n']>=30 for key in candidates):
+        best=max(candidates,key=lambda key:perf[key]['smoothed_rate'])
+        if perf[best]['smoothed_rate']>perf[current]['smoothed_rate']+.08:method=best
+    color=choices[method]
+    return {'color':color,'estimated_probability':candidates[method]['probs'][color],'probs':candidates[method]['probs'],'method':method,'history_cutoff':str(r[0]['issue']),'source':'独立单波模型','single_candidates':choices,'performance':perf,'switched':method!=current,'switch_reason':'单波同一方法相邻两期未中' if misses>=2 else '正式单波候选表现更好' if method!=current else ''}

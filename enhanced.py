@@ -86,34 +86,22 @@ def six_zodiac(r,number_scores=None,method='blend'):
 METHODS={
 'algo22':('base','fusion','cold_balanced'),
 'pool22':('vote','weighted','structure'),
-'algo16':('hot20','balanced20','structure20'),
+'algo16':('blend20','trend20','shape20'),
 'zodiac24':('blend','transition','balanced')}
-METHOD_LABELS={'base':'中长窗评分','fusion':'多维融合','cold_balanced':'冷热平衡','vote':'均衡投票','weighted':'表现加权投票','structure':'波色单双结构','hot20':'8热8冷短窗','balanced20':'8热8冷均衡','structure20':'8热8冷结构','blend':'5热1冷中窗','transition':'5热1冷短窗','balanced':'5热1冷慢窗'}
+METHOD_LABELS={'blend20':'近20期走势结构融合','trend20':'近20期走势优先','shape20':'近20期结构优先','base':'中长窗评分','fusion':'多维融合','cold_balanced':'冷热平衡','vote':'均衡投票','weighted':'表现加权投票','structure':'波色单双结构','hot20':'8热8冷短窗','balanced20':'8热8冷均衡','structure20':'8热8冷结构','blend':'5热1冷中窗','transition':'5热1冷短窗','balanced':'5热1冷慢窗'}
 def _structure(rr):
     from validation import structure
     rr=period_window(rr,60)
     return structure(rr,len(rr))
-def split16(r,method='hot20'):
-    rr=period_window(r,20);counts=Counter(int(x['special']) for x in rr);hotprob=posterior(rr,20,7 if method=='hot20' else 20,3);structure=_structure(rr)
-    if method=='structure20':hotprob={n:.6*hotprob[n]+.4*structure[n] for n in NUMS}
-    observed=[n for n in rank(hotprob,rr) if counts[n]>0]
-    hot=observed[:8]
-    if len(hot)<8:hot += [n for n in rank(hotprob,rr) if n not in hot][:8-len(hot)]
-    coldprob=structure
-    if method=='balanced20':coldprob={n:1/max(1e-9,structure[n]) for n in NUMS}
-    if method=='structure20':
-        tails=Counter(int(x['special'])%10 for x in rr)
-        coldprob={n:.5*structure[n]+.5*(tails[n%10]+1)/(len(rr)+10) for n in NUMS}
-    pool=[n for n in NUMS if counts[n]<=1 and n not in hot];cold=[];wv=Counter();tails=Counter();zs=Counter();zm=zodiac_map(rr)
-    scores=minmax(coldprob)
-    while len(cold)<8:
-        eligible=[n for n in pool if n not in cold and wv[(wave(n),n%2)]<2]
-        if not eligible:eligible=[n for n in pool if n not in cold]
-        adjusted={n:scores[n]-.18*tails[n%10]-.18*zs[zm[n]] for n in eligible}
-        chosen=rank({n:adjusted.get(n,-100) for n in NUMS},rr)[0]
-        cold.append(chosen);wv[(wave(chosen),chosen%2)]+=1;tails[chosen%10]+=1;zs[zm[chosen]]+=1
-    assert len(hot)==8 and len(cold)==8 and not(set(hot)&set(cold))
-    return sorted(hot+cold),{'hot':sorted(hot),'cold':sorted(cold),'window_used':len(rr),'cold_rule':'近20期未开或仅开1次、排除热8；分散波色单双、生肖与尾数','hot_observed_count':sum(counts[n]>0 for n in hot),'insufficient_hot_history':len(observed)<8}
+def split16(r,method='blend20'):
+    rr=period_window(r,20)
+    trend=posterior(rr,20,7,3);shape=normalize(_structure(rr))
+    weights={'blend20':(.55,.45),'trend20':(.85,.15),'shape20':(.25,.75)}
+    wt,ws=weights.get(method,weights['blend20'])
+    scores={n:wt*trend[n]+ws*shape[n] for n in NUMS}
+    codes=sorted(rank(scores,rr)[:16])
+    assert len(codes)==16 and len(set(codes))==16
+    return codes,{'window_used':len(rr),'rule':'近20期走势与结构评分，不固定冷热数量','scores':{str(n):scores[n] for n in codes},'recipe':method}
 def method_group(r,k,method,book=None,index=0):
     rr=r[index:];book=book or Book(r)
     if k=='algo16':return split16(rr,method)[0]
@@ -132,7 +120,16 @@ def predict(r,controls=None):
         ctl=controls.get(k,{})
         current=ctl.get('current_key',options[0]);current=current if current in options else options[0]
         method=current;switch=bool(ctl.get('force_switch'))
-        if switch:
+        if k=='algo16':
+            perf=ctl.get('performance',{});alternate=[x for x in options if x!=current]
+            if switch:
+                if all(perf.get(x,{}).get('n',0)>=10 for x in alternate):
+                    method=max(alternate,key=lambda x:(perf[x]['smoothed_rate'],-options.index(x)))
+                else:method=options[(options.index(current)+1)%len(options)]
+            elif all(perf.get(x,{}).get('n',0)>=30 for x in options):
+                best=max(options,key=lambda x:perf[x]['smoothed_rate'])
+                if perf[best]['smoothed_rate']>perf[current]['smoothed_rate']+.08:method=best
+        elif switch:
             alternate=[x for x in options if x!=current]
             rr=period_window(r,20) if k=='algo16' else r;folds=min(8,len(rr)-5) if k=='algo16' else min(20,max(0,len(rr)-60));performance={x:0 for x in alternate}
             for j in range(max(0,folds)):
@@ -144,6 +141,7 @@ def predict(r,controls=None):
             method='fusion' if k=='algo22' else 'weighted'
         groups[k]=method_group(r,k,method,book)
         if k=='zodiac24':groups[k],zmeta=six_zodiac(r,method=method)
-        chosen[k]={'key':method,'label':METHOD_LABELS[method],'previous':current,'switched':method!=current,'trigger':'连续2期未中' if switch else '逐期比较通过' if method!=current else '继续当前方法','miss_run':int(ctl.get('miss_run',0))}
-    meta={'algo16':split16(r,chosen['algo16']['key'])[1],'gates':gates,'methods':chosen,'expert_weights':{k:round(v,4) for k,v in weights.items()},'weight_validation_n':n,'zodiac24':zmeta}
+        chosen[k]={'key':method,'label':METHOD_LABELS[method],'previous':current,'switched':method!=current,'trigger':'连续2期未中' if switch else '正式候选表现更好' if k=='algo16' and method!=current else '逐期比较通过' if method!=current else '继续当前方法','miss_run':int(ctl.get('miss_run',0))}
+    candidates16={x:split16(r,x)[0] for x in METHODS['algo16']}
+    meta={'algo16_candidates':candidates16,'algo16_feedback':controls.get('algo16',{}).get('performance',{}),'algo16':split16(r,chosen['algo16']['key'])[1],'gates':gates,'methods':chosen,'expert_weights':{k:round(v,4) for k,v in weights.items()},'weight_validation_n':n,'zodiac24':zmeta}
     return groups,meta
