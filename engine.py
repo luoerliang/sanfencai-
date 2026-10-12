@@ -22,7 +22,7 @@ def normalize(p):
 
 def posterior(r, window, half, alpha=3):
     c = Counter()
-    for i, x in enumerate(r[:window]):
+    for i, x in enumerate(period_window(r,window)):
         c[int(x['special'])] += 0.5 ** (i / half)
     return normalize({n: c[n] + alpha for n in NUMS})
 
@@ -30,7 +30,7 @@ def mix(*parts):
     return normalize({n: sum((w * p[n] for w, p in parts)) for n in NUMS})
 
 def short16(r):
-    r = r[:20]
+    r = period_window(r,20)
     hot = posterior(r, 20, 7, 3)
     return sorted(rank(hot, r)[:16])
 
@@ -47,7 +47,7 @@ def fractional_votes(p, k=22):
     return {n: 1.0 if n in greater else fraction if n in equal else 0.0 for n in NUMS}
 
 def legacy_pool_raw(r):
-    short = r[:60]
+    short = period_window(r,60)
     trend = posterior(short, 60, 15, 2)
     bynum = {n: Counter() for n in NUMS}
     for x in short:
@@ -59,8 +59,8 @@ def legacy_pool_raw(r):
     zm = {n: c.most_common(1)[0][0] for n, c in bynum.items() if c}
     heat = Counter((int(x['special']) for x in short))
     zh = Counter((x['z7'] for x in short))
-    waves = Counter((wave(int(x['special'])) for x in short[:20]))
-    parity = Counter((int(x['special']) % 2 for x in short[:20]))
+    waves = Counter((wave(int(x['special'])) for x in period_window(short,20)))
+    parity = Counter((int(x['special']) % 2 for x in period_window(short,20)))
     return {'趋势': trend, '生肖': {n: zh[zm.get(n, '')] / max(1, sum((zm.get(k) == zm.get(n) for k in NUMS))) for n in NUMS}, '冷热': {n: 1 / (2 + heat[n]) for n in NUMS}, '波色': {n: waves[wave(n)] / sum((wave(k) == wave(n) for k in NUMS)) for n in NUMS}, '单双': {n: parity[n % 2] / sum((k % 2 == n % 2 for k in NUMS)) for n in NUMS}}
 
 def corrected_predict(r):
@@ -89,5 +89,33 @@ def consecutive_history(r):
         except (TypeError,ValueError):return ''
     for x in r:
         if out and following(x['issue'])!=str(out[-1]['issue']):break
+        out.append(x)
+    return out
+
+from functools import lru_cache
+@lru_cache(maxsize=8192)
+def period_ordinal(issue):
+    from datetime import datetime
+    s=str(issue)
+    if len(s)==11 and s.isdigit() and 1<=int(s[8:])<=480:
+        return datetime.strptime(s[:8],'%Y%m%d').toordinal()*480+int(s[8:])-1
+    return int(s)
+def period_window(r,count):
+    if not r:return []
+    try:
+        now=period_ordinal(str(r[0]['issue']));out=[]
+        for x in r:
+            delta=now-period_ordinal(str(x['issue']))
+            if delta>=count:break
+            if delta>=0:out.append(x)
+        return out
+    except (ValueError,KeyError,TypeError):return list(r[:count])
+def recent_history(r):
+    out=[]
+    for x in r:
+        if out:
+            try:
+                if period_ordinal(str(out[-1]['issue']))-period_ordinal(str(x['issue']))>3:break
+            except (ValueError,TypeError):break
         out.append(x)
     return out

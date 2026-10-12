@@ -1,0 +1,2201 @@
+{
+  "source_count": 14535,
+  "source_latest": "20261012185",
+  "consecutive": 190,
+  "n": 40,
+  "start_issue": "20261012146",
+  "end_issue": "20261012185",
+  "two_miss_switch_enabled": true,
+  "no_target_result_used": true,
+  "new_group_historical_not_formal": true,
+  "seconds": 50.448,
+  "groups": {
+    "algo22": {
+      "hit": 22,
+      "miss": 18,
+      "current_hit": 21,
+      "switches": 7
+    },
+    "algo16": {
+      "hit": 10,
+      "miss": 30,
+      "current_hit": 12,
+      "switches": 12
+    },
+    "pool22": {
+      "hit": 24,
+      "miss": 16,
+      "current_hit": 21,
+      "switches": 5
+    },
+    "zodiac24": {
+      "hit": 18,
+      "miss": 22,
+      "current_hit": null,
+      "switches": 7
+    }
+  },
+  "records": [
+    {
+      "issue": "20261012146",
+      "actual": 10,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012147",
+      "actual": 6,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012148",
+      "actual": 6,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "base",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "hot20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "blend",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012149",
+      "actual": 35,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": false,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012150",
+      "actual": 10,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "transition",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012151",
+      "actual": 38,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012152",
+      "actual": 10,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012153",
+      "actual": 2,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012154",
+      "actual": 6,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012155",
+      "actual": 34,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012156",
+      "actual": 33,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012157",
+      "actual": 15,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "vote",
+          "label": "均衡投票",
+          "previous": "vote",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012158",
+      "actual": 18,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "fusion",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "vote",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "balanced",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012159",
+      "actual": 10,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "balanced20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012160",
+      "actual": 36,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012161",
+      "actual": 30,
+      "current_hits": {
+        "algo22": false,
+        "algo16": true,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": true,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012162",
+      "actual": 40,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "base",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "transition",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012163",
+      "actual": 38,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "weighted",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012164",
+      "actual": 14,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012165",
+      "actual": 31,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012166",
+      "actual": 37,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "hot20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012167",
+      "actual": 7,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "fusion",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "structure",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "structure20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012168",
+      "actual": 38,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": true,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "structure20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012169",
+      "actual": 41,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012170",
+      "actual": 32,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "balanced",
+          "label": "生肖冷热平衡",
+          "previous": "balanced",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012171",
+      "actual": 4,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "weighted",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "balanced20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "balanced",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012172",
+      "actual": 44,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012173",
+      "actual": 35,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "base",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "hot20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "blend",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012174",
+      "actual": 6,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012175",
+      "actual": 6,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "balanced20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012176",
+      "actual": 18,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "structure20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012177",
+      "actual": 17,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "structure20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012178",
+      "actual": 45,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "structure",
+          "label": "波色单双结构",
+          "previous": "structure",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "transition",
+          "label": "生肖转移",
+          "previous": "transition",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012179",
+      "actual": 34,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "fusion",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "structure",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "balanced20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "transition",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012180",
+      "actual": 11,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "hot20",
+          "label": "20期短窗",
+          "previous": "hot20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012181",
+      "actual": 25,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": false,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "base",
+          "label": "中长窗评分",
+          "previous": "base",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "hot20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012182",
+      "actual": 40,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": false
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": false
+      },
+      "six_zodiac_hit": false,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "base",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "balanced20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012183",
+      "actual": 18,
+      "current_hits": {
+        "algo22": true,
+        "algo16": true,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "balanced20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012184",
+      "actual": 42,
+      "current_hits": {
+        "algo22": false,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": false,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "structure20",
+          "label": "20期结构",
+          "previous": "structure20",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    },
+    {
+      "issue": "20261012185",
+      "actual": 30,
+      "current_hits": {
+        "algo22": true,
+        "algo16": false,
+        "pool22": true
+      },
+      "v79_hits": {
+        "algo22": true,
+        "pool22": true,
+        "algo16": false,
+        "zodiac24": true
+      },
+      "six_zodiac_hit": true,
+      "methods": {
+        "algo22": {
+          "key": "fusion",
+          "label": "多维融合",
+          "previous": "fusion",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 1
+        },
+        "pool22": {
+          "key": "weighted",
+          "label": "表现加权投票",
+          "previous": "weighted",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        },
+        "algo16": {
+          "key": "balanced20",
+          "label": "20期冷热平衡",
+          "previous": "structure20",
+          "switched": true,
+          "trigger": "连续2期未中",
+          "miss_run": 2
+        },
+        "zodiac24": {
+          "key": "blend",
+          "label": "生肖综合",
+          "previous": "blend",
+          "switched": false,
+          "trigger": "继续当前方法",
+          "miss_run": 0
+        }
+      },
+      "fusion_enabled": {
+        "algo22": false,
+        "pool22": false
+      }
+    }
+  ],
+  "six_zodiac_hit": 18
+}
