@@ -1,7 +1,7 @@
 """Pre-draw, evidence-gated 22-code fusion plus six-zodiac/four-codes selection."""
 import math,hashlib
 from collections import Counter
-from engine import NUMS,seed,rank,normalize,baseline_algo,legacy_pool_raw,fractional_votes,short16,posterior,period_window,period_ordinal
+from engine import wave,NUMS,seed,rank,normalize,baseline_algo,legacy_pool_raw,fractional_votes,short16,posterior,period_window,period_ordinal
 from validation import binomial_tail
 ZODIACS=('鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪')
 def norm_z(z):return {'馬':'马','龍':'龙','雞':'鸡','豬':'猪'}.get(z,z)
@@ -67,21 +67,28 @@ def six_zodiac(r,number_scores=None,method='blend'):
     fden=sum(freq.values())+30;tden=sum(transition.values())+30
     f={z:(freq[z]+30*uniform[z])/fden for z in ZODIACS};t={z:(transition[z]+30*uniform[z])/tden for z in ZODIACS}
     ns=number_scores or baseline_algo(r);support={z:sum(ns[n] for n in NUMS if zm[n]==z) for z in ZODIACS}
-    score={z:.5*f[z]+.35*t[z]+.15*support[z] for z in ZODIACS}
-    if method=='transition':score={z:.15*f[z]+.7*t[z]+.15*support[z] for z in ZODIACS}
-    if method=='balanced':
-        cold={z:1/(2+freq[z]/max(1,sizes[z])) for z in ZODIACS};den=sum(cold.values());score={z:.35*f[z]+.2*t[z]+.45*cold[z]/den for z in ZODIACS}
-    sig=seed(r);ordered=sorted(ZODIACS,key=lambda z:(-round(score[z],14),hashlib.blake2s((sig+z).encode(),digest_size=8).digest()))
-    chosen=ordered[:6];number_rank=rank(ns,r);by_z={z:sorted([n for n in number_rank if zm[n]==z][:4]) for z in chosen}
+    # Exactly one defensive cold zodiac; the other five are selected by actual recent heat.
+    cold_counts=Counter(zm[int(x['special'])] for x in period_window(r,60));sig=seed(r)
+    gap={z:999 for z in ZODIACS}
+    for i,x in enumerate(period_window(r,60)):
+        z=zm[int(x['special'])]
+        if gap[z]==999:gap[z]=i
+    coldest=min(ZODIACS,key=lambda z:(cold_counts[z]/sizes[z],-gap[z],hashlib.blake2s((sig+z).encode(),digest_size=8).digest()))
+    heat_window=20 if method=='transition' else 60 if method=='blend' else 90
+    recent=period_window(r,heat_window);heat=Counter()
+    for i,x in enumerate(recent):heat[zm[int(x['special'])]]+=.5**(i/(7 if heat_window==20 else 20 if heat_window==60 else 30))
+    heat_score={z:heat[z]/sizes[z] for z in ZODIACS}
+    hot_five=sorted((z for z in ZODIACS if z!=coldest),key=lambda z:(-round(heat_score[z],14),-t[z],hashlib.blake2s((sig+z).encode(),digest_size=8).digest()))[:5]
+    chosen=hot_five+[coldest];number_rank=rank(ns,r);by_z={z:sorted([n for n in number_rank if zm[n]==z][:4]) for z in chosen}
     codes=sorted(n for z in chosen for n in by_z[z])
     assert len(codes)==24 and len(set(codes))==24 and all(len(ns)==4 for ns in by_z.values())
-    return codes,{'zodiacs':chosen,'by_zodiac':by_z,'number_zodiac':{str(n):zm[n] for n in codes},'all_number_zodiac':{str(n):zm[n] for n in NUMS},'rule':'6肖，每肖4码；生肖中与24码中分开统计','recipe':method}
+    return codes,{'zodiacs':chosen,'by_zodiac':by_z,'number_zodiac':{str(n):zm[n] for n in codes},'all_number_zodiac':{str(n):zm[n] for n in NUMS},'hot_zodiacs':hot_five,'cold_zodiac':coldest,'heat_window':heat_window,'heat_scores':dict(heat_score),'cold_counts':{z:cold_counts[z] for z in ZODIACS},'rule':'5热肖+1最冷肖，每肖4码；生肖中与24码中分开统计','recipe':method}
 METHODS={
 'algo22':('base','fusion','cold_balanced'),
 'pool22':('vote','weighted','structure'),
 'algo16':('hot20','balanced20','structure20'),
 'zodiac24':('blend','transition','balanced')}
-METHOD_LABELS={'base':'中长窗评分','fusion':'多维融合','cold_balanced':'冷热平衡','vote':'均衡投票','weighted':'表现加权投票','structure':'波色单双结构','hot20':'8热8冷短窗','balanced20':'8热8冷均衡','structure20':'8热8冷结构','blend':'生肖综合','transition':'生肖转移','balanced':'生肖冷热平衡'}
+METHOD_LABELS={'base':'中长窗评分','fusion':'多维融合','cold_balanced':'冷热平衡','vote':'均衡投票','weighted':'表现加权投票','structure':'波色单双结构','hot20':'8热8冷短窗','balanced20':'8热8冷均衡','structure20':'8热8冷结构','blend':'5热1冷中窗','transition':'5热1冷短窗','balanced':'5热1冷慢窗'}
 def _structure(rr):
     from validation import structure
     rr=period_window(rr,60)
@@ -97,9 +104,16 @@ def split16(r,method='hot20'):
     if method=='structure20':
         tails=Counter(int(x['special'])%10 for x in rr)
         coldprob={n:.5*structure[n]+.5*(tails[n%10]+1)/(len(rr)+10) for n in NUMS}
-    cold=[n for n in rank(coldprob,rr) if counts[n]==0 and n not in hot][:8]
+    pool=[n for n in NUMS if counts[n]<=1 and n not in hot];cold=[];wv=Counter();tails=Counter();zs=Counter();zm=zodiac_map(rr)
+    scores=minmax(coldprob)
+    while len(cold)<8:
+        eligible=[n for n in pool if n not in cold and wv[(wave(n),n%2)]<2]
+        if not eligible:eligible=[n for n in pool if n not in cold]
+        adjusted={n:scores[n]-.18*tails[n%10]-.18*zs[zm[n]] for n in eligible}
+        chosen=rank({n:adjusted.get(n,-100) for n in NUMS},rr)[0]
+        cold.append(chosen);wv[(wave(chosen),chosen%2)]+=1;tails[chosen%10]+=1;zs[zm[chosen]]+=1
     assert len(hot)==8 and len(cold)==8 and not(set(hot)&set(cold))
-    return sorted(hot+cold),{'hot':sorted(hot),'cold':sorted(cold),'window_used':len(rr),'cold_rule':'近20期已收录开奖中未出现，结合结构择8码','hot_observed_count':sum(counts[n]>0 for n in hot),'insufficient_hot_history':len(observed)<8}
+    return sorted(hot+cold),{'hot':sorted(hot),'cold':sorted(cold),'window_used':len(rr),'cold_rule':'近20期未开或仅开1次、排除热8；分散波色单双、生肖与尾数','hot_observed_count':sum(counts[n]>0 for n in hot),'insufficient_hot_history':len(observed)<8}
 def method_group(r,k,method,book=None,index=0):
     rr=r[index:];book=book or Book(r)
     if k=='algo16':return split16(rr,method)[0]

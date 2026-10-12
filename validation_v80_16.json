@@ -1,0 +1,48 @@
+{
+  "source_count": 14555,
+  "source_latest": "20261012206",
+  "n": 100,
+  "folds": {
+    "earlier60": {
+      "n": 60,
+      "methods": {
+        "hot20": {
+          "old_hit": 22,
+          "new_hit": 23,
+          "new_cold_hit": 9
+        },
+        "balanced20": {
+          "old_hit": 23,
+          "new_hit": 24,
+          "new_cold_hit": 10
+        },
+        "structure20": {
+          "old_hit": 20,
+          "new_hit": 21,
+          "new_cold_hit": 10
+        }
+      }
+    },
+    "latest40": {
+      "n": 40,
+      "methods": {
+        "hot20": {
+          "old_hit": 11,
+          "new_hit": 14,
+          "new_cold_hit": 7
+        },
+        "balanced20": {
+          "old_hit": 8,
+          "new_hit": 12,
+          "new_cold_hit": 6
+        },
+        "structure20": {
+          "old_hit": 11,
+          "new_hit": 14,
+          "new_cold_hit": 8
+        }
+      }
+    }
+  },
+  "seconds": 0.429
+}
