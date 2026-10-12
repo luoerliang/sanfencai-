@@ -115,18 +115,5 @@ def method_group(r,k,method,book=None,index=0):
     if method=='weighted':return book.candidate(index)[0][k]
     return sorted(rank(_structure(rr),rr)[:22])
 def predict(r,controls=None):
-    # Historical evaluation runs offline, never while ingesting a draw.
-    controls=controls or {};book=Book(r);groups={};chosen={};zmeta=None
-    for k,options in METHODS.items():
-        current=controls.get(k,{}).get('current_key',options[0])
-        method='blend20' if k=='algo16' else current if current in options else options[0]
-        if k=='zodiac24':groups[k],zmeta=six_zodiac(r,method=method)
-        else:groups[k]=method_group(r,k,method,book)
-        chosen[k]={'key':method,'label':METHOD_LABELS[method],'previous':current,'switched':method!=current,'trigger':'固定方法，候选仅观察','miss_run':0}
-    from audit_policy import ALGO16_REVISION
-    from validate16 import candidates
-    meta={'algo16_candidates':candidates(period_window(r,20)),
-          'algo16':split16(r,'blend20')[1], 'gates':{}, 'methods':chosen,
-          'algorithm_revisions':{'algo16':ALGO16_REVISION},
-          'zodiac24':zmeta,'online_historical_evaluation':False}
-    return groups,meta
+    from module_models import number_forecast
+    return number_forecast(r,[])
