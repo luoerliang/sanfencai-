@@ -4,7 +4,7 @@ from collections import Counter
 from flask import jsonify
 
 VERSION='v83_probability_modules'
-APP_VERSION='v83_probability_modules'
+APP_VERSION='v84_with_parity'
 SINGLE_VERSION='v81_3_single_wave'
 WAVE_VERSION='v81_dual_wave'
 GROUPS={'algo22':('算法22码',22),'algo16':('算法16码 · 近20期',16),'pool22':('多策略22码',22),'zodiac24':('6肖24码',24)}
@@ -26,6 +26,8 @@ def install(a):
             c.execute('CREATE TABLE IF NOT EXISTS wave_forecasts(target TEXT,version TEXT,cutoff TEXT,colors_json TEXT,info_json TEXT,actual_wave TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(target,version))')
             if 'meta_json' not in {x[1] for x in c.execute('PRAGMA table_info(compact_forecasts)')}:
                 c.execute("ALTER TABLE compact_forecasts ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}'")
+            from parity import create_table
+            create_table(c)
             c.commit()
         finally:c.close()
     def build(r,records):
@@ -93,6 +95,8 @@ def install(a):
                     locked_single=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,SINGLE_VERSION)).fetchone()
                 single_rows=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target',(SINGLE_VERSION,))]
 
+                from parity import refresh as refresh_parity
+                parity_data=refresh_parity(c,r,target,state['ready'],json.loads(locked_single['info_json']) if locked_single else {})
                 c.commit()
                 records=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts ORDER BY target,created_at,version')]
                 rows=records
@@ -154,13 +158,14 @@ def install(a):
                 issue=str(draw['issue']);actual_color=wave(int(draw['special']));dwlock=wave_by_target.get(issue);swlock=single_by_target.get(issue)
                 pair=json.loads(dwlock['colors_json']) if dwlock else [];single=json.loads(swlock['colors_json']) if swlock else []
                 wave_history.append({'issue':issue,'special':int(draw['special']),'waves':[wave(int(draw[f'n{i}'])) for i in range(1,7)]+[actual_color],'actual':actual_color,'dual':pair,'single':single,'dual_hit':actual_color in pair if pair else None,'single_hit':actual_color in single if single else None})
-            cache.clear();cache.update(archived16_rounds=archived16_rounds,wave_history=wave_history,single_wave=single_data,dual_wave=wave_data,version=APP_VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
+            cache.clear();cache.update(parity=parity_data,archived16_rounds=archived16_rounds,wave_history=wave_history,single_wave=single_data,dual_wave=wave_data,version=APP_VERSION,active_version=active_version,active_versions=active_versions,**state,issue=cutoff,next_issue=target,latest_numbers=[r[0][f'n{i}'] for i in range(1,7)]+[r[0]['special']],groups={k:sorted(ns) for k,ns in groups.items()},stats=stats,rounds=round_stats,round_history=round_history,group_meta=current_meta,data_quality=quality,calculation=calculation,diagnostics=diagnostics,chasing=chasing,stale_prediction=False,recent=recent)
     old_payload=a._checkpoint_payload
     def payload():
         p=old_payload();c=a.connect()
         try:
             p['draws']=[dict(x) for x in c.execute('SELECT * FROM draws ORDER BY issue DESC')]
             p['compact_forecasts']=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts')]
+            p['parity_forecasts']=[dict(x) for x in c.execute('SELECT * FROM parity_forecasts')]
             p['version']=APP_VERSION
             p['core_version']=VERSION
             p['wave_forecasts']=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts')]
@@ -173,6 +178,8 @@ def install(a):
         with gzip.open(path,'rt',encoding='utf-8') as f:p=json.load(f)
         c=a.connect()
         try:
+            from parity import restore as restore_parity
+            restore_parity(c,p)
             for x in p.get('compact_forecasts',[]):
                 c.execute('INSERT OR IGNORE INTO compact_forecasts(target,version,cutoff,groups_json,actual,created_at,meta_json) VALUES (?,?,?,?,?,?,?)',tuple(x.get(k) for k in ('target','version','cutoff','groups_json','actual','created_at'))+(x.get('meta_json') or '{}',))
             for x in p.get('wave_forecasts',[]):
@@ -273,6 +280,10 @@ def install(a):
                     except Exception as e:
                         cache.update(error=f'重算失败: {type(e).__name__}: {e}',stale_prediction=True)
             return jsonify(dict(cache) if cache else dict(state,ready=False,groups={k:[] for k in GROUPS},recent=[],stats={}))
+    @a.app.get('/api/parity')
+    def parity_api():
+        prediction()
+        with lock:return jsonify(cache.get('parity',{}))
     @a.app.get('/api/dual-wave')
     def dual_wave_api():
         with lock:return jsonify(cache.get('dual_wave',{}))
@@ -305,9 +316,9 @@ def install(a):
             return a.send_file(a.CHECKPOINT_PATH,as_attachment=True,download_name='sanfen_full_backup.json.gz',mimetype='application/gzip')
     a.app.view_functions['full_backup']=full_backup
 
-HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v83</title><style>
+HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v84</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f5f8;color:#172738;font:13px -apple-system,BlinkMacSystemFont,sans-serif}main{max-width:560px;margin:auto;padding:10px}header,.head{display:flex;justify-content:space-between;align-items:center}h1{font-size:17px;margin:4px 0}section{background:#fff;border-radius:10px;padding:10px;margin:8px 0}h2{font-size:13px;margin:0}small,.muted{color:#637386;font-size:11px}.nums{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}.ball{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#eef2f7;font-size:12px;font-weight:600}.red{color:#be3341;background:#ffedf0}.blue{color:#255da9;background:#edf4ff}.green{color:#248250;background:#ecf8ee}button{font:11px inherit;border:0;border-radius:5px;background:#eaf0f7;padding:5px 9px;color:#304860}a{color:#355c91}table{width:100%;border-collapse:collapse;font-size:10px}th,td{text-align:center;padding:5px 1px;border-bottom:1px solid #edf1f4}.yes{color:#198454}.no{color:#b75151}#status{line-height:1.6;margin-top:6px}footer{font-size:10px;color:#718093;line-height:1.7}#toast{min-height:14px;color:#277055}.round{font-size:12px;line-height:1.8}.range{font-size:10px;color:#637386}.total,#dualTotal,#singleTotal{font-size:10px;white-space:nowrap}.summary{font-size:10px;line-height:1.6;color:#637386}details{margin-top:4px}.zodiac{font-size:11px;color:#406281;margin-bottom:6px}strong{font-weight:600}.wave-panel{padding:10px;border:1px solid #dce4ef;border-radius:10px;margin:8px 0}.next-panel{border-color:#e0be69}.wave-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wave-line .nums{margin:0}.wave-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;background:#f3f6fb;border-radius:10px;padding:10px}.wave-metrics .round{font-size:15px}.history-scroll{max-height:280px;overflow:auto;overscroll-behavior:contain}.history-scroll thead{position:sticky;top:0;background:#fff}.history-scroll td{font-size:12px;white-space:nowrap;padding:8px 3px}.wave-dots{letter-spacing:1px}.dot{font-size:13px}.dot.red{color:#c43e50}.dot.blue{color:#3462b6}.dot.green{color:#448b5b}</style>
-<main><header><h1>四组号码 <small>v83</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
+<main><header><h1>四组号码 <small>v84</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div><div id="parityPanel" class="wave-panel"><h2>波色单双预测 · 特码</h2><div id="parityCurrent" class="summary"></div><div class="wave-panel next-panel"><div id="parityNext" class="summary"></div><div id="parityChoice" class="nums"></div><div id="parityProbs" class="summary"></div></div><div id="parityRound" class="round"></div><div id="parityRange" class="range"></div><div id="parityTotal" class="summary"></div><details><summary class="summary">历史轮次</summary><div id="parityRounds" class="history-scroll"></div></details><details open><summary class="summary">最近10期正式单双记录</summary><table><thead><tr><th>期号</th><th>推荐</th><th>实际</th><th>结果</th></tr></thead><tbody id="parityRecords"></tbody></table></details></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
 <script>
 const labels={algo22:'算法22码',algo16:'算法16码',pool22:'多策略22码',zodiac24:'24码 · 5热肖1冷肖'};let data={},busy=false;
 const red=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]),blue=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
@@ -316,6 +327,16 @@ function wavepair(colors){return colors.map(z=>`<span class="ball ${z==='红'?'r
 function mark(x){return x==null?'—':x?'<span class="yes">中</span>':'<span class="no">错</span>'}
 function roundtext(r){return `第${r.number||1}轮 · 已开${r.opened||0}/10 · <strong>中${r.hit||0} 错${r.miss||0}</strong>`}
 async function load(){if(busy)return;busy=true;try{let res=await fetch('/api/prediction',{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);data=await res.json();document.getElementById('status').textContent=`${data.migration||''} · ${data.count||0}期${data.error?' · '+data.error:''}`;document.getElementById('issue').textContent=data.issue||'--';document.getElementById('next').textContent='下一期 '+(data.next_issue||'--');document.getElementById('draw').innerHTML=balls(data.latest_numbers||[]);let calc=data.calculation||{},q=data.data_quality||{};document.getElementById('calculation').textContent=`${calc.mode||''} · 可用${q.usable_recent??'--'}期，连${q.recent_consecutive??'--'}期，缺${q.missing_recent||0}期 · ${calc.elapsed_ms??'--'}ms`;
+let pa=data.parity||{},pi=pa.info||{},pd=pa.current_draw||{},pp=pa.current_prediction,pr=pa.round||{};
+document.getElementById('parityCurrent').textContent=pd.issue?`本期 ${pd.issue} · 特码${String(pd.special).padStart(2,'0')} ${pd.parity} · 本期推荐 ${pp?pp.choice+(pp.hit?' 中':' 错'):'—'}`:'等待开奖';
+document.getElementById('parityNext').textContent='下期预测 '+(pa.next_issue||'--');
+document.getElementById('parityChoice').innerHTML=pa.choice?`<span class="ball ${pa.choice==='单'?'red':'blue'}">${pa.choice}</span>`:'等待历史核对';
+document.getElementById('parityProbs').textContent=pi.probs?['单','双'].map(z=>z+' '+(pi.probs[z]*100).toFixed(1)+'%').join(' · ')+` · 基于单波三色概率 · 正式反馈${pi.evidence?.n||0}期`:'';
+document.getElementById('parityRound').innerHTML=roundtext(pr);
+document.getElementById('parityRange').textContent=`${pr.start||'--'}—${pr.end||'--'} · 10期一轮`;
+document.getElementById('parityTotal').textContent=`总开奖${pa.n||0}期 · 中${pa.hit||0} · 错${pa.miss||0} · 命中率${pa.rate==null?'—':pa.rate+'%'}`;
+document.getElementById('parityRounds').innerHTML=(pa.round_history||[]).slice().reverse().map(x=>`<div class="summary">${roundtext(x)} · ${x.start}—${x.end}</div>`).join('')||'暂无已结束轮次';
+document.getElementById('parityRecords').innerHTML=(pa.recent||[]).map(x=>`<tr><td>${x.issue}</td><td>${x.choice}</td><td>${x.actual}</td><td>${mark(x.hit)}</td></tr>`).join('')||'<tr><td colspan="4">等待正式开奖</td></tr>';
 let dw=data.dual_wave||{},sw=data.single_wave||{},wd=dw.current_draw||{},wp=dw.current_prediction,sc=sw.current_prediction,dr=dw.round||{},sr=sw.round||{};
 document.getElementById('waveCurrent').innerHTML=wd.special?`${wd.issue} · 特码${String(wd.special).padStart(2,'0')} · ${wd.wave}波`:'等待开奖';document.getElementById('wavePrevious').innerHTML=`本期推荐：双波 ${wp?wp.colors.join('+')+' '+mark(wp.hit):'—'} · 单波 ${sc?sc.color+' '+mark(sc.hit):'—'}`;document.getElementById('waveBasis').textContent='下期预测 '+(dw.next_issue||'--');document.getElementById('wavePair').innerHTML=wavepair(dw.colors||[]);document.getElementById('singlePair').innerHTML=wavepair(sw.colors||[]);document.getElementById('waveRound').textContent=`第${dr.number||1}轮 · ${dr.start||'--'}—${dr.end||'--'} · 10期一轮`;document.getElementById('dualRound').textContent=`已开${dr.opened||0}/10 · 中${dr.hit||0} 错${dr.miss||0}`;document.getElementById('singleRound').textContent=`已开${sr.opened||0}/10 · 中${sr.hit||0} 错${sr.miss||0}`;
 document.getElementById('dualTotal').textContent=`总开奖${dw.n||0}期 · 中${dw.hit||0} · 错${dw.miss||0}`;document.getElementById('singleTotal').textContent=`总开奖${sw.n||0}期 · 中${sw.hit||0} · 错${sw.miss||0}`;
