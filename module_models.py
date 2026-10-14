@@ -53,10 +53,13 @@ def number_forecast(r,records):
     groups={};meta={'probability_revision':REVISION,'probability_models':{},'algorithm_revisions':{},'methods':{},'gates':{},'online_historical_evaluation':False}
     for group,size in [('algo22',22),('algo16',16),('pool22',22),('zodiac24',24)]:
         models=number_models(r,group);eligible={}
-        for row in records:
+        for row in (records() if callable(records) else records):
             if row['actual'] is None or group not in json.loads(row['groups_json']) or period_ordinal(str(row['target']))>period_ordinal(str(r[0]['issue'])) or period_ordinal(str(row['cutoff']))>=period_ordinal(str(row['target'])):continue
             info=json.loads(row.get('meta_json') or '{}')
-            if info.get('probability_revision')==REVISION and group in info.get('probability_models',{}):eligible[row['target']]=(info['probability_models'][group]['candidates'],int(row['actual']))
+            if info.get('probability_revision')==REVISION and group in info.get('probability_models',{}):
+                if callable(records):eligible.setdefault(row['target'],(info['probability_models'][group]['candidates'],int(row['actual'])))
+                else:eligible[row['target']]=(info['probability_models'][group]['candidates'],int(row['actual']))
+                if callable(records) and len(eligible)>=120:break
         observations=[eligible[k] for k in sorted(eligible,reverse=True)]
         probs,weights,evidence=formal_mix(models,observations)
         rr=period_window(r,20) if group=='algo16' else r
@@ -86,10 +89,11 @@ def wave_models(r,single=False):
 
 def wave_forecast(r,records,single=False):
     models=wave_models(r,single);observations=[]
-    for row in sorted(records,key=lambda x:x['target'],reverse=True):
+    for row in (sorted(records,key=lambda x:x['target'],reverse=True) if isinstance(records,list) else records):
         if row['actual_wave'] is None or period_ordinal(str(row['target']))>period_ordinal(str(r[0]['issue'])) or period_ordinal(str(row['cutoff']))>=period_ordinal(str(row['target'])):continue
         info=json.loads(row['info_json'])
         if info.get('probability_revision')==REVISION:observations.append((info.get('probability_candidates',{}),row['actual_wave']))
+        if len(observations)>=120:break
     probs,weights,evidence=formal_mix(models,observations)
     colors=sorted(COLORS,key=lambda z:(-probs[z],-BASE[z],COLORS.index(z)))[:1 if single else 2]
     result={'colors':colors,'color':colors[0],'estimated_probability':probs[colors[0]],'probs':probs,'method':REVISION,'history_cutoff':str(r[0]['issue']),'based_on_wave':wave(int(r[0]['special'])),'probability_revision':REVISION,'probability_candidates':models,'weights':weights,'evidence':evidence,'switched':False,'recipe':'独立波色概率与正式反馈融合','candidates':{},'source':'独立单波概率融合' if single else '双波覆盖概率融合'}

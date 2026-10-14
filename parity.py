@@ -34,6 +34,7 @@ def forecast(history, records, wave_info):
         info = json.loads(row['info_json'])
         if info.get('probability_revision') == VERSION:
             eligible[row['target']] = (info.get('probability_candidates', {}), row['actual'])
+            if not isinstance(records,list) and len(eligible)>=120:break
     observations = [eligible[key] for key in sorted(eligible, key=period_ordinal, reverse=True)]
     probs, weights, evidence = formal_mix(models, observations)
     choice = max(LABELS, key=lambda label: (probs[label], BASE[label]))
@@ -52,12 +53,13 @@ def refresh(connection, history, target, ready, wave_info):
     cutoff = str(history[0]['issue'])
     connection.execute("UPDATE parity_forecasts SET actual=(SELECT CASE WHEN special % 2=1 THEN '单' ELSE '双' END FROM draws WHERE issue=target) WHERE actual IS NULL AND EXISTS(SELECT 1 FROM draws WHERE issue=target)")
     locked = connection.execute('SELECT * FROM parity_forecasts WHERE target=? AND version=?', (target, VERSION)).fetchone()
-    rows = [dict(x) for x in connection.execute('SELECT * FROM parity_forecasts WHERE version=? ORDER BY target', (VERSION,))]
+    rows = [dict(x) for x in connection.execute('SELECT target,version,cutoff,choice,actual,created_at FROM parity_forecasts WHERE version=? ORDER BY target', (VERSION,))]
     if ready and locked is None and wave_info.get('probs'):
-        info = forecast(history, rows, wave_info)
+        feedback = (dict(x) for x in connection.execute('SELECT * FROM parity_forecasts WHERE version=? AND actual IS NOT NULL ORDER BY target DESC', (VERSION,)))
+        info = forecast(history, feedback, wave_info)
         connection.execute('INSERT OR IGNORE INTO parity_forecasts(target,version,cutoff,choice,info_json) VALUES (?,?,?,?,?)', (target, VERSION, cutoff, info['choice'], json.dumps(info, ensure_ascii=False)))
         locked = connection.execute('SELECT * FROM parity_forecasts WHERE target=? AND version=?', (target, VERSION)).fetchone()
-        rows = [dict(x) for x in connection.execute('SELECT * FROM parity_forecasts WHERE version=? ORDER BY target', (VERSION,))]
+        rows = [dict(x) for x in connection.execute('SELECT target,version,cutoff,choice,actual,created_at FROM parity_forecasts WHERE version=? ORDER BY target', (VERSION,))]
     settled = [x for x in rows if x['actual'] is not None]
     hits = sum(x['choice'] == x['actual'] for x in settled)
     pseudo = [dict(x, groups_json=json.dumps({'parity': [x['choice']]}), meta_json='{}') for x in rows]

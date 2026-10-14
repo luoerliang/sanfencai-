@@ -73,6 +73,22 @@ class ParityTests(unittest.TestCase):
                 self.assertEqual(after['parity']['hit'], 1)
                 self.assertEqual(after['parity']['info']['evidence']['n'], 1)
                 payload = module._checkpoint_payload()
+                from memory_io import write_checkpoint, restore_checkpoint
+                self.assertTrue(write_checkpoint(module, 'v84_1_memory_fix', 'v83_probability_modules'))
+                with gzip.open(module.CHECKPOINT_PATH, 'rt') as saved:
+                    streamed = json.load(saved)
+                for table in ('draws', 'compact_forecasts', 'wave_forecasts', 'parity_forecasts', 'learner_scores'):
+                    canonical = lambda rows: sorted(json.dumps(x, sort_keys=True) for x in rows)
+                    self.assertEqual(canonical(streamed[table]), canonical(payload[table]))
+                c = module.connect()
+                for table in ('compact_forecasts', 'wave_forecasts', 'parity_forecasts'):
+                    c.execute('DELETE FROM ' + table)
+                c.commit(); c.close()
+                restore_checkpoint(module, module.CHECKPOINT_PATH)
+                restored_payload = module._checkpoint_payload()
+                for table in ('compact_forecasts', 'wave_forecasts', 'parity_forecasts'):
+                    self.assertEqual(canonical(restored_payload[table]), canonical(payload[table]))
+
                 old = next(x for x in payload['parity_forecasts'] if x['target'] == target)
                 for key in ('choice', 'info_json', 'cutoff', 'created_at'):
                     self.assertEqual(old[key], before[key])

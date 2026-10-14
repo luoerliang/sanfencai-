@@ -4,7 +4,7 @@ from collections import Counter
 from flask import jsonify
 
 VERSION='v83_probability_modules'
-APP_VERSION='v84_with_parity'
+APP_VERSION='v84_1_memory_fix'
 SINGLE_VERSION='v81_3_single_wave'
 WAVE_VERSION='v81_dual_wave'
 GROUPS={'algo22':('算法22码',22),'algo16':('算法16码 · 近20期',16),'pool22':('多策略22码',22),'zodiac24':('6肖24码',24)}
@@ -56,7 +56,7 @@ def install(a):
                         current_meta.update(json.loads(x['meta_json'] or '{}'))
                     missing=[k for k,ns in groups.items() if not ns]
                     if missing:
-                        ledger=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts WHERE actual IS NOT NULL ORDER BY target,created_at,version')]
+                        ledger=lambda: (dict(x) for x in c.execute('SELECT * FROM compact_forecasts WHERE actual IS NOT NULL ORDER BY target DESC,created_at DESC,version DESC'))
                         calculated,metadata=build(r,ledger);new_groups={k:calculated[k] for k in missing}
                         metadata['methods']={k:v for k,v in metadata.get('methods',{}).items() if k in missing}
                         metadata['probability_models']={k:v for k,v in metadata.get('probability_models',{}).items() if k in missing}
@@ -85,22 +85,20 @@ def install(a):
                     wf=probability_wave(r,previous_wave)
                     c.execute('INSERT OR IGNORE INTO wave_forecasts(target,version,cutoff,colors_json,info_json) VALUES (?,?,?,?,?)',(target,WAVE_VERSION,cutoff,json.dumps(wf['colors'],ensure_ascii=False),json.dumps(wf,ensure_ascii=False)))
                     locked_wave=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,WAVE_VERSION)).fetchone()
-                wave_rows=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target',(WAVE_VERSION,))]
+                wave_rows=[dict(x) for x in c.execute('SELECT target,version,cutoff,colors_json,actual_wave,created_at FROM wave_forecasts WHERE version=? ORDER BY target',(WAVE_VERSION,))]
                 locked_single=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,SINGLE_VERSION)).fetchone()
                 if state['ready'] and locked_single is None and locked_wave is not None:
                     from module_models import wave_forecast as probability_wave
-                    prior_single=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target',(SINGLE_VERSION,))]
+                    prior_single=(dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target DESC',(SINGLE_VERSION,)))
                     si=probability_wave(r,prior_single,True);color=si['color']
                     c.execute('INSERT OR IGNORE INTO wave_forecasts(target,version,cutoff,colors_json,info_json) VALUES (?,?,?,?,?)',(target,SINGLE_VERSION,cutoff,json.dumps([color],ensure_ascii=False),json.dumps(si,ensure_ascii=False)))
                     locked_single=c.execute('SELECT * FROM wave_forecasts WHERE target=? AND version=?',(target,SINGLE_VERSION)).fetchone()
-                single_rows=[dict(x) for x in c.execute('SELECT * FROM wave_forecasts WHERE version=? ORDER BY target',(SINGLE_VERSION,))]
+                single_rows=[dict(x) for x in c.execute('SELECT target,version,cutoff,colors_json,actual_wave,created_at FROM wave_forecasts WHERE version=? ORDER BY target',(SINGLE_VERSION,))]
 
                 from parity import refresh as refresh_parity
                 parity_data=refresh_parity(c,r,target,state['ready'],json.loads(locked_single['info_json']) if locked_single else {})
                 c.commit()
-                records=[dict(x) for x in c.execute('SELECT * FROM compact_forecasts ORDER BY target,created_at,version')]
-                rows=records
-                allstats=[x for x in records if x['version']==VERSION and x['actual'] is not None]
+                records=[dict(x) for x in c.execute("SELECT target,version,cutoff,groups_json,actual,created_at,json_object('algorithm_revisions',json(COALESCE(json_extract(meta_json,'$.algorithm_revisions'),'{}')),'zodiac24',json(COALESCE(json_extract(meta_json,'$.zodiac24'),'{}'))) AS meta_json FROM compact_forecasts ORDER BY target,created_at,version")]
 
             finally:c.close()
             from rounds import summarize
@@ -136,6 +134,9 @@ def install(a):
             count,latest=dbmeta();state.update(count=count,latest=latest)
             calculation={'history_cutoff':cutoff,'target':target,'mode':calculation_mode,'completed_at':time.strftime('%Y-%m-%d %H:%M:%S'),'elapsed_ms':round((time.perf_counter()-started)*1000,2)}
 
+            from memory_io import peak_rss_mib
+            calculation['process_peak_rss_mib']=peak_rss_mib()
+            print(f"[PERF] refresh issue={cutoff} ms={calculation['elapsed_ms']} process_peak_rss_mib={calculation['process_peak_rss_mib']}",flush=True)
             from dual_wave import streaks
             settled_wave=[x for x in wave_rows if x['actual_wave'] is not None]
             wh=sum(x['actual_wave'] in json.loads(x['colors_json']) for x in settled_wave)
@@ -172,37 +173,22 @@ def install(a):
         finally:c.close()
         return p
     a._checkpoint_payload=payload
-    def restore_compact(path=None):
-        path=path or a.CHECKPOINT_PATH
-        if not os.path.exists(path):return
-        with gzip.open(path,'rt',encoding='utf-8') as f:p=json.load(f)
-        c=a.connect()
-        try:
-            from parity import restore as restore_parity
-            restore_parity(c,p)
-            for x in p.get('compact_forecasts',[]):
-                c.execute('INSERT OR IGNORE INTO compact_forecasts(target,version,cutoff,groups_json,actual,created_at,meta_json) VALUES (?,?,?,?,?,?,?)',tuple(x.get(k) for k in ('target','version','cutoff','groups_json','actual','created_at'))+(x.get('meta_json') or '{}',))
-            for x in p.get('wave_forecasts',[]):
-                c.execute('INSERT OR IGNORE INTO wave_forecasts(target,version,cutoff,colors_json,info_json,actual_wave,created_at) VALUES (?,?,?,?,?,?,?)',tuple(x.get(k) for k in ('target','version','cutoff','colors_json','info_json','actual_wave','created_at')))
-            c.commit()
-        finally:c.close()
+    def restore_compact(path=None,include_learning=False):
+        from memory_io import restore_checkpoint
+        return restore_checkpoint(a,path or a.CHECKPOINT_PATH,include_learning)
     def sync_previous_compact():
         bases=[]
         if a.WEBHOOK_BASE_URL:bases.append(a.WEBHOOK_BASE_URL)
         if a.HISTORY_SOURCE_URL:bases.append(a.HISTORY_SOURCE_URL.split('/api/',1)[0])
         for base in dict.fromkeys(bases):
             try:
-                resp=a.requests.get(base.rstrip('/')+'/api/full-backup',timeout=15)
-                resp.raise_for_status()
-                previous=json.loads(gzip.decompress(resp.content))
-                if not isinstance(previous.get('compact_forecasts'),list):continue
-                a._restore_draw_dicts(previous.get('draws',[]))
+                from memory_io import download_file
                 temporary=a.CHECKPOINT_PATH+'.inherit.tmp'
-                with gzip.open(temporary,'wt',encoding='utf-8') as f:json.dump(previous,f,ensure_ascii=False)
-                try:restore_compact(temporary)
+                try:
+                    download_file(a,base.rstrip('/')+'/api/full-backup',temporary,{},15)
+                    state['inherited_lock_count']=restore_compact(temporary)
                 finally:
                     if os.path.isfile(temporary):os.unlink(temporary)
-                state['inherited_lock_count']=len(previous['compact_forecasts'])
                 return
             except Exception as e:
                 state['lock_sync_error']=f'{type(e).__name__}: {e}'
@@ -210,11 +196,9 @@ def install(a):
         try:
             initial_count,initial_latest=dbmeta()
             if a.REMOTE_BACKUP_ENABLED:a.download_checkpoint_from_supabase()
-            a.restore_checkpoint_if_better();restore_compact()
+            restore_compact(include_learning=True)
             inherited=os.path.join(os.path.dirname(__file__),'inherited_snapshot.json.gz')
             if os.path.isfile(inherited):
-                with gzip.open(inherited,'rt',encoding='utf-8') as f:snapshot=json.load(f)
-                a._restore_draw_dicts(snapshot.get('draws',[]))
                 restore_compact(inherited)
             # Merge bundled baseline ONLY when no inherited database is available.
             a.import_history_once()
@@ -257,10 +241,11 @@ def install(a):
                 except Exception as e:
                     state['error']=f'重算失败，将自动重试: {type(e).__name__}: {e}'
                     cache.update(error=state['error'],stale_prediction=True)
-                if changed:threading.Thread(target=backup,daemon=True).start()
+                if changed:request_backup()
             return changed
     backup_lock=threading.RLock()
-    original_write_checkpoint=a.write_checkpoint_atomic
+    from memory_io import write_checkpoint
+    original_write_checkpoint=lambda: write_checkpoint(a,APP_VERSION,VERSION)
     def serialized_checkpoint():
         with backup_lock:
             if not state['ready']:
@@ -268,8 +253,15 @@ def install(a):
                 return False
             return original_write_checkpoint()
     a.write_checkpoint_atomic=serialized_checkpoint
-    def backup():
-        with backup_lock:a.write_checkpoint_atomic()
+    # At most one pending backup; do not accumulate waiting threads per draw.
+    backup_event=threading.Event()
+    def backup_worker():
+        while True:
+            backup_event.wait();backup_event.clear()
+            a.write_checkpoint_atomic()
+    threading.Thread(target=backup_worker,daemon=True,name='checkpoint-worker').start()
+    def request_backup():
+        backup_event.set()
     def prediction():
         with lock:
             if state['ready']:
@@ -316,9 +308,9 @@ def install(a):
             return a.send_file(a.CHECKPOINT_PATH,as_attachment=True,download_name='sanfen_full_backup.json.gz',mimetype='application/gzip')
     a.app.view_functions['full_backup']=full_backup
 
-HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v84</title><style>
+HTML=r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四组号码 v84.1</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f5f8;color:#172738;font:13px -apple-system,BlinkMacSystemFont,sans-serif}main{max-width:560px;margin:auto;padding:10px}header,.head{display:flex;justify-content:space-between;align-items:center}h1{font-size:17px;margin:4px 0}section{background:#fff;border-radius:10px;padding:10px;margin:8px 0}h2{font-size:13px;margin:0}small,.muted{color:#637386;font-size:11px}.nums{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}.ball{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#eef2f7;font-size:12px;font-weight:600}.red{color:#be3341;background:#ffedf0}.blue{color:#255da9;background:#edf4ff}.green{color:#248250;background:#ecf8ee}button{font:11px inherit;border:0;border-radius:5px;background:#eaf0f7;padding:5px 9px;color:#304860}a{color:#355c91}table{width:100%;border-collapse:collapse;font-size:10px}th,td{text-align:center;padding:5px 1px;border-bottom:1px solid #edf1f4}.yes{color:#198454}.no{color:#b75151}#status{line-height:1.6;margin-top:6px}footer{font-size:10px;color:#718093;line-height:1.7}#toast{min-height:14px;color:#277055}.round{font-size:12px;line-height:1.8}.range{font-size:10px;color:#637386}.total,#dualTotal,#singleTotal{font-size:10px;white-space:nowrap}.summary{font-size:10px;line-height:1.6;color:#637386}details{margin-top:4px}.zodiac{font-size:11px;color:#406281;margin-bottom:6px}strong{font-weight:600}.wave-panel{padding:10px;border:1px solid #dce4ef;border-radius:10px;margin:8px 0}.next-panel{border-color:#e0be69}.wave-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wave-line .nums{margin:0}.wave-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;background:#f3f6fb;border-radius:10px;padding:10px}.wave-metrics .round{font-size:15px}.history-scroll{max-height:280px;overflow:auto;overscroll-behavior:contain}.history-scroll thead{position:sticky;top:0;background:#fff}.history-scroll td{font-size:12px;white-space:nowrap;padding:8px 3px}.wave-dots{letter-spacing:1px}.dot{font-size:13px}.dot.red{color:#c43e50}.dot.blue{color:#3462b6}.dot.green{color:#448b5b}</style>
-<main><header><h1>四组号码 <small>v84</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div><div id="parityPanel" class="wave-panel"><h2>波色单双预测 · 特码</h2><div id="parityCurrent" class="summary"></div><div class="wave-panel next-panel"><div id="parityNext" class="summary"></div><div id="parityChoice" class="nums"></div><div id="parityProbs" class="summary"></div></div><div id="parityRound" class="round"></div><div id="parityRange" class="range"></div><div id="parityTotal" class="summary"></div><details><summary class="summary">历史轮次</summary><div id="parityRounds" class="history-scroll"></div></details><details open><summary class="summary">最近10期正式单双记录</summary><table><thead><tr><th>期号</th><th>推荐</th><th>实际</th><th>结果</th></tr></thead><tbody id="parityRecords"></tbody></table></details></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
+<main><header><h1>四组号码 <small>v84.1</small></h1><button id="refresh">刷新</button></header><div id="status">正在连接…</div><section><div class="head"><h2>最新开奖</h2><small id="issue">--</small></div><div id="draw" class="nums"></div><small id="next">下一期 --</small><div id="calculation" class="muted"></div></section><section id="dualWave"><h2>波色预测</h2><div class="wave-panel"><div class="summary">本期开奖 <span id="waveCurrent"></span></div><div id="wavePrevious" class="summary"></div></div><div class="wave-panel next-panel"><div id="waveBasis" class="summary"></div><div class="wave-line"><span>双波</span><div id="wavePair" class="nums"></div><span>单波</span><div id="singlePair" class="nums"></div></div></div><div id="singleMethod" class="summary"></div><div id="waveRound" class="range"></div><div class="wave-metrics"><div><b>双波</b><div id="dualRound" class="round"></div><div id="dualTotal" class="summary"></div></div><div><b>单波</b><div id="singleRound" class="round"></div><div id="singleTotal" class="summary"></div></div></div><details><summary class="summary">历史轮次</summary><div id="waveRoundHistory" class="history-scroll"></div></details><h2 style="margin-top:12px">波色开奖历史</h2><div class="history-scroll"><table><thead><tr><th>期号</th><th>7波色</th><th>双波</th><th>单波</th><th>结果</th></tr></thead><tbody id="waveHistory"></tbody></table></div><div id="parityPanel" class="wave-panel"><h2>波色单双预测 · 特码</h2><div id="parityCurrent" class="summary"></div><div class="wave-panel next-panel"><div id="parityNext" class="summary"></div><div id="parityChoice" class="nums"></div><div id="parityProbs" class="summary"></div></div><div id="parityRound" class="round"></div><div id="parityRange" class="range"></div><div id="parityTotal" class="summary"></div><details><summary class="summary">历史轮次</summary><div id="parityRounds" class="history-scroll"></div></details><details open><summary class="summary">最近10期正式单双记录</summary><table><thead><tr><th>期号</th><th>推荐</th><th>实际</th><th>结果</th></tr></thead><tbody id="parityRecords"></tbody></table></details></div></section><div id="groups"></div><div id="toast"></div><section><h2>最近10期正式记录</h2><div class="summary">每期重算、开奖前锁单；每组独立按10期统计一轮</div><table><thead><tr><th>期号</th><th>特码</th><th>算法22</th><th>算法16</th><th>多策略22</th><th>6肖24</th></tr></thead><tbody id="records"></tbody></table></section><footer><a href="/api/full-backup">完整备份</a> · <a href="/api/rounds">轮次记录</a> · <a href="/api/prediction-audit">计算诊断</a><br>预测方案需要后续实盘验证，命中率不作保证。</footer></main>
 <script>
 const labels={algo22:'算法22码',algo16:'算法16码',pool22:'多策略22码',zodiac24:'24码 · 5热肖1冷肖'};let data={},busy=false;
 const red=new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]),blue=new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);

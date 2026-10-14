@@ -417,17 +417,17 @@ def upload_checkpoint_to_supabase():
     if not REMOTE_BACKUP_ENABLED or not os.path.exists(CHECKPOINT_PATH):
         return False
     try:
-        with open(CHECKPOINT_PATH, 'rb') as f:
-            data = f.read()
+        size = os.path.getsize(CHECKPOINT_PATH)
         url = f'{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}'
         h = _supabase_headers('application/gzip')
         h['x-upsert'] = 'true'
-        r = requests.post(url, headers=h, data=data, timeout=25)
+        with open(CHECKPOINT_PATH, 'rb') as f:
+            r = requests.post(url, headers=h, data=f, timeout=25)
         if r.status_code not in (200, 201):
             raise RuntimeError(f'HTTP {r.status_code}: {r.text[:220]}')
         auto_state['remote_backup_at'] = time.strftime('%Y-%m-%d %H:%M:%S')
         auto_state['remote_backup_error'] = ''
-        print(f'[REMOTE] Supabase backup OK bytes={len(data)}', flush=True)
+        print(f'[REMOTE] Supabase backup OK bytes={size}', flush=True)
         return True
     except Exception as e:
         auto_state['remote_backup_error'] = f'{type(e).__name__}: {e}'
@@ -439,25 +439,15 @@ def download_checkpoint_from_supabase():
         return False
     try:
         url = f'{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{SUPABASE_OBJECT}'
-        r = requests.get(url, headers=_supabase_headers(), timeout=25)
-        if r.status_code == 404:
-            print('[REMOTE] no checkpoint yet', flush=True)
-            return False
-        if r.status_code != 200:
-            raise RuntimeError(f'HTTP {r.status_code}: {r.text[:220]}')
+        from memory_io import download_file
         parent = os.path.dirname(os.path.abspath(CHECKPOINT_PATH))
         os.makedirs(parent, exist_ok=True)
         tmp = CHECKPOINT_PATH + '.remote.tmp'
-        with open(tmp, 'wb') as f:
-            f.write(r.content)
-        with gzip.open(tmp, 'rt', encoding='utf-8') as f:
-            payload = json.load(f)
-        if not isinstance(payload, dict) or 'learning' not in payload:
-            raise RuntimeError('invalid remote checkpoint')
+        download_file(sys.modules[__name__], url, tmp, _supabase_headers())
         os.replace(tmp, CHECKPOINT_PATH)
         auto_state['remote_restore_at'] = time.strftime('%Y-%m-%d %H:%M:%S')
         auto_state['remote_backup_error'] = ''
-        print(f'[REMOTE] Supabase restore OK bytes={len(r.content)}', flush=True)
+        print(f'[REMOTE] Supabase restore OK bytes={os.path.getsize(CHECKPOINT_PATH)}', flush=True)
         return True
     except Exception as e:
         auto_state['remote_backup_error'] = f'restore {type(e).__name__}: {e}'
