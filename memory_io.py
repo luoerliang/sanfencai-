@@ -15,7 +15,7 @@ def peak_rss_mib():
 TABLES = ('draws', 'compact_forecasts', 'wave_forecasts', 'parity_forecasts', 'learner_scores')
 
 
-def write_checkpoint(a, app_version, core_version):
+def write_checkpoint(a, app_version, core_version, remote_upload=True):
     started = time.perf_counter()
     tmp = a.CHECKPOINT_PATH + '.tmp'
     try:
@@ -27,6 +27,11 @@ def write_checkpoint(a, app_version, core_version):
         c = a.connect()
         try:
             c.execute('BEGIN')  # Consistent SQLite read snapshot across all tables.
+            exists=c.execute("SELECT 1 FROM sqlite_master WHERE name='backup_outbox'").fetchone()
+            seq=c.execute("SELECT seq FROM sqlite_sequence WHERE name='backup_outbox'").fetchone() if exists else None
+            header['backup_seq']=int(seq[0]) if seq else 0
+            history=c.execute('SELECT COUNT(*) AS n,MAX(issue) AS latest FROM draws').fetchone()
+            header['history_count']=int(history['n']);header['history_latest']=str(history['latest'] or '')
             with gzip.open(tmp, 'wt', encoding='utf-8') as output:
                 output.write('{')
                 first = True
@@ -47,8 +52,8 @@ def write_checkpoint(a, app_version, core_version):
         finally:
             c.close()
         os.replace(tmp, a.CHECKPOINT_PATH)
-        a.auto_state.update(checkpoint_at=time.strftime('%Y-%m-%d %H:%M:%S'), checkpoint_error='')
-        if a.REMOTE_BACKUP_ENABLED:
+        a.auto_state.update(checkpoint_at=time.strftime('%Y-%m-%d %H:%M:%S'), checkpoint_error='', checkpoint_seq=header['backup_seq'], checkpoint_history_count=header['history_count'], checkpoint_history_latest=header['history_latest'])
+        if remote_upload and a.REMOTE_BACKUP_ENABLED:
             a.upload_checkpoint_to_supabase()
         print(f'[PERF] checkpoint seconds={time.perf_counter()-started:.3f} process_peak_rss_mib={peak_rss_mib()}', flush=True)
         return True

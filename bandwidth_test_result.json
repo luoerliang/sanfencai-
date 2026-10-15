@@ -1,0 +1,9 @@
+{
+  "synthetic_draws": 20,
+  "full_backup_bytes": 604416,
+  "mean_incremental_object_bytes": 21578,
+  "total_uploaded_bytes_for_20_draws_including_manifests": 483579,
+  "page_gzip_bytes": 3481,
+  "unchanged_response_body_bytes": 0,
+  "preserved_history_count": 15007
+}

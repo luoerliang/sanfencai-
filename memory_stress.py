@@ -7,6 +7,7 @@ with tempfile.TemporaryDirectory() as d:
  a=types.ModuleType('stress_app');a.__file__=str(source_dir/'app.py');sys.modules[a.__name__]=a
  exec(compile((source_dir/'app.py').read_text().replace('\nboot()\n','\n'),'app.py','exec'),a.__dict__)
  a.sync_best_available_history=lambda:None
+ a.incremental_backup.sync=lambda:True
  a.boot();client=a.app.test_client()
  for _ in range(1000):
   initial=client.get('/api/prediction').get_json()

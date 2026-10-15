@@ -42,6 +42,7 @@ class ParityTests(unittest.TestCase):
                 source = Path('app.py').read_text().replace('\nboot()\n', '\n')
                 exec(compile(source, 'app.py', 'exec'), module.__dict__)
                 module.sync_best_available_history = lambda: None
+                module.incremental_backup.sync = lambda: True
                 module.boot()
                 client = module.app.test_client()
                 for _ in range(200):
